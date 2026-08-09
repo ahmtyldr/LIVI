@@ -1,10 +1,7 @@
 name: dependencies
-run-name: 'dependencies → ${{ github.event_name == ''workflow_dispatch'' && (inputs.include_major && ''major'' || ''minor+patch'') || ''minor+patch'' }} on ${{ github.event_name == ''workflow_dispatch'' && inputs.branch || ''dev'' }}'
+run-name: 'dependencies → ${{ inputs.include_major && ''major'' || ''minor+patch'' }} on ${{ inputs.branch }}'
 
 on:
-  schedule:
-   - cron: '0 20 * * 0'
-
   workflow_dispatch:
     inputs:
       branch:
@@ -20,15 +17,14 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
   update:
-    name: Update dependencies on ${{ github.event_name == 'workflow_dispatch' && inputs.branch || 'dev' }}
+    name: Update dependencies on ${{ inputs.branch }}
     runs-on: ubuntu-latest
 
     env:
-      TARGET_BRANCH: ${{ github.event_name == 'workflow_dispatch' && inputs.branch || 'dev' }}
+      TARGET_BRANCH: ${{ inputs.branch }}
       HUSKY: 0
 
     steps:
@@ -61,11 +57,11 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Update minor and patch only
-        if: ${{ github.event_name == 'schedule' || inputs.include_major == false }}
+        if: ${{ inputs.include_major == false }}
         run: npx --yes npm-check-updates -u --target minor
 
       - name: Update including majors
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.include_major == true }}
+        if: ${{ inputs.include_major == true }}
         run: npx --yes npm-check-updates -u
 
       - name: Check whether package.json changed
@@ -96,28 +92,12 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Compute PR metadata
-        id: meta
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.include_major }}" == "true" ]]; then
-            echo "branch=chore/deps-major" >> "$GITHUB_OUTPUT"
-            echo "title=chore(deps): update dependencies (major)" >> "$GITHUB_OUTPUT"
-          else
-            echo "branch=chore/deps-minor" >> "$GITHUB_OUTPUT"
-            echo "title=chore(deps): update dependencies" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Create or update the pull request
+      - name: Commit and push directly to target branch
         if: steps.changes.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BRANCH: ${{ steps.meta.outputs.branch }}
-          TITLE: ${{ steps.meta.outputs.title }}
           REPORT: ${{ steps.report.outputs.report }}
-          INCLUDE_MAJOR: ${{ github.event_name == 'workflow_dispatch' && inputs.include_major || false }}
+          INCLUDE_MAJOR: ${{ inputs.include_major }}
         shell: bash
         run: |
           set -euo pipefail
@@ -125,13 +105,16 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
 
-          # Written line by line because the report may carry backticks, which a
-          # heredoc would run as command substitution.
+          if [[ "${INCLUDE_MAJOR}" == "true" ]]; then
+            TITLE="chore(deps): update dependencies (major)"
+          else
+            TITLE="chore(deps): update dependencies"
+          fi
+
           BODY_FILE="$(mktemp)"
           {
-            echo 'Automated dependency update.'
+            echo "${TITLE}"
             echo
-            echo "Target branch: \`${TARGET_BRANCH}\`"
             echo "Include major updates: \`${INCLUDE_MAJOR}\`"
             echo
             echo 'Available updates before applying changes:'
@@ -141,19 +124,7 @@ jobs:
             echo '```'
           } > "${BODY_FILE}"
 
-          # The branch is rebuilt from the target branch on every run, so a run
-          # that drops an update leaves nothing stale behind.
-          git switch -C "${BRANCH}"
           git add package.json pnpm-lock.yaml
-          git commit -m "${TITLE}"
-          git push --force origin "${BRANCH}"
-
-          PR="$(gh pr list --head "${BRANCH}" --base "${TARGET_BRANCH}" --state open \
-            --json number --jq '.[0].number // empty')"
-
-          if [ -n "${PR}" ]; then
-            gh pr edit "${PR}" --title "${TITLE}" --body-file "${BODY_FILE}"
-          else
-            gh pr create --base "${TARGET_BRANCH}" --head "${BRANCH}" \
-              --title "${TITLE}" --body-file "${BODY_FILE}"
-          fi
+          git commit -F "${BODY_FILE}"
+          git pull --rebase origin "${TARGET_BRANCH}"
+          git push origin "${TARGET_BRANCH}"
