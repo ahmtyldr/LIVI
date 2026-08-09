@@ -57,7 +57,7 @@ export function ManeuverIcon({
   size: number
 }) {
   const fs = { fontSize: size }
-  const isRight = turnSide === 0 // Carlinkit: 0 = right, 1 = left
+  const isRight = turnSide === 0 // 0 = right, 1 = left
 
   // No maneuver yet → a neutral heading arrow (never a "?").
   if (type == null) return <NavigationOutlinedIcon sx={fs} />

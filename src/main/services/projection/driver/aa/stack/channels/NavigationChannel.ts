@@ -3,8 +3,8 @@
  *
  * Phone → HU only. Carries Google Maps turn-by-turn data so a HU with a
  * cluster / side widget can show maneuver + distance independently of the
- * main video stream. We translate it to LIVI's Carlinkit-compatible
- * `NaviBag` shape (Navi* keys) inside aaDriver.
+ * main video stream. We translate it to LIVI's `NaviBag`
+ * shape (Navi* keys) inside aaDriver.
  *
  * Message IDs (NavigationStatusMessageId.proto):
  *   0x8001 INSTRUMENT_CLUSTER_START          (StatusStart, empty)

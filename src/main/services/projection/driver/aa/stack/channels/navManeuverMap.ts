@@ -62,7 +62,7 @@ export function turnEventToManeuverType(
 }
 
 /**
- * Carlinkit NaviTurnSide convention: 0 = right, 1 = left.
+ * NaviTurnSide: 0 = right, 1 = left.
  */
 export function turnSideToNaviCode(side: NavigationTurnSide | undefined): number | undefined {
   if (side === 'left') return 1
@@ -146,7 +146,7 @@ export function navManeuverTypeToCode(type: number | undefined): number | undefi
   }
 }
 
-/** Carlinkit turn-side (0=right, 1=left) inferred from the modern maneuver enum. */
+/** Turn-side (0=right, 1=left) */
 export function navManeuverTypeToSide(type: number | undefined): number | undefined {
   switch (type) {
     case 3: // KEEP_LEFT
