@@ -54,6 +54,7 @@ from iap2.control_session_message.now_playing import (
     NowPlayingUpdate, PlaybackStatus, StartMediaItemAttributes, StartNowPlayingUpdates,
     StartPlaybackAttributes, StopNowPlayingUpdates,
 )
+from iap2.control_session_message.device_notifications import DeviceTimeUpdate
 from iap2.control_session_message.power import (
     PowerUpdate, PowerSourceUpdate, StartPowerUpdates, StopPowerUpdates,
 )
@@ -105,7 +106,7 @@ for _msg in (
     RequestAccessoryWiFiConfigurationInformation, NowPlayingUpdate,
     RouteGuidanceUpdate, RouteGuidanceManeuverUpdate,
     StartLocationInformation, StopLocationInformation, PowerUpdate,
-    CommunicationsUpdate, CallStateUpdate, CarPlayAvailability,
+    CommunicationsUpdate, CallStateUpdate, CarPlayAvailability, DeviceTimeUpdate,
 ):
     register_csm(_msg)
 
@@ -687,7 +688,7 @@ class CpHandler:
                     RequestAccessoryWiFiConfigurationInformation, NowPlayingUpdate,
                     RouteGuidanceUpdate, RouteGuidanceManeuverUpdate,
                     StartLocationInformation, StopLocationInformation, PowerUpdate,
-                    CommunicationsUpdate, CallStateUpdate, *cp_recv,
+                    CommunicationsUpdate, CallStateUpdate, DeviceTimeUpdate, *cp_recv,
                 ),
                 power_providing_capability=(
                     PowerProvidingCapability.ADVANCED if carkit
@@ -899,6 +900,8 @@ class CpHandler:
                         self._push_now_playing(peer, incoming)
                     elif isinstance(incoming, PowerUpdate):
                         self._push_power(peer, incoming)
+                    elif isinstance(incoming, DeviceTimeUpdate):
+                        self._handle_device_time(peer, incoming)
                     elif isinstance(incoming, CommunicationsUpdate):
                         self._push_comms(peer, incoming)
                     elif isinstance(incoming, CallStateUpdate):
@@ -1062,6 +1065,27 @@ class CpHandler:
             self._log("carkit (wired CarPlay) watcher started")
         except Exception as e:
             self._log("carkit start failed:", repr(e))
+
+    # One of possibly several time sources (GPS clock later); steps only on
+    # real drift, once per connection.
+    TIME_STEP_THRESHOLD_S = 10
+
+    def _handle_device_time(self, peer, incoming):
+        secs = getattr(incoming, "seconds_since_reference_date", None)
+        if secs is None or getattr(peer, "time_synced", False):
+            return
+        peer.time_synced = True
+        offset = secs - time.time()
+        if abs(offset) <= self.TIME_STEP_THRESHOLD_S:
+            self._log("device time: offset %.1fs, keeping the system clock" % offset)
+            return
+        try:
+            subprocess.run(["date", "-u", "-s", "@%d" % int(secs)],
+                           check=True, capture_output=True)
+            subprocess.run(["fake-hwclock", "save"], check=False, capture_output=True)
+            self._log("device time: system clock stepped by %.0fs" % offset)
+        except Exception as e:
+            self._log("device time: setting the clock failed:", repr(e))
 
     def _handle_start_location(self, peer, incoming, transport):
         types = set()
