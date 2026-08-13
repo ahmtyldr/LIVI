@@ -28,6 +28,10 @@ core|python3-dbus|py:dbus|Bluetooth and Wi-Fi helper
 core|python3-gi|py:gi|Bluetooth and Wi-Fi helper
 core|python3-smbus2|py:smbus2|MFi coprocessor for native CarPlay, the helper imports it at startup
 core|avahi-daemon|cmd:avahi-daemon|CarPlay discovery over Wi-Fi
+core|libva2|file:/usr/lib/*/libva.so.2|Host VA-API runtime, the bundled H.264 software decoder links it
+core|libva-drm2|file:/usr/lib/*/libva-drm.so.2|Host VA-API DRM runtime for the bundled decoder
+core|libva-x11-2|file:/usr/lib/*/libva-x11.so.2|Host VA-API X11 runtime for the bundled decoder
+core|libssh-4|file:/usr/lib/*/libssh.so.4|Host libssh, the bundled FFmpeg protocol layer links it
 lite|cage|cmd:cage|Kiosk compositor
 lite|seatd|cmd:seatd|Seat and session management
 lite|wlr-randr|cmd:wlr-randr|Display configuration
