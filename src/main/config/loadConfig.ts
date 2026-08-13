@@ -3,6 +3,7 @@ import type { Config } from '@shared/types'
 import { DEFAULT_CONFIG } from '@shared/types'
 import { CAR_NAME_MAX, WIFI_PASSWORD_MAX, WIFI_PASSWORD_MIN } from '@shared/types/Config'
 import { existsSync, readFileSync, writeFileSync } from 'fs'
+import { sysfsPanelGeometry } from '../services/video/panelEdid'
 import { CONFIG_PATH } from './paths'
 import { validate } from './validateConfig'
 
@@ -26,11 +27,24 @@ export function loadConfig(): Config {
     }
   }
 
-  // Only when the file carries no name of its own, so a chosen one always survives.
-  const defaults =
-    fileConfig.carName === undefined
-      ? { ...DEFAULT_CONFIG, carName: carNameFromHost() }
-      : DEFAULT_CONFIG
+  // Only when the file carries no value of its own, so a chosen one always survives.
+  let defaults: Config = DEFAULT_CONFIG
+  if (fileConfig.carName === undefined) {
+    defaults = { ...defaults, carName: carNameFromHost() }
+  }
+  if (fileConfig.projectionWidth === undefined && fileConfig.projectionHeight === undefined) {
+    const panel = sysfsPanelGeometry()
+    if (panel) {
+      console.log(`[config] projection defaults from the panel: ${panel.widthPx}x${panel.heightPx}`)
+      defaults = {
+        ...defaults,
+        projectionWidth: panel.widthPx,
+        projectionHeight: panel.heightPx,
+        clusterWidth: panel.widthPx,
+        clusterHeight: panel.heightPx
+      }
+    }
+  }
 
   const merged = validate(fileConfig, defaults)
 

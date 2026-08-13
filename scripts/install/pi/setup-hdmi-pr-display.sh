@@ -14,11 +14,13 @@ set -euo pipefail
 #   bash setup-hdmi-pr-display.sh --edid panel.edid [--connector HDMI-A-1]
 #   bash setup-hdmi-pr-display.sh --edid panel.edid --no-build   # EDID + cmdline only
 #   bash setup-hdmi-pr-display.sh                                 # module patch only
+#   bash setup-hdmi-pr-display.sh --kernel <version>              # build for another kernel
 # ============================================================================
 
 CONNECTOR="HDMI-A-1"
 EDID_SRC=""
 DO_BUILD=1
+KVER="$(uname -r)"   # --kernel builds for another installed kernel (postinst hook)
 KSRC=""   # set by fetch_and_sync from the running kernel version
 STATE_DIR="/var/lib/livi/hdmi-pr"
 FW_EDID="/lib/firmware/edid/livi-display.edid"
@@ -34,6 +36,7 @@ while [[ $# -gt 0 ]]; do
     --edid) EDID_SRC="${2:-}"; shift 2 ;;
     --connector) CONNECTOR="${2:-}"; shift 2 ;;
     --no-build) DO_BUILD=0; shift ;;
+    --kernel) KVER="${2:-}"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
     *) echo "unknown argument: $1" >&2; usage; exit 1 ;;
   esac
@@ -108,7 +111,7 @@ sync_config_and_symvers() {
 fetch_rpt_apt() {
   local kver ver upstream pool work dsc f k vc4src out
   local -a keyrings
-  kver="$(uname -r)"
+  kver="$KVER"
   ver="$(dpkg-query -W -f='${Version}' "linux-image-${kver}")"   # 1:6.18.34-1+rpt1
   ver="${ver#*:}"                                                # 6.18.34-1+rpt1
   upstream="${ver%%-*}"                                          # 6.18.34
@@ -161,7 +164,7 @@ fetch_rpt_apt() {
 # Stock apt kernel
 fetch_apt() {
   local kver series pkg tarball vc4src
-  kver="$(uname -r)"
+  kver="$KVER"
   series="$(echo "$kver" | cut -d. -f1,2)"
   pkg="linux-source-${series}"
   tarball="/usr/src/${pkg}.tar.xz"
@@ -185,13 +188,14 @@ fetch_apt() {
 
 fetch_and_sync() {
   local kver
-  kver="$(uname -r)"
+  kver="$KVER"
   if [[ "$kver" == *+rpt-* || "$kver" == *-rpt-* ]]; then
     if dpkg -s "linux-image-${kver}" >/dev/null 2>&1; then
       echo "→ Raspberry Pi OS apt kernel (+rpt) detected, using the archive pool"
       fetch_rpt_apt
     else
       echo "→ Raspberry Pi (+rpt) kernel without an apt package, using rpi-source"
+      require_running_kernel
       fetch_rpi_source
     fi
   elif apt-cache show "linux-headers-${kver}" >/dev/null 2>&1; then
@@ -199,7 +203,16 @@ fetch_and_sync() {
     fetch_apt
   else
     echo "→ Custom / rpi-update kernel, using rpi-source"
+    require_running_kernel
     fetch_rpi_source
+  fi
+}
+
+# rpi-source can only resolve the running kernel
+require_running_kernel() {
+  if [[ "$KVER" != "$(uname -r)" ]]; then
+    echo "ERROR: --kernel ${KVER} needs an apt kernel, rpi-source only builds the running one" >&2
+    exit 1
   fi
 }
 
@@ -207,23 +220,30 @@ fetch_and_sync() {
 build_vc4() {
   local kver done_marker f built moddir target ext new_vm run_vm base lv
 
-  kver="$(uname -r)"
+  kver="$KVER"
   done_marker="${STATE_DIR}/vc4-pr4d-${kver}.done"
+
+  install_kernel_hook
 
   if [[ -f "$done_marker" ]]; then
     echo "→ vc4 PR module already built for ${kver}, skipping"
     return 0
   fi
 
-  if ! lsmod | grep -q '^vc4 '; then
+  if [[ "$kver" == "$(uname -r)" ]] && ! lsmod | grep -q '^vc4 '; then
     echo "WARNING: vc4 is not a loaded module, this kernel may build it in." >&2
     echo "         A module swap will not take effect, a full kernel is needed." >&2
   fi
 
-  echo "→ Installing build dependencies"
-  sudo apt-get update
-  sudo apt-get install -y --no-install-recommends \
-    git bc bison flex libssl-dev make gcc kmod wget xz-utils zstd
+  # apt holds its lock while the kernel hook runs, so only install when missing
+  if ! command -v bison >/dev/null || ! command -v flex >/dev/null || \
+     ! command -v gcc >/dev/null || ! command -v make >/dev/null || \
+     ! dpkg -s libssl-dev >/dev/null 2>&1; then
+    echo "→ Installing build dependencies"
+    sudo apt-get update
+    sudo apt-get install -y --no-install-recommends \
+      git bc bison flex libssl-dev make gcc kmod wget xz-utils zstd
+  fi
 
   fetch_and_sync
   f="${KSRC}/drivers/gpu/drm/vc4/vc4_hdmi.c"
@@ -318,22 +338,23 @@ PY
   built="${KSRC}/drivers/gpu/drm/vc4/vc4.ko"
   [[ -f "$built" ]] || { echo "build produced no vc4.ko" >&2; exit 1; }
 
-  # Never install a module the running kernel would refuse to load
-  echo "→ Verifying the module matches the running kernel"
+  moddir="/lib/modules/${kver}/kernel/drivers/gpu/drm/vc4"
+  target="$(ls "$moddir"/vc4.ko* 2>/dev/null | head -1 || true)"
+  [[ -n "$target" ]] || { echo "no existing vc4.ko* under $moddir" >&2; exit 1; }
+
+  # Never install a module the target kernel would refuse to load
+  echo "→ Verifying the module matches kernel ${kver}"
   new_vm="$(modinfo "$built" -F vermagic 2>/dev/null || true)"
-  run_vm="$(modinfo vc4 -F vermagic 2>/dev/null || true)"
+  run_vm="$(modinfo "$target" -F vermagic 2>/dev/null || true)"
   if [[ -z "$new_vm" || "$new_vm" != "$run_vm" ]]; then
-    echo "ERROR: built module does not match the running kernel, not installing." >&2
-    echo "  built:   ${new_vm:-<none>}" >&2
-    echo "  running: ${run_vm:-<none>}" >&2
+    echo "ERROR: built module does not match kernel ${kver}, not installing." >&2
+    echo "  built:  ${new_vm:-<none>}" >&2
+    echo "  target: ${run_vm:-<none>}" >&2
     echo "If you changed kernels, run 'rm -rf ~/linux-*' and re-run." >&2
     exit 1
   fi
   echo "   vermagic OK: ${new_vm}"
 
-  moddir="/lib/modules/${kver}/kernel/drivers/gpu/drm/vc4"
-  target="$(ls "$moddir"/vc4.ko* 2>/dev/null | head -1 || true)"
-  [[ -n "$target" ]] || { echo "no existing vc4.ko* under $moddir" >&2; exit 1; }
   ext="${target##*vc4.ko}"
 
   echo "→ Installing vc4.ko (matching existing compression '${ext:-none}')"
@@ -349,7 +370,35 @@ PY
 
   sudo mkdir -p "$STATE_DIR"
   sudo touch "$done_marker"
+  sudo rm -f "${STATE_DIR}/BUILD-FAILED-${kver}"
   echo "   vc4 patched and installed (original backed up to ${target}.livi-bak)"
+}
+
+# Rebuild the module for every future kernel, a failure warns before the reboot.
+install_kernel_hook() {
+  local self="/usr/local/lib/livi/setup-hdmi-pr-display.sh"
+  echo "→ Installing the kernel post-install hook"
+  sudo install -m 0755 "$0" "$self"
+  sudo tee /etc/kernel/postinst.d/livi-vc4 >/dev/null <<EOF
+#!/bin/sh
+# LIVI HDMI-PR: rebuild the patched vc4 for a freshly installed kernel.
+version="\$1"
+[ -n "\$version" ] || exit 0
+[ -d /var/lib/livi/hdmi-pr ] || exit 0
+[ -x "$self" ] || exit 0
+echo "livi-vc4: building the patched vc4 for \$version" >&2
+if ! "$self" --kernel "\$version" </dev/null; then
+  touch "/var/lib/livi/hdmi-pr/BUILD-FAILED-\$version"
+  echo "" >&2
+  echo "**********************************************************************" >&2
+  echo "* livi-vc4: PATCH BUILD FAILED for kernel \$version" >&2
+  echo "* The display WILL STAY DARK after booting this kernel." >&2
+  echo "* Do not reboot. Re-run: sudo $self --kernel \$version" >&2
+  echo "**********************************************************************" >&2
+fi
+exit 0
+EOF
+  sudo chmod +x /etc/kernel/postinst.d/livi-vc4
 }
 
 # Force the panel EDID and reference it from cmdline.txt.
@@ -374,6 +423,21 @@ install_edid() {
     echo "→ Appending '${token}' to ${CMDLINE}"
     sudo cp -p "$CMDLINE" "${CMDLINE}.livi-bak"
     sudo sed -i "1 s|\$| ${token}|" "$CMDLINE"
+  fi
+
+  # Early KMS (boot splash) runs from the initramfs
+  if command -v update-initramfs >/dev/null 2>&1; then
+    echo "→ Packing the EDID into the initramfs"
+    sudo tee /etc/initramfs-tools/hooks/livi-edid >/dev/null <<'EOF'
+#!/bin/sh
+[ "$1" = "prereqs" ] && { echo ""; exit 0; }
+. /usr/share/initramfs-tools/hook-functions
+for f in /lib/firmware/edid/*.edid; do
+  [ -f "$f" ] && copy_file firmware "$f"
+done
+EOF
+    sudo chmod +x /etc/initramfs-tools/hooks/livi-edid
+    sudo update-initramfs -u
   fi
 }
 
