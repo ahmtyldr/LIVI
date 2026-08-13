@@ -72,27 +72,9 @@ fetch_rpi_source() {
   make -C "$KSRC" olddefconfig >/dev/null
 }
 
-# Stock apt kernel
-fetch_apt() {
-  local kver series pkg tarball vc4src sym
-  kver="$(uname -r)"
-  series="$(echo "$kver" | cut -d. -f1,2)"
-  pkg="linux-source-${series}"
-  tarball="/usr/src/${pkg}.tar.xz"
-  KSRC="${HOME}/${pkg}"
-  vc4src="${KSRC}/drivers/gpu/drm/vc4/vc4_hdmi.c"
-
-  if [[ ! -f "$vc4src" ]]; then
-    if [[ ! -f "$tarball" ]]; then
-      echo "→ Installing ${pkg}"
-      sudo apt-get install -y --no-install-recommends "$pkg"
-    fi
-    [[ -f "$tarball" ]] || { echo "kernel source package left no ${tarball}" >&2; exit 1; }
-    echo "→ Unpacking ${tarball}"
-    rm -rf "$KSRC"
-    tar -xf "$tarball" -C "$HOME"
-  fi
-  [[ -f "$vc4src" ]] || { echo "kernel source not found at $KSRC" >&2; exit 1; }
+# Copies the running kernel's config and Module.symvers into KSRC.
+sync_config_and_symvers() {
+  local kver="$1" sym
 
   echo "→ Taking the running kernel's config"
   if [[ -f "/lib/modules/${kver}/build/.config" ]]; then
@@ -122,8 +104,97 @@ fetch_apt() {
   fi
 }
 
+# Raspberry Pi OS apt kernel (+rpt).
+fetch_rpt_apt() {
+  local kver ver upstream pool work dsc f k vc4src out
+  local -a keyrings
+  kver="$(uname -r)"
+  ver="$(dpkg-query -W -f='${Version}' "linux-image-${kver}")"   # 1:6.18.34-1+rpt1
+  ver="${ver#*:}"                                                # 6.18.34-1+rpt1
+  upstream="${ver%%-*}"                                          # 6.18.34
+  pool="https://archive.raspberrypi.com/debian/pool/main/l/linux"
+  work="${HOME}/.cache/livi-kernel-src"
+  KSRC="${HOME}/linux-${ver}"
+  vc4src="${KSRC}/drivers/gpu/drm/vc4/vc4_hdmi.c"
+
+  if [[ ! -f "$vc4src" ]]; then
+    command -v dpkg-source >/dev/null 2>&1 || \
+      sudo apt-get install -y --no-install-recommends dpkg-dev
+
+    echo "→ Fetching kernel source ${ver} from the archive pool"
+    mkdir -p "$work"
+    for f in "linux_${ver}.dsc" "linux_${upstream}.orig.tar.xz" "linux_${ver}.debian.tar.xz"; do
+      [[ -f "${work}/${f}" ]] || wget -q -O "${work}/${f}" "${pool}/${f}" || {
+        rm -f "${work}/${f}"
+        echo "cannot fetch ${pool}/${f} (this kernel may have left the pool)" >&2
+        exit 1
+      }
+    done
+    dsc="${work}/linux_${ver}.dsc"
+
+    # Aborts only on a BAD signature; dpkg-source verifies the tarball hashes.
+    if command -v gpgv >/dev/null 2>&1; then
+      keyrings=()
+      for k in /usr/share/keyrings/raspberrypi-archive-*.pgp \
+               /usr/share/keyrings/raspberrypi-archive-*.gpg; do
+        [[ -f "$k" ]] && keyrings+=(--keyring "$k")
+      done
+      if out="$(gpgv ${keyrings[@]+"${keyrings[@]}"} "$dsc" 2>&1)"; then
+        echo "   .dsc signature OK"
+      elif grep -q "BAD signature" <<<"$out"; then
+        echo "ERROR: ${dsc##*/} carries a BAD signature, refusing to use it" >&2
+        exit 1
+      else
+        echo "   NOTE: .dsc uploader key not in the local keyrings, relying on HTTPS + hash checks"
+      fi
+    fi
+
+    echo "→ Unpacking (applies the Raspberry Pi patch set, takes a while)"
+    rm -rf "$KSRC"
+    dpkg-source --no-check -x "$dsc" "$KSRC" >/dev/null
+  fi
+  [[ -f "$vc4src" ]] || { echo "kernel source not found at $KSRC" >&2; exit 1; }
+
+  sync_config_and_symvers "$kver"
+}
+
+# Stock apt kernel
+fetch_apt() {
+  local kver series pkg tarball vc4src
+  kver="$(uname -r)"
+  series="$(echo "$kver" | cut -d. -f1,2)"
+  pkg="linux-source-${series}"
+  tarball="/usr/src/${pkg}.tar.xz"
+  KSRC="${HOME}/${pkg}"
+  vc4src="${KSRC}/drivers/gpu/drm/vc4/vc4_hdmi.c"
+
+  if [[ ! -f "$vc4src" ]]; then
+    if [[ ! -f "$tarball" ]]; then
+      echo "→ Installing ${pkg}"
+      sudo apt-get install -y --no-install-recommends "$pkg"
+    fi
+    [[ -f "$tarball" ]] || { echo "kernel source package left no ${tarball}" >&2; exit 1; }
+    echo "→ Unpacking ${tarball}"
+    rm -rf "$KSRC"
+    tar -xf "$tarball" -C "$HOME"
+  fi
+  [[ -f "$vc4src" ]] || { echo "kernel source not found at $KSRC" >&2; exit 1; }
+
+  sync_config_and_symvers "$kver"
+}
+
 fetch_and_sync() {
-  if apt-cache show "linux-headers-$(uname -r)" >/dev/null 2>&1; then
+  local kver
+  kver="$(uname -r)"
+  if [[ "$kver" == *+rpt-* || "$kver" == *-rpt-* ]]; then
+    if dpkg -s "linux-image-${kver}" >/dev/null 2>&1; then
+      echo "→ Raspberry Pi OS apt kernel (+rpt) detected, using the archive pool"
+      fetch_rpt_apt
+    else
+      echo "→ Raspberry Pi (+rpt) kernel without an apt package, using rpi-source"
+      fetch_rpi_source
+    fi
+  elif apt-cache show "linux-headers-${kver}" >/dev/null 2>&1; then
     echo "→ Stock apt kernel detected, using apt source + headers"
     fetch_apt
   else
@@ -255,7 +326,7 @@ PY
     echo "ERROR: built module does not match the running kernel, not installing." >&2
     echo "  built:   ${new_vm:-<none>}" >&2
     echo "  running: ${run_vm:-<none>}" >&2
-    echo "If you changed kernels, run 'rm -rf ~/linux-source-*' and re-run." >&2
+    echo "If you changed kernels, run 'rm -rf ~/linux-*' and re-run." >&2
     exit 1
   fi
   echo "   vermagic OK: ${new_vm}"

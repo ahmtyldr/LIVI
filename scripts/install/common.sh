@@ -19,6 +19,7 @@ LIVI_MFI_I2C_BUS="2"
 LIVI_MFI_OVERLAY="dtoverlay=i2c-gpio,bus=${LIVI_MFI_I2C_BUS},i2c_gpio_sda=19,i2c_gpio_scl=26,i2c_gpio_delay_us=5"
 LIVI_MODULES_LOAD="${LIVI_MODULES_LOAD:-/etc/modules-load.d/livi-i2c.conf}"
 LIVI_NM_POWERSAVE_FILE="/etc/NetworkManager/conf.d/99-LIVI-wifi-powersave.conf"
+LIVI_NM_PMF_FILE="/etc/NetworkManager/conf.d/99-LIVI-wifi-pmf.conf"
 
 # Pixel repetition for RGB/VGA panels below HDMI's clock floor
 LIVI_HDMI_PR_SCRIPT="setup-hdmi-pr-display.sh"
@@ -191,9 +192,14 @@ livi_is_raspberry_pi() {
   grep -qi "raspberry pi" /proc/device-tree/model 2>/dev/null
 }
 
-# Prints one EDID profile name per line, read from the repository because the
-# question comes before the AppImage is on disk.
+# Prints one EDID profile name per line, from the checkout if present,
+# otherwise from the repository.
 livi_list_display_profiles() {
+  local dir="$LIVI_LIB_DIR/../../assets/$LIVI_DISPLAYS_DIR"
+  if [ -d "$dir" ]; then
+    ls "$dir" | grep '\.edid$'
+    return 0
+  fi
   curl -fsSL "$LIVI_API/contents/assets/$LIVI_DISPLAYS_DIR?ref=$LIVI_BRANCH" 2>/dev/null \
     | grep -o '"name"[[:space:]]*:[[:space:]]*"[^"]*\.edid"' \
     | sed 's/.*"\([^"]*\.edid\)"/\1/'
@@ -268,18 +274,21 @@ livi_ask_hdmi_pr() {
   LIVI_HDMI_PR_EDID="$(printf '%s\n' "$profiles" | sed -n "${reply}p")"
 }
 
-# Runs the pixel repetition setup for the chosen panel.
+# Runs the pixel repetition setup for the chosen panel. Prefers the checkout,
+# otherwise the AppImage, then the repository.
 livi_apply_hdmi_pr() {
   local appimage="$1" script edid
   [ "${LIVI_HDMI_PR:-no}" = "yes" ] || return 0
 
   echo "→ Setting up $LIVI_HDMI_PR_EDID"
-  if ! script="$(livi_fetch_resource "$appimage" "$LIVI_HDMI_PR_SCRIPT" \
+  script="$LIVI_LIB_DIR/pi/$LIVI_HDMI_PR_SCRIPT"
+  if [ ! -f "$script" ] && ! script="$(livi_fetch_resource "$appimage" "$LIVI_HDMI_PR_SCRIPT" \
       "scripts/install/pi/$LIVI_HDMI_PR_SCRIPT")"; then
     echo "   cannot obtain $LIVI_HDMI_PR_SCRIPT, the panel stays as it is"
     return 0
   fi
-  if ! edid="$(livi_fetch_resource "$appimage" "$LIVI_DISPLAYS_DIR/$LIVI_HDMI_PR_EDID" \
+  edid="$LIVI_LIB_DIR/../../assets/$LIVI_DISPLAYS_DIR/$LIVI_HDMI_PR_EDID"
+  if [ ! -f "$edid" ] && ! edid="$(livi_fetch_resource "$appimage" "$LIVI_DISPLAYS_DIR/$LIVI_HDMI_PR_EDID" \
       "assets/$LIVI_DISPLAYS_DIR/$LIVI_HDMI_PR_EDID")"; then
     echo "   cannot obtain $LIVI_HDMI_PR_EDID, the panel stays as it is"
     return 0
@@ -296,6 +305,16 @@ livi_disable_wifi_powersave() {
   echo "→ Writing $LIVI_NM_POWERSAVE_FILE"
   sudo mkdir -p "$(dirname "$LIVI_NM_POWERSAVE_FILE")"
   printf '[connection]\nwifi.powersave = 2\n' | sudo tee "$LIVI_NM_POWERSAVE_FILE" >/dev/null
+}
+
+# Sets 802.11w (PMF) to optional for all NetworkManager Wi-Fi connections.
+livi_set_wifi_pmf_optional() {
+  echo "→ Writing $LIVI_NM_PMF_FILE"
+  sudo mkdir -p "$(dirname "$LIVI_NM_PMF_FILE")"
+  printf '[connection]\nwifi-sec.pmf=2\n' | sudo tee "$LIVI_NM_PMF_FILE" >/dev/null
+  if command -v nmcli >/dev/null 2>&1; then
+    sudo nmcli general reload conf 2>/dev/null || true
+  fi
 }
 
 livi_write_udev_rule() {
