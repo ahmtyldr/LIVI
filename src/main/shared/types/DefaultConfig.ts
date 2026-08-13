@@ -55,7 +55,7 @@ export const DEFAULT_CONFIG: Config = {
   wifiDedicatedInterface: false,
   carPlaySourceVersion: '950.7.1',
   carPlayMfiI2cBus: 2,
-  carPlayMfiPowerGpio: 21,
+  carPlayMfiPowerGpio: -1,
   appearanceMode: 'auto',
   displayMode: '',
   displayGamma: 1.0,

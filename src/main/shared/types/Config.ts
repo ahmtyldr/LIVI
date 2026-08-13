@@ -109,7 +109,7 @@ export type Config = {
   /** AirPlay protocol version we advertise */
   carPlaySourceVersion: string
 
-  // CarPlay MFi coprocessor: i2c bus, power-enable GPIO
+  // CarPlay MFi coprocessor: i2c bus, power-enable GPIO (-1 = no power pin)
   carPlayMfiI2cBus: number
   carPlayMfiPowerGpio: number
 

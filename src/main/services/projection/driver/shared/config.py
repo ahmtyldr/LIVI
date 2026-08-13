@@ -105,9 +105,9 @@ BT_ADAPTER = _resolve_iface(
     _get_value("LIVI_BT_ADAPTER", "btAdapter", "hci0"), _list_bt_adapters()
 )
 
-# CarPlay MFi authentication coprocessor over i2c
+# CarPlay MFi authentication coprocessor over i2c (power gpio -1 = no power pin)
 MFI_I2C_BUS = int(_get_value("LIVI_CP_MFI_I2C_BUS", "carPlayMfiI2cBus", "2"))
-MFI_POWER_GPIO = _get_value("LIVI_CP_MFI_POWER_GPIO", "carPlayMfiPowerGpio", "21")
+MFI_POWER_GPIO = _get_value("LIVI_CP_MFI_POWER_GPIO", "carPlayMfiPowerGpio", "-1")
 
 # CarPlay charging current advertised to the phone over the wired link (mA)
 _ALLOWED_CURRENTS_MA = (0, 500, 1000, 1500, 2100, 2400, 3000)

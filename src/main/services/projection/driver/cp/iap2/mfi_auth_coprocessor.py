@@ -25,8 +25,9 @@ _protocol_major = None
 # Serialise all chip access so the BT-auth path and the HTTP bridge never
 # interleave transactions on the shared i2c bus.
 _i2c_lock = threading.Lock()
-# GPIO that powers the coprocessor. Default BCM 21, override with LIVI_CP_MFI_POWER_GPIO.
-CHIP_POWER = int(MFI_POWER_GPIO) if MFI_POWER_GPIO else 21
+# GPIO that powers the coprocessor, BCM numbering. -1 means the chip is powered
+# externally and no GPIO is touched.
+CHIP_POWER = int(MFI_POWER_GPIO) if MFI_POWER_GPIO else -1
 # The chip stays powered for as long as the helper runs
 _gpio_handle = None
 _powered_soc = None
@@ -60,6 +61,9 @@ def _get_soc_model():
 
 def _power_on(soc):
     global _gpio_handle, _powered_soc
+    if CHIP_POWER < 0:
+        print("[mfi] no power pin configured, expecting an externally powered chip", flush=True)
+        return
     if soc == "BCM2712":
         # Raspberry Pi 5 / CM5
         import lgpio

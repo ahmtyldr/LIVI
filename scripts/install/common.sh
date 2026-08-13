@@ -16,6 +16,8 @@ LIVI_BOOT_CONFIG="${LIVI_BOOT_CONFIG:-/boot/firmware/config.txt}"
 
 # I2C for the Apple MFi coprocessor, matching carPlayMfiI2cBus in config.json
 LIVI_MFI_I2C_BUS="2"
+LIVI_MFI_POWER_GPIO="21"
+LIVI_APP_CONFIG="${LIVI_APP_CONFIG:-$HOME/.config/LIVI/config.json}"
 LIVI_MFI_OVERLAY="dtoverlay=i2c-gpio,bus=${LIVI_MFI_I2C_BUS},i2c_gpio_sda=19,i2c_gpio_scl=26,i2c_gpio_delay_us=5"
 LIVI_MODULES_LOAD="${LIVI_MODULES_LOAD:-/etc/modules-load.d/livi-i2c.conf}"
 LIVI_NM_POWERSAVE_FILE="/etc/NetworkManager/conf.d/99-LIVI-wifi-powersave.conf"
@@ -422,12 +424,36 @@ livi_apply_splash() {
   sudo bash "$script" || echo "   splash install failed, continuing" >&2
 }
 
+# Writes the MFi i2c bus and power pin into the app config. Keeps values the
+# user already set; only a missing or disabled (-1) power pin is filled in.
+livi_seed_mfi_config() {
+  local python_bin
+  python_bin="$(command -v python3 || echo /usr/bin/python3)"
+  mkdir -p "$(dirname "$LIVI_APP_CONFIG")"
+  "$python_bin" - "$LIVI_APP_CONFIG" "$LIVI_MFI_I2C_BUS" "$LIVI_MFI_POWER_GPIO" <<'PY'
+import json, sys
+path, bus, gpio = sys.argv[1], int(sys.argv[2]), int(sys.argv[3])
+try:
+    with open(path) as f:
+        cfg = json.load(f)
+except (OSError, ValueError):
+    cfg = {}
+cfg.setdefault("carPlayMfiI2cBus", bus)
+if cfg.get("carPlayMfiPowerGpio", -1) in (None, "", -1):
+    cfg["carPlayMfiPowerGpio"] = gpio
+with open(path, "w") as f:
+    json.dump(cfg, f, indent=2)
+PY
+}
+
 livi_apply_mfi() {
   [ "${LIVI_MFI:-no}" = "yes" ] || return 0
   local dev="/dev/i2c-${LIVI_MFI_I2C_BUS}"
 
-  echo "→ Enabling I2C for the MFi coprocessor"
+  echo "→ Setting MFi i2c bus ${LIVI_MFI_I2C_BUS} and power pin ${LIVI_MFI_POWER_GPIO} in the app config"
+  livi_seed_mfi_config
 
+  echo "→ Enabling I2C for the MFi coprocessor"
   if [ -f "$LIVI_BOOT_CONFIG" ]; then
     if grep -qF "$LIVI_MFI_OVERLAY" "$LIVI_BOOT_CONFIG"; then
       echo "   overlay already in $LIVI_BOOT_CONFIG"

@@ -902,11 +902,16 @@ export const generalSchema: SettingsNode<Config> = {
           label: 'Power Pin',
           labelKey: 'settings.mfiPowerGpio',
           path: 'carPlayMfiPowerGpio',
-          min: 0,
+          min: -1,
           max: 27,
           step: 1,
-          default: 21,
+          default: -1,
           displayValue: true,
+          valueTransform: {
+            toView: (v: number) => v,
+            fromView: (v: number) => v,
+            format: (v: number) => (v < 0 ? '-' : `${v}`)
+          },
           page: {
             title: 'Power Pin',
             labelTitle: 'settings.mfiPowerGpio'
