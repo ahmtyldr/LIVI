@@ -2147,6 +2147,24 @@ close_client:
 	return 0;
 }
 
+// Replay the panel dimensions of every present output to the current client.
+static void ctrl_send_panels(struct tinywl_server *server) {
+	struct tinywl_output *output;
+	wl_list_for_each(output, &server->outputs, link) {
+		struct wlr_output *wo = output->wlr_output;
+		struct livi_screen *s = output->screen;
+		if (!wo || !s) {
+			continue;
+		}
+		if (wo->phys_width > 0 && wo->phys_height > 0 && wo->width > 0 && wo->height > 0) {
+			char panel[128];
+			snprintf(panel, sizeof(panel), "panel %s %d %d %d %d\n", s->role,
+				wo->phys_width, wo->phys_height, wo->width, wo->height);
+			ctrl_send(server, panel);
+		}
+	}
+}
+
 static int ctrl_accept(int fd, uint32_t mask, void *data) {
 	(void)mask;
 	struct tinywl_server *server = data;
@@ -2161,6 +2179,7 @@ static int ctrl_accept(int fd, uint32_t mask, void *data) {
 	struct wl_event_loop *loop = wl_display_get_event_loop(server->wl_display);
 	c->source = wl_event_loop_add_fd(loop, client, WL_EVENT_READABLE,
 		ctrl_client_readable, c);
+	ctrl_send_panels(server);
 	return 0;
 }
 

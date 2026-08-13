@@ -188,6 +188,31 @@ function buildTheme(mode: THEME.LIGHT | THEME.DARK, bg?: string) {
         }
       },
 
+      // Dialogs fit the smallest panel (400x234) without scrolling.
+      MuiDialog: {
+        styleOverrides: {
+          paper: {
+            margin: 8,
+            maxHeight: 'calc(100% - 16px)'
+          }
+        }
+      },
+      MuiDialogTitle: {
+        styleOverrides: {
+          root: { padding: '8px 16px' }
+        }
+      },
+      MuiDialogContent: {
+        styleOverrides: {
+          root: { padding: '4px 16px' }
+        }
+      },
+      MuiDialogActions: {
+        styleOverrides: {
+          root: { padding: '8px 16px' }
+        }
+      },
+
       MuiTabs: {
         styleOverrides: {
           root: {

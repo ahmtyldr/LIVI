@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process'
+import fs from 'node:fs'
 import net from 'node:net'
 import { app, BrowserWindow, type WebContents } from 'electron'
 import path from 'path'
@@ -27,19 +28,82 @@ const livePlayers = new Set<GstVideo>()
 
 // Linux: control channel to livi-compositor. Video planes are addressed by tag (claim),
 // then placed (videocfg) and toggled (videoshow). `state` is resent on reconnect.
-/** Millimetres per pixel per screen role, reported by the compositor from the panel's EDID. */
-const panelMmPerPx = new Map<string, { x: number; y: number }>()
+/** Native panel geometry per screen role: physical mm and native pixels. */
+const panelGeometry = new Map<
+  string,
+  { widthMm: number; heightMm: number; widthPx: number; heightPx: number }
+>()
 
-/** Physical size in mm for a pixel count on that screen, or null when the panel is unknown. */
+type PanelMm = { widthMm: number; heightMm: number }
+
+/** Physical size and native resolution from an EDID blob's first DTD. */
+export function edidPanelGeometry(
+  edid: Buffer
+): { widthMm: number; heightMm: number; widthPx: number; heightPx: number } | null {
+  if (edid.length < 128) return null
+  const dtd = edid.subarray(0x36, 0x48)
+  if (dtd.readUInt16LE(0) === 0) return null
+  const widthMm = ((dtd[14] & 0xf0) << 4) | dtd[12]
+  const heightMm = ((dtd[14] & 0x0f) << 8) | dtd[13]
+  const widthPx = ((dtd[4] & 0xf0) << 4) | dtd[2]
+  const heightPx = ((dtd[7] & 0xf0) << 4) | dtd[5]
+  if (widthMm <= 0 || heightMm <= 0 || widthPx <= 0 || heightPx <= 0) return null
+  return { widthMm, heightMm, widthPx, heightPx }
+}
+
+// Nested compositor outputs carry no physical size; the kernel EDID does.
+let sysfsMainPanel: ReturnType<typeof edidPanelGeometry> | undefined
+function sysfsPanelGeometry(): ReturnType<typeof edidPanelGeometry> {
+  if (process.platform !== 'linux') return null
+  if (sysfsMainPanel !== undefined) return sysfsMainPanel
+  sysfsMainPanel = null
+  try {
+    const forced = /drm\.edid_firmware=(?:([A-Za-z0-9-]+):)?/.exec(
+      fs.readFileSync('/proc/cmdline', 'utf8')
+    )?.[1]
+    const connectors = fs
+      .readdirSync('/sys/class/drm')
+      .filter((n) => /^card\d+-/.test(n))
+      .filter((n) => {
+        try {
+          return fs.readFileSync(`/sys/class/drm/${n}/status`, 'utf8').trim() === 'connected'
+        } catch {
+          return false
+        }
+      })
+    // Unambiguous only via the forced-EDID connector or a single connected display.
+    const pick = forced
+      ? connectors.find((n) => n.endsWith(`-${forced}`))
+      : connectors.length === 1
+        ? connectors[0]
+        : undefined
+    if (pick) {
+      const geo = edidPanelGeometry(fs.readFileSync(`/sys/class/drm/${pick}/edid`))
+      if (geo) {
+        console.log(
+          `[panel] EDID of ${pick}: ${geo.widthMm}x${geo.heightMm} mm, ${geo.widthPx}x${geo.heightPx} px`
+        )
+        sysfsMainPanel = geo
+      }
+    }
+  } catch {
+    sysfsMainPanel = null
+  }
+  return sysfsMainPanel
+}
+
+/** Advertised mm for a stream resolution: panel mm scaled by stream/native px. */
 export function panelPhysicalMm(
   role: string,
   widthPixels: number,
   heightPixels: number
-): { widthMm: number; heightMm: number } | null {
-  const p = panelMmPerPx.get(role)
-  if (!p || !(p.x > 0) || !(p.y > 0)) return null
-  const widthMm = Math.round(widthPixels * p.x)
-  const heightMm = Math.round(heightPixels * p.y)
+): PanelMm | null {
+  const g = panelGeometry.get(role) ?? (role === 'main' ? sysfsPanelGeometry() : null)
+  if (!g || !(g.widthMm > 0) || !(g.heightMm > 0) || !(g.widthPx > 0) || !(g.heightPx > 0)) {
+    return null
+  }
+  const widthMm = Math.round((widthPixels * g.widthMm) / g.widthPx)
+  const heightMm = Math.round((heightPixels * g.heightMm) / g.heightPx)
   if (widthMm <= 0 || heightMm <= 0) return null
   return { widthMm, heightMm }
 }
@@ -119,9 +183,11 @@ class CompositorControl {
       const p = /^panel (\S+) (\d+) (\d+) (\d+) (\d+)$/.exec(line)
       if (p) {
         const [, role, mmW, mmH, pxW, pxH] = p
-        panelMmPerPx.set(role, {
-          x: Number(mmW) / Number(pxW),
-          y: Number(mmH) / Number(pxH)
+        panelGeometry.set(role, {
+          widthMm: Number(mmW),
+          heightMm: Number(mmH),
+          widthPx: Number(pxW),
+          heightPx: Number(pxH)
         })
         console.log(`[compositor] panel '${role}': ${mmW}x${mmH} mm over ${pxW}x${pxH} px`)
       }

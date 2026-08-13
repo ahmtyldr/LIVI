@@ -96,6 +96,11 @@ export class CpManager {
     for (const s of this._sessions) s.setClusterStreamActive(active)
   }
 
+  /** Drop every session; the listener stays up and the phones reconnect. */
+  dropSessions(): void {
+    for (const s of [...this._sessions]) void s.close()
+  }
+
   // ── Telemetry push (manager-level: shared hardware / whole subsystem) ───────
 
   sendNightMode(night: boolean): void {

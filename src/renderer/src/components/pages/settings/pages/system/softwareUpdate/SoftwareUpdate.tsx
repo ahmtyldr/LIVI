@@ -206,14 +206,16 @@ export function SoftwareUpdate() {
 
       <Dialog
         open={upDialogOpen}
+        fullWidth
+        maxWidth="xs"
         onClose={(event, reason) => {
           if (phase !== UpdatePhases.error && reason === 'escapeKeyDown') return
           handleCloseAndReset()
         }}
       >
-        <DialogTitle>{dialogTitle}</DialogTitle>
-        <DialogContent sx={{ width: 360 }}>
-          <Typography sx={{ mb: 1 }}>{phaseText}</Typography>
+        <DialogTitle sx={{ py: 1 }}>{dialogTitle}</DialogTitle>
+        <DialogContent sx={{ px: 2, py: 0.5 }}>
+          <Typography sx={{ mb: 0.5 }}>{phaseText}</Typography>
 
           <LinearProgress
             variant={pct != null ? 'determinate' : 'indeterminate'}
@@ -221,25 +223,25 @@ export function SoftwareUpdate() {
           />
 
           {pct != null && total > 0 && (
-            <Typography variant="body2" sx={{ mt: 1 }} color="text.secondary">
+            <Typography variant="body2" sx={{ mt: 0.5 }} color="text.secondary">
               {pct}% • {human(received)} / {human(total)}
             </Typography>
           )}
 
           {error && (
-            <Typography variant="body2" sx={{ mt: 1 }} color="error">
+            <Typography variant="body2" sx={{ mt: 0.5 }} color="error">
               {error}
             </Typography>
           )}
 
           {INSTALL_PHASES.includes(phase) && (
-            <Typography variant="body2" sx={{ mt: 1 }} color="text.secondary">
+            <Typography variant="body2" sx={{ mt: 0.5 }} color="text.secondary">
               {t('softwareUpdate.restartsAutomaticallyWhenDone')}
             </Typography>
           )}
         </DialogContent>
 
-        <DialogActions>
+        <DialogActions sx={{ px: 2, py: 1 }}>
           <Button
             onClick={() => {
               window.app?.abortUpdate?.()
