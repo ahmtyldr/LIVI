@@ -479,6 +479,32 @@ describe('ProjectionAudio state controls', () => {
     expect(a._mic.stop).toHaveBeenCalled()
   })
 
+  test('a late AudioVoiceAssistantStop keeps the mic while a phonecall is active', async () => {
+    const a = createSubject()
+    a.voiceAssistantActive = true
+    a.phonecallActive = true
+    a._mic = { stop: vi.fn() }
+
+    a.handleAudioData({ command: 5 })
+
+    expect(a.voiceAssistantActive).toBe(false)
+    expect(a.phonecallActive).toBe(true)
+    expect(a._mic.stop).not.toHaveBeenCalled()
+  })
+
+  test('a late AudioPhonecallStop keeps the mic while Siri is active', async () => {
+    const a = createSubject()
+    a.phonecallActive = true
+    a.voiceAssistantActive = true
+    a._mic = { stop: vi.fn() }
+
+    a.handleAudioData({ command: 3 })
+
+    expect(a.phonecallActive).toBe(false)
+    expect(a.voiceAssistantActive).toBe(true)
+    expect(a._mic.stop).not.toHaveBeenCalled()
+  })
+
   test('handleAudioData AudioAttentionStart sets uiCallIncoming and emits attention', async () => {
     const emitAttention = vi.fn()
     const a = createSubject()

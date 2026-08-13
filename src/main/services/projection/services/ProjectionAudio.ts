@@ -661,7 +661,9 @@ export class ProjectionAudio {
           this.phonecallActive = false
         }
 
-        this._mic?.stop()
+        if (!this.voiceAssistantActive && !this.phonecallActive) {
+          this._mic?.stop()
+        }
         return
       }
     }
