@@ -1,41 +1,50 @@
-import { MessageType } from '@main/services/projection/messages/common'
 import {
-  boxTmpPath,
-  FileAddress,
-  HeartBeat,
-  LogoType,
-  SendAndroidAutoDpi,
   SendAudio,
   SendAutoConnectByBtAddress,
+  SendableMessage,
   SendBluetoothPairedList,
-  SendBoolean,
-  SendBoxSettings,
   SendCloseDongle,
   SendClusterFocusRelease,
   SendClusterFocusRequest,
   SendCommand,
   SendDisconnectPhone,
-  SendFile,
   SendForgetBluetoothAddr,
   SendGnssData,
+  SendMultiTouch,
+  SendTouch
+} from '@projection/messages/sendable'
+import {
+  boxTmpPath,
+  encodeSendable,
+  FileAddress,
+  HeartBeat,
+  LogoType,
+  SendAndroidAutoDpi,
+  SendBoolean,
+  SendBoxSettings,
+  SendFile,
   SendIconConfig,
   SendLiviWeb,
   SendLogoType,
-  SendMultiTouch,
   SendNumber,
   SendOpen,
   SendSafeArea,
   SendServerCgiScript,
   SendString,
   SendTmpFile,
-  SendTouch,
   SendViewArea
-} from '@main/services/projection/messages/sendable'
+} from '../sendables.js'
+import { MessageHeader, MessageType } from '../wire.js'
 
-describe('sendable messages', () => {
+/** Wire payload without the 16-byte header. */
+function payloadOf(msg: SendableMessage): Buffer {
+  return encodeSendable(msg).subarray(MessageHeader.dataLength)
+}
+
+describe('dongle protocol encode', () => {
   test('SendCommand serialises message header + mapped payload', async () => {
     const msg = new SendCommand('frame')
-    const buf = msg.serialise()
+    const buf = encodeSendable(msg)
 
     expect(buf.readUInt32LE(0)).toBe(0x55aa55aa)
     expect(buf.readUInt32LE(8)).toBe(MessageType.Command)
@@ -44,29 +53,34 @@ describe('sendable messages', () => {
 
   test('SendBluetoothPairedList appends NUL terminator', async () => {
     const msg = new SendBluetoothPairedList('Device A')
-    const payload = msg.getPayload()
+    const payload = payloadOf(msg)
     expect(payload[payload.length - 1]).toBe(0)
   })
 
   test('SendBluetoothPairedList does not duplicate trailing NUL', async () => {
     const msg = new SendBluetoothPairedList('Device A\0')
-    const payload = msg.getPayload()
+    const payload = payloadOf(msg)
     expect(payload.toString('utf8')).toBe('Device A\0')
   })
 
   test('SendGnssData normalizes line endings and appends CRLF', async () => {
     const msg = new SendGnssData('$GPGGA,1\n$GPRMC,2')
-    expect(msg.getPayload().toString('ascii')).toBe('$GPGGA,1\r\n$GPRMC,2\r\n')
+    expect(payloadOf(msg).toString('ascii')).toBe('$GPGGA,1\r\n$GPRMC,2\r\n')
   })
 
   test('SendGnssData returns empty payload for empty input', async () => {
     const msg = new SendGnssData('')
-    expect(msg.getPayload().toString('ascii')).toBe('')
+    expect(payloadOf(msg).toString('ascii')).toBe('')
+  })
+
+  test('SendGnssData treats nullish input as empty string', async () => {
+    const msg = new SendGnssData(undefined as any)
+    expect(payloadOf(msg).toString('ascii')).toBe('')
   })
 
   test('SendTouch clamps coordinates into 0..10000 space', async () => {
     const msg = new SendTouch(-1, 2, 1 as any)
-    const payload = msg.getPayload()
+    const payload = payloadOf(msg)
 
     expect(payload.readUInt32LE(0)).toBe(1)
     expect(payload.readUInt32LE(4)).toBe(0)
@@ -79,14 +93,14 @@ describe('sendable messages', () => {
       { id: 2, x: 0.3, y: 0.4, action: 3 }
     ] as any)
 
-    const payload = msg.getPayload()
+    const payload = payloadOf(msg)
     expect(payload.length).toBe(32)
   })
 
   test('SendAudio serializes decodeType and pcm payload', async () => {
     const pcm = new Int16Array([100, -200])
     const msg = new SendAudio(pcm, 7)
-    const payload = msg.getPayload()
+    const payload = payloadOf(msg)
 
     expect(payload.readUInt32LE(0)).toBe(7)
     expect(payload.readUInt32LE(8)).toBe(3)
@@ -95,7 +109,7 @@ describe('sendable messages', () => {
 
   test('SendFile encodes file name and content lengths', async () => {
     const msg = new SendFile(Buffer.from([1, 2, 3]), '/tmp/test.bin')
-    const payload = msg.getPayload()
+    const payload = payloadOf(msg)
 
     const nameLen = payload.readUInt32LE(0)
     const name = payload
@@ -113,9 +127,13 @@ describe('sendable messages', () => {
     expect(boxTmpPath('   ')).toBe('/tmp/update.img')
   })
 
+  test('boxTmpPath falls back correctly for empty filename', async () => {
+    expect(boxTmpPath('')).toBe('/tmp/update.img')
+  })
+
   test('SendTmpFile always targets /tmp/<file>', async () => {
     const msg = new SendTmpFile(Buffer.from([1, 2, 3]), '/weird/path/fw.img')
-    const payload = msg.getPayload()
+    const payload = payloadOf(msg)
     const nameLen = payload.readUInt32LE(0)
     const name = payload
       .subarray(4, 4 + nameLen)
@@ -127,7 +145,7 @@ describe('sendable messages', () => {
 
   test('SendViewArea writes 24-byte screen and origin payload', async () => {
     const msg = new SendViewArea(800, 480)
-    const payload = msg.getPayload()
+    const payload = payloadOf(msg)
     const nameLen = payload.readUInt32LE(0)
     const bodyOffset = 4 + nameLen + 4
     const body = payload.subarray(bodyOffset)
@@ -145,7 +163,7 @@ describe('sendable messages', () => {
     const msg = new SendViewArea(800, 480, {
       insets: { top: 10, bottom: 20, left: 30, right: 40 }
     })
-    const payload = msg.getPayload()
+    const payload = payloadOf(msg)
     const nameLen = payload.readUInt32LE(0)
     const body = payload.subarray(4 + nameLen + 4)
 
@@ -161,7 +179,7 @@ describe('sendable messages', () => {
     const msg = new SendViewArea(1281, 801, {
       insets: { top: 11, bottom: 13, left: 15, right: 17 }
     })
-    const payload = msg.getPayload()
+    const payload = payloadOf(msg)
     const nameLen = payload.readUInt32LE(0)
     const body = payload.subarray(4 + nameLen + 4)
 
@@ -177,7 +195,7 @@ describe('sendable messages', () => {
     const msg = new SendSafeArea(1281, 801, {
       insets: { top: 11, bottom: 13, left: 15, right: 17 }
     })
-    const payload = msg.getPayload()
+    const payload = payloadOf(msg)
     const nameLen = payload.readUInt32LE(0)
     const body = payload.subarray(4 + nameLen + 4)
 
@@ -195,14 +213,12 @@ describe('sendable messages', () => {
       address: FileAddress.HU_NAVISCREEN_SAFEAREA_INFO
     })
 
-    const viewName = view
-      .getPayload()
-      .subarray(4, 4 + view.getPayload().readUInt32LE(0))
+    const viewName = payloadOf(view)
+      .subarray(4, 4 + payloadOf(view).readUInt32LE(0))
       .toString('ascii')
       .replace(/\0+$/g, '')
-    const safeName = safe
-      .getPayload()
-      .subarray(4, 4 + safe.getPayload().readUInt32LE(0))
+    const safeName = payloadOf(safe)
+      .subarray(4, 4 + payloadOf(safe).readUInt32LE(0))
       .toString('ascii')
       .replace(/\0+$/g, '')
 
@@ -214,7 +230,7 @@ describe('sendable messages', () => {
     const msg = new SendSafeArea(1000, 500, {
       insets: { top: 10, bottom: 20, left: 30, right: 40 }
     })
-    const payload = msg.getPayload()
+    const payload = payloadOf(msg)
     const nameLen = payload.readUInt32LE(0)
     const bodyOffset = 4 + nameLen + 4
     const body = payload.subarray(bodyOffset)
@@ -226,14 +242,43 @@ describe('sendable messages', () => {
     expect(body.readUInt32LE(16)).toBe(1)
   })
 
+  test('SendSafeArea respects explicit drawOutside=false even when insets exist', async () => {
+    const msg = new SendSafeArea(1000, 500, {
+      insets: { top: 10, bottom: 20, left: 30, right: 40 },
+      drawOutside: false
+    })
+    const payload = payloadOf(msg)
+    const nameLen = payload.readUInt32LE(0)
+    const bodyOffset = 4 + nameLen + 4
+    const body = payload.subarray(bodyOffset)
+
+    expect(body.readUInt32LE(0)).toBe(930)
+    expect(body.readUInt32LE(4)).toBe(470)
+    expect(body.readUInt32LE(16)).toBe(0)
+  })
+
+  test('SendSafeArea uses default options and zero insets when omitted', async () => {
+    const msg = new SendSafeArea(1000, 500)
+    const payload = payloadOf(msg)
+    const nameLen = payload.readUInt32LE(0)
+    const bodyOffset = 4 + nameLen + 4
+    const body = payload.subarray(bodyOffset)
+
+    expect(body.readUInt32LE(0)).toBe(1000)
+    expect(body.readUInt32LE(4)).toBe(500)
+    expect(body.readUInt32LE(8)).toBe(0)
+    expect(body.readUInt32LE(12)).toBe(0)
+    expect(body.readUInt32LE(16)).toBe(0)
+  })
+
   test('SendNumber and SendBoolean encode uint32 payloads', async () => {
     const num = new SendNumber(42, FileAddress.DPI)
     const boolTrue = new SendBoolean(true, FileAddress.NIGHT_MODE)
     const boolFalse = new SendBoolean(false, FileAddress.NIGHT_MODE)
 
-    const numPayload = num.getPayload()
-    const truePayload = boolTrue.getPayload()
-    const falsePayload = boolFalse.getPayload()
+    const numPayload = payloadOf(num)
+    const truePayload = payloadOf(boolTrue)
+    const falsePayload = payloadOf(boolFalse)
 
     const numNameLen = numPayload.readUInt32LE(0)
     const numBody = numPayload.subarray(4 + numNameLen + 4)
@@ -251,7 +296,7 @@ describe('sendable messages', () => {
 
   test('SendString strips non-ascii, removes line breaks and truncates to 16 chars', async () => {
     const msg = new SendString('ÄBC\nDEF\rGHIJKLMNOPQRST', FileAddress.BOX_NAME)
-    const payload = msg.getPayload()
+    const payload = payloadOf(msg)
 
     const nameLen = payload.readUInt32LE(0)
     const contentLen = payload.readUInt32LE(4 + nameLen)
@@ -262,7 +307,7 @@ describe('sendable messages', () => {
 
   test('SendOpen writes 28-byte payload with dimensions fps and phone mode', async () => {
     const msg = new SendOpen({ width: 800, height: 480, fps: 60 }, 3 as any)
-    const payload = msg.getPayload()
+    const payload = payloadOf(msg)
 
     expect(payload.length).toBe(28)
     expect(payload.readUInt32LE(0)).toBe(800)
@@ -271,24 +316,9 @@ describe('sendable messages', () => {
     expect(payload.readUInt32LE(24)).toBe(3)
   })
 
-  test('SendSafeArea respects explicit drawOutside=false even when insets exist', async () => {
-    const msg = new SendSafeArea(1000, 500, {
-      insets: { top: 10, bottom: 20, left: 30, right: 40 },
-      drawOutside: false
-    })
-    const payload = msg.getPayload()
-    const nameLen = payload.readUInt32LE(0)
-    const bodyOffset = 4 + nameLen + 4
-    const body = payload.subarray(bodyOffset)
-
-    expect(body.readUInt32LE(0)).toBe(930)
-    expect(body.readUInt32LE(4)).toBe(470)
-    expect(body.readUInt32LE(16)).toBe(0)
-  })
-
   test('SendAndroidAutoDpi writes a positive dpi number into DPI file', async () => {
     const msg = new SendAndroidAutoDpi(1280, 720)
-    const payload = msg.getPayload()
+    const payload = payloadOf(msg)
 
     const nameLen = payload.readUInt32LE(0)
     const name = payload
@@ -303,14 +333,14 @@ describe('sendable messages', () => {
 
   test('SendLogoType writes logo type as uint32 payload', async () => {
     const msg = new SendLogoType(LogoType.Siri)
-    const payload = msg.getPayload()
+    const payload = payloadOf(msg)
 
     expect(payload.readUInt32LE(0)).toBe(LogoType.Siri)
   })
 
   test('HeartBeat serialises header-only message', async () => {
     const msg = new HeartBeat()
-    const buf = msg.serialise()
+    const buf = encodeSendable(msg)
 
     expect(buf.readUInt32LE(0)).toBe(0x55aa55aa)
     expect(buf.readUInt32LE(8)).toBe(MessageType.HeartBeat)
@@ -318,7 +348,7 @@ describe('sendable messages', () => {
 
   test('SendCloseDongle serialises header-only message', async () => {
     const msg = new SendCloseDongle()
-    const buf = msg.serialise()
+    const buf = encodeSendable(msg)
 
     expect(buf.readUInt32LE(0)).toBe(0x55aa55aa)
     expect(buf.readUInt32LE(8)).toBe(MessageType.CloseDongle)
@@ -326,7 +356,7 @@ describe('sendable messages', () => {
 
   test('SendDisconnectPhone serialises header-only message', async () => {
     const msg = new SendDisconnectPhone()
-    const buf = msg.serialise()
+    const buf = encodeSendable(msg)
 
     expect(buf.readUInt32LE(0)).toBe(0x55aa55aa)
     expect(buf.readUInt32LE(8)).toBe(MessageType.DisconnectPhone)
@@ -334,7 +364,7 @@ describe('sendable messages', () => {
 
   test('SendClusterFocusRequest serialises header-only message', async () => {
     const msg = new SendClusterFocusRequest()
-    const buf = msg.serialise()
+    const buf = encodeSendable(msg)
 
     expect(buf.readUInt32LE(0)).toBe(0x55aa55aa)
     expect(buf.readUInt32LE(8)).toBe(MessageType.ClusterFocusRequest)
@@ -342,15 +372,31 @@ describe('sendable messages', () => {
 
   test('SendClusterFocusRelease serialises header-only message', async () => {
     const msg = new SendClusterFocusRelease()
-    const buf = msg.serialise()
+    const buf = encodeSendable(msg)
 
     expect(buf.readUInt32LE(0)).toBe(0x55aa55aa)
     expect(buf.readUInt32LE(8)).toBe(MessageType.ClusterFocusRelease)
   })
 
+  test('SendAutoConnectByBtAddress stores ascii bluetooth address payload', async () => {
+    const msg = new SendAutoConnectByBtAddress('AA:BB:CC:DD:EE:FF')
+    const buf = encodeSendable(msg)
+
+    expect(buf.readUInt32LE(8)).toBe(MessageType.WifiStatusData)
+    expect(buf.subarray(16).toString('ascii')).toBe('AA:BB:CC:DD:EE:FF')
+  })
+
+  test('SendForgetBluetoothAddr stores ascii bluetooth address payload', async () => {
+    const msg = new SendForgetBluetoothAddr('11:22:33:44:55:66')
+    const buf = encodeSendable(msg)
+
+    expect(buf.readUInt32LE(8)).toBe(MessageType.ForgetBluetoothAddr)
+    expect(buf.subarray(16).toString('ascii')).toBe('11:22:33:44:55:66')
+  })
+
   test('SendIconConfig includes oemIconLabel when oemName is provided', async () => {
     const msg = new SendIconConfig({ oemName: 'My Car' })
-    const payload = msg.getPayload()
+    const payload = payloadOf(msg)
 
     const nameLen = payload.readUInt32LE(0)
     const contentLen = payload.readUInt32LE(4 + nameLen)
@@ -363,7 +409,19 @@ describe('sendable messages', () => {
 
   test('SendIconConfig omits oemIconLabel when oemName is blank', async () => {
     const msg = new SendIconConfig({ oemName: '   ' })
-    const payload = msg.getPayload()
+    const payload = payloadOf(msg)
+
+    const nameLen = payload.readUInt32LE(0)
+    const contentLen = payload.readUInt32LE(4 + nameLen)
+    const body = payload.subarray(4 + nameLen + 4, 4 + nameLen + 4 + contentLen).toString('ascii')
+
+    expect(body).toContain('oemIconVisible = 1')
+    expect(body).not.toContain('oemIconLabel =')
+  })
+
+  test('SendIconConfig handles undefined oemName without label', async () => {
+    const msg = new SendIconConfig({})
+    const payload = payloadOf(msg)
 
     const nameLen = payload.readUInt32LE(0)
     const contentLen = payload.readUInt32LE(4 + nameLen)
@@ -403,7 +461,7 @@ describe('sendable messages', () => {
       123456
     )
 
-    const payload = msg.getPayload()
+    const payload = payloadOf(msg)
     const body = JSON.parse(payload.toString('ascii'))
 
     expect(body.mediaDelay).toBe(1000)
@@ -458,7 +516,7 @@ describe('sendable messages', () => {
       1
     )
 
-    const payload = msg.getPayload()
+    const payload = payloadOf(msg)
     const body = JSON.parse(payload.toString('ascii'))
 
     expect(body.naviScreenInfo).toEqual({
@@ -514,7 +572,7 @@ describe('sendable messages', () => {
       1
     )
 
-    const payload = msg.getPayload()
+    const payload = payloadOf(msg)
     const body = JSON.parse(payload.toString('ascii'))
 
     expect(body.naviScreenInfo.safearea.outside).toBe(0)
@@ -522,7 +580,7 @@ describe('sendable messages', () => {
 
   test('SendServerCgiScript targets LIVI_CGI and contains non-empty script', async () => {
     const msg = new SendServerCgiScript()
-    const payload = msg.getPayload()
+    const payload = payloadOf(msg)
 
     const nameLen = payload.readUInt32LE(0)
     const name = payload
@@ -538,7 +596,7 @@ describe('sendable messages', () => {
 
   test('SendLiviWeb targets LIVI_WEB and contains non-empty html payload', async () => {
     const msg = new SendLiviWeb()
-    const payload = msg.getPayload()
+    const payload = payloadOf(msg)
 
     const nameLen = payload.readUInt32LE(0)
     const name = payload
@@ -552,20 +610,6 @@ describe('sendable messages', () => {
     expect(body.byteLength).toBeGreaterThan(0)
   })
 
-  test('SendAutoConnectByBtAddress stores ascii bluetooth address payload', async () => {
-    const msg = new SendAutoConnectByBtAddress('AA:BB:CC:DD:EE:FF')
-
-    expect(msg.type).toBe(MessageType.WifiStatusData)
-    expect(msg.getPayload().toString('ascii')).toBe('AA:BB:CC:DD:EE:FF')
-  })
-
-  test('SendForgetBluetoothAddr stores ascii bluetooth address payload', async () => {
-    const msg = new SendForgetBluetoothAddr('11:22:33:44:55:66')
-
-    expect(msg.type).toBe(MessageType.ForgetBluetoothAddr)
-    expect(msg.getPayload().toString('ascii')).toBe('11:22:33:44:55:66')
-  })
-
   test('SendBoxSettings logs payload when DEBUG is true', async () => {
     const logSpy = vi.spyOn(console, 'log').mockImplementation(function () {})
 
@@ -576,7 +620,9 @@ describe('sendable messages', () => {
         DEBUG: true
       }))
 
-      const { SendBoxSettings } = await import('@main/services/projection/messages/sendable')
+      const { SendBoxSettings, encodeSendable } = await import(
+        '@main/services/projection/driver/dongle/protocol/sendables'
+      )
 
       const msg = new SendBoxSettings(
         {
@@ -603,65 +649,11 @@ describe('sendable messages', () => {
           gnssGlonass: false,
           gnssGalileo: false,
           gnssBeiDou: false
-        },
+        } as any,
         123
       )
 
-      const payload = msg.getPayload()
-      const body = JSON.parse(payload.toString('ascii'))
-
-      expect(body.syncTime).toBe(123)
-    })
-
-    expect(logSpy).toHaveBeenCalledWith('[SendBoxSettings]', expect.any(String))
-
-    logSpy.mockRestore()
-    vi.resetModules()
-    vi.doUnmock('@main/constants')
-  })
-
-  test('SendBoxSettings logs payload when DEBUG is true', async () => {
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(function () {})
-
-    vi.resetModules()
-
-    await vi.isolateModules(async () => {
-      vi.doMock('@main/constants', () => ({
-        DEBUG: true
-      }))
-
-      const { SendBoxSettings } = await import('@main/services/projection/messages/sendable')
-
-      const msg = new SendBoxSettings(
-        {
-          width: 1280,
-          height: 720,
-          fps: 60,
-          mediaDelay: 0,
-          wifiChannel: 1,
-          wifiType: '2.4ghz',
-          samplingFrequency: 1,
-          callQuality: 1,
-          gps: false,
-          autoConn: false,
-          UseBTPhone: false,
-          carName: 'CarName',
-          oemName: 'OEM',
-          hand: 0,
-          micType: 0,
-          disableAudioOutput: false,
-          dashboardMediaInfo: false,
-          dashboardVehicleInfo: false,
-          dashboardRouteInfo: false,
-          gnssGps: false,
-          gnssGlonass: false,
-          gnssGalileo: false,
-          gnssBeiDou: false
-        },
-        123
-      )
-
-      const payload = msg.getPayload()
+      const payload = encodeSendable(msg).subarray(16)
       const body = JSON.parse(payload.toString('ascii'))
 
       expect(body.syncTime).toBe(123)
@@ -704,7 +696,7 @@ describe('sendable messages', () => {
       null
     )
 
-    const body = JSON.parse(msg.getPayload().toString('ascii'))
+    const body = JSON.parse(payloadOf(msg).toString('ascii'))
     expect(typeof body.syncTime).toBe('number')
     expect(body.syncTime).toBeGreaterThan(0)
   })
@@ -739,7 +731,7 @@ describe('sendable messages', () => {
       1
     )
 
-    const body = JSON.parse(msg.getPayload().toString('ascii'))
+    const body = JSON.parse(payloadOf(msg).toString('ascii'))
 
     expect(body.boxName).toBe('CarName')
     expect(body.OemName).toBe('CarName')
@@ -784,7 +776,7 @@ describe('sendable messages', () => {
       1
     )
 
-    const body = JSON.parse(msg.getPayload().toString('ascii'))
+    const body = JSON.parse(payloadOf(msg).toString('ascii'))
 
     expect(body.naviScreenInfo).toEqual({
       width: 800,
@@ -827,44 +819,9 @@ describe('sendable messages', () => {
       gnssBeiDou: false
     } as any)
 
-    const body = JSON.parse(msg.getPayload().toString('ascii'))
+    const body = JSON.parse(payloadOf(msg).toString('ascii'))
     expect(typeof body.syncTime).toBe('number')
     expect(body.syncTime).toBeGreaterThan(0)
-  })
-
-  test('SendIconConfig handles undefined oemName without label', async () => {
-    const msg = new SendIconConfig({})
-    const payload = msg.getPayload()
-
-    const nameLen = payload.readUInt32LE(0)
-    const contentLen = payload.readUInt32LE(4 + nameLen)
-    const body = payload.subarray(4 + nameLen + 4, 4 + nameLen + 4 + contentLen).toString('ascii')
-
-    expect(body).toContain('oemIconVisible = 1')
-    expect(body).not.toContain('oemIconLabel =')
-  })
-
-  test('SendGnssData treats nullish input as empty string', async () => {
-    const msg = new SendGnssData(undefined as any)
-    expect(msg.getPayload().toString('ascii')).toBe('')
-  })
-
-  test('SendSafeArea uses default options and zero insets when omitted', async () => {
-    const msg = new SendSafeArea(1000, 500)
-    const payload = msg.getPayload()
-    const nameLen = payload.readUInt32LE(0)
-    const bodyOffset = 4 + nameLen + 4
-    const body = payload.subarray(bodyOffset)
-
-    expect(body.readUInt32LE(0)).toBe(1000)
-    expect(body.readUInt32LE(4)).toBe(500)
-    expect(body.readUInt32LE(8)).toBe(0)
-    expect(body.readUInt32LE(12)).toBe(0)
-    expect(body.readUInt32LE(16)).toBe(0)
-  })
-
-  test('boxTmpPath falls back correctly for empty filename', async () => {
-    expect(boxTmpPath('')).toBe('/tmp/update.img')
   })
 
   test('SendBoxSettings uses 2.4ghz fallback channel and sets vehicle/glonass flags', async () => {
@@ -897,7 +854,7 @@ describe('sendable messages', () => {
       1
     )
 
-    const body = JSON.parse(msg.getPayload().toString('ascii'))
+    const body = JSON.parse(payloadOf(msg).toString('ascii'))
 
     expect(body.wifiChannel).toBe(1)
     expect(body.DashboardInfo).toBe(7)

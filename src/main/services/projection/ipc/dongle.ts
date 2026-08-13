@@ -1,8 +1,8 @@
 import { registerIpcHandle } from '@main/ipc/register'
 import fs from 'fs'
 import path from 'path'
-import { SendFile, SendLiviWeb, SendServerCgiScript } from '../messages/sendable'
-import type { FirmwareCheckResult } from '../services/FirmwareUpdateService'
+import type { FirmwareCheckResult } from '../driver/dongle/FirmwareUpdateService'
+import { SendFile, SendLiviWeb, SendServerCgiScript } from '../driver/dongle/protocol/sendables'
 import type {
   DevToolsUploadResult,
   DongleFwRequest,

@@ -3,8 +3,9 @@ import { AaManager } from '../driver/aa/AaManager'
 import type { AaSession } from '../driver/aa/AaSession'
 import { CpManager } from '../driver/cp/CpManager'
 import type { CpSession } from '../driver/cp/CpSession'
+import { DongleDriver } from '../driver/dongle/dongleDriver'
 import type { IPhoneDriver } from '../driver/IPhoneDriver'
-import { DongleDriver, DuckAudio, MediaData, type Message, NavigationData } from '../messages'
+import { DuckAudio, MediaData, type Message, NavigationData } from '../messages'
 import type { Transport } from '../transport/types'
 
 export type DriverEventHandlers = {

@@ -1,8 +1,8 @@
 import type { Config, DongleFirmwareAction, DongleFwApiRaw } from '@shared/types'
 import type { WebContents } from 'electron'
+import type { FirmwareUpdateService } from '../driver/dongle/FirmwareUpdateService'
 import type { SendableMessage } from '../messages/sendable'
 import type { DeviceView } from '../services/DeviceRegistry'
-import type { FirmwareUpdateService } from '../services/FirmwareUpdateService'
 import type { LogicalStreamKey } from '../services/ProjectionAudio'
 import type {
   PendingStartupConnectTarget,

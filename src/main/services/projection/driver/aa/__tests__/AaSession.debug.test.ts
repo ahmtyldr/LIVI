@@ -147,13 +147,7 @@ describe('AaSession input logging under DEBUG', () => {
   test('an unmapped command still logs its no-key path', async () => {
     const d = make()
     const cmd = new SendCommand('home')
-    vi.spyOn(cmd, 'getPayload').mockReturnValue(
-      (() => {
-        const b = Buffer.alloc(4)
-        b.writeUInt32LE(0xffffff, 0)
-        return b
-      })()
-    )
+    ;(cmd as { value: number }).value = 0xffffff
     await d.send(cmd)
     expect(console.log).toHaveBeenCalled()
   })

@@ -1,4 +1,10 @@
 import type { NaviBag } from '@shared/types'
+import {
+  DrivingSide,
+  JunctionType,
+  ManeuverType,
+  roundaboutExitNumber
+} from '@shared/types/NavigationTypes'
 
 export type NavLocale = 'en' | 'de' | 'ua'
 
@@ -276,118 +282,61 @@ const DICT: Record<NavLocale, Dict> = {
   }
 }
 
+const MANEUVER_TEXT_KEY: Partial<Record<ManeuverType, keyof Dict>> = {
+  [ManeuverType.NoTurn]: 'noTurn',
+  [ManeuverType.LeftTurn]: 'left',
+  [ManeuverType.RightTurn]: 'right',
+  [ManeuverType.Straight]: 'straight',
+  [ManeuverType.UTurn]: 'uTurn',
+  [ManeuverType.FollowRoad]: 'followRoad',
+  [ManeuverType.EnterRoundabout]: 'enterRoundabout',
+  [ManeuverType.ExitRoundabout]: 'exitRoundabout',
+  [ManeuverType.RampOff]: 'rampOff',
+  [ManeuverType.RampOn]: 'rampOn',
+  [ManeuverType.EndOfNavigation]: 'endOfNavigation',
+  [ManeuverType.ProceedToRoute]: 'proceedToRoute',
+  [ManeuverType.Arrived]: 'arrived',
+  [ManeuverType.KeepLeft]: 'keepLeft',
+  [ManeuverType.KeepRight]: 'keepRight',
+  [ManeuverType.EnterFerry]: 'enterFerry',
+  [ManeuverType.ExitFerry]: 'exitFerry',
+  [ManeuverType.ChangeFerry]: 'changeFerry',
+  [ManeuverType.UTurnToRoute]: 'uTurnToRoute',
+  [ManeuverType.RoundaboutUTurn]: 'roundaboutUTurn',
+  [ManeuverType.EndOfRoadLeft]: 'endOfRoadLeft',
+  [ManeuverType.EndOfRoadRight]: 'endOfRoadRight',
+  [ManeuverType.RampOffLeft]: 'rampOffLeft',
+  [ManeuverType.RampOffRight]: 'rampOffRight',
+  [ManeuverType.ArrivedLeft]: 'arrivedLeft',
+  [ManeuverType.ArrivedRight]: 'arrivedRight',
+  [ManeuverType.UTurnWhenPossible]: 'uTurnWhenPossible',
+  [ManeuverType.EndOfDirections]: 'endOfDirections',
+  [ManeuverType.SharpLeft]: 'sharpLeft',
+  [ManeuverType.SharpRight]: 'sharpRight',
+  [ManeuverType.SlightLeft]: 'slightLeft',
+  [ManeuverType.SlightRight]: 'slightRight',
+  [ManeuverType.ChangeHighway]: 'changeHighway',
+  [ManeuverType.ChangeHighwayLeft]: 'changeHighwayLeft',
+  [ManeuverType.ChangeHighwayRight]: 'changeHighwayRight'
+}
+
 function maneuverTypeText(value: unknown, d: Dict): string | undefined {
   const v = typeof value === 'number' ? value : undefined
   if (v == null) return undefined
 
-  switch (v) {
-    case 0:
-      return d.noTurn
-    case 1:
-      return d.left
-    case 2:
-      return d.right
-    case 3:
-      return d.straight
-    case 4:
-      return d.uTurn
-    case 5:
-      return d.followRoad
-    case 6:
-      return d.enterRoundabout
-    case 7:
-      return d.exitRoundabout
-    case 8:
-      return d.rampOff
-    case 9:
-      return d.rampOn
-    case 10:
-      return d.endOfNavigation
-    case 11:
-      return d.proceedToRoute
-    case 12:
-      return d.arrived
-    case 13:
-      return d.keepLeft
-    case 14:
-      return d.keepRight
-    case 15:
-      return d.enterFerry
-    case 16:
-      return d.exitFerry
-    case 17:
-      return d.changeFerry
-    case 18:
-      return d.uTurnToRoute
-    case 19:
-      return d.roundaboutUTurn
-    case 20:
-      return d.endOfRoadLeft
-    case 21:
-      return d.endOfRoadRight
-    case 22:
-      return d.rampOffLeft
-    case 23:
-      return d.rampOffRight
-    case 24:
-      return d.arrivedLeft
-    case 25:
-      return d.arrivedRight
-    case 26:
-      return d.uTurnWhenPossible
-    case 27:
-      return d.endOfDirections
-    case 28:
-    case 29:
-    case 30:
-    case 31:
-    case 32:
-    case 33:
-    case 34:
-    case 35:
-    case 36:
-    case 37:
-    case 38:
-    case 39:
-    case 40:
-    case 41:
-    case 42:
-    case 43:
-    case 44:
-    case 45:
-    case 46:
-      return `${d.roundaboutExit} ${v - 27}`
-    case 47:
-      return d.sharpLeft
-    case 48:
-      return d.sharpRight
-    case 49:
-      return d.slightLeft
-    case 50:
-      return d.slightRight
-    case 51:
-      return d.changeHighway
-    case 52:
-      return d.changeHighwayLeft
-    case 53:
-      return d.changeHighwayRight
-    default:
-      return undefined
-  }
+  const exit = roundaboutExitNumber(v)
+  if (exit !== undefined) return `${d.roundaboutExit} ${exit}`
+
+  const key = MANEUVER_TEXT_KEY[v as ManeuverType]
+  return key ? d[key] : undefined
 }
 
 function junctionTypeText(value: unknown, d: Dict): string | undefined {
   const v = typeof value === 'number' ? value : undefined
   if (v == null) return undefined
-
-  switch (v) {
-    case 0:
-      return d.junctionIntersection
-    case 1:
-      return d.junctionRoundabout
-    default:
-      return undefined
-  }
+  if (v === JunctionType.Intersection) return d.junctionIntersection
+  if (v === JunctionType.Roundabout) return d.junctionRoundabout
+  return undefined
 }
 
 function fmtRemainingTime(totalSeconds: unknown): string | undefined {
@@ -439,9 +388,14 @@ export function translateNavigation(navi: NaviBag | null | undefined, locale: Na
   const maneuverText = maneuverTypeText(maneuverType, d) ?? d.unknown
 
   const rawTurnSide = typeof obj.NaviTurnSide === 'number' ? obj.NaviTurnSide : undefined
-  const drivingSide = rawTurnSide === 0 || rawTurnSide === 1 ? rawTurnSide : undefined
+  const drivingSide =
+    rawTurnSide === DrivingSide.Right || rawTurnSide === DrivingSide.Left ? rawTurnSide : undefined
   const drivingSideText =
-    drivingSide === 0 ? d.drivingSideRight : drivingSide === 1 ? d.drivingSideLeft : undefined
+    drivingSide === DrivingSide.Right
+      ? d.drivingSideRight
+      : drivingSide === DrivingSide.Left
+        ? d.drivingSideLeft
+        : undefined
 
   const junctionType = typeof obj.NaviJunctionType === 'number' ? obj.NaviJunctionType : undefined
   const junctionText = junctionTypeText(junctionType, d)

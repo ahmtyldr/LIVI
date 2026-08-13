@@ -19,9 +19,10 @@ import TurnSlightRightIcon from '@mui/icons-material/TurnSlightRight'
 import UTurnLeftIcon from '@mui/icons-material/UTurnLeft'
 import UTurnRightIcon from '@mui/icons-material/UTurnRight'
 import { Box, Chip } from '@mui/material'
+import { DrivingSide, ManeuverType, roundaboutExitNumber } from '@shared/types/NavigationTypes'
 
 /**
- * LIVI NaviManeuverType (0–53) → MUI icon
+ * iAP2 ManeuverType → MUI icon
  */
 
 function RoundaboutWithExit({ exitNumber, size }: { exitNumber: number; size: number }) {
@@ -57,71 +58,71 @@ export function ManeuverIcon({
   size: number
 }) {
   const fs = { fontSize: size }
-  const isRight = turnSide === 0 // 0 = right, 1 = left
+  const isRight = turnSide === DrivingSide.Right
 
   // No maneuver yet → a neutral heading arrow (never a "?").
   if (type == null) return <NavigationOutlinedIcon sx={fs} />
 
-  // Roundabout with exit number (codes 28..46 = exit 1..19).
-  if (type >= 28 && type <= 46) return <RoundaboutWithExit exitNumber={type - 27} size={size} />
+  const exitNumber = roundaboutExitNumber(type)
+  if (exitNumber !== undefined) return <RoundaboutWithExit exitNumber={exitNumber} size={size} />
 
   switch (type) {
-    case 0:
-    case 3:
-    case 5:
+    case ManeuverType.NoTurn:
+    case ManeuverType.Straight:
+    case ManeuverType.FollowRoad:
       return <StraightIcon sx={fs} />
-    case 1:
+    case ManeuverType.LeftTurn:
       return <TurnLeftIcon sx={fs} />
-    case 2:
+    case ManeuverType.RightTurn:
       return <TurnRightIcon sx={fs} />
-    case 4:
-    case 18:
-    case 26:
+    case ManeuverType.UTurn:
+    case ManeuverType.UTurnToRoute:
+    case ManeuverType.UTurnWhenPossible:
       return isRight ? <UTurnRightIcon sx={fs} /> : <UTurnLeftIcon sx={fs} />
-    case 6:
-    case 7:
-    case 19:
+    case ManeuverType.EnterRoundabout:
+    case ManeuverType.ExitRoundabout:
+    case ManeuverType.RoundaboutUTurn:
       return <RoundaboutRightIcon sx={fs} />
-    case 8:
-    case 22:
-    case 23:
+    case ManeuverType.RampOff:
+    case ManeuverType.RampOffLeft:
+    case ManeuverType.RampOffRight:
       return <ExitToAppIcon sx={fs} />
-    case 9:
+    case ManeuverType.RampOn:
       return <MergeIcon sx={fs} />
-    case 10:
-    case 12:
-    case 24:
-    case 25:
-    case 27:
+    case ManeuverType.EndOfNavigation:
+    case ManeuverType.Arrived:
+    case ManeuverType.ArrivedLeft:
+    case ManeuverType.ArrivedRight:
+    case ManeuverType.EndOfDirections:
       return <FlagIcon sx={fs} />
-    case 11:
+    case ManeuverType.ProceedToRoute:
       // DEPART / proceed-to-route → straight-ahead arrow (matches Apple/Android Auto).
       return <StraightIcon sx={fs} />
-    case 13:
+    case ManeuverType.KeepLeft:
       return <ForkLeftIcon sx={fs} />
-    case 14:
+    case ManeuverType.KeepRight:
       return <ForkRightIcon sx={fs} />
-    case 15:
-    case 16:
-    case 17:
+    case ManeuverType.EnterFerry:
+    case ManeuverType.ExitFerry:
+    case ManeuverType.ChangeFerry:
       return <DirectionsBoatIcon sx={fs} />
-    case 20:
+    case ManeuverType.EndOfRoadLeft:
       return <SubdirectoryArrowLeftIcon sx={fs} />
-    case 21:
+    case ManeuverType.EndOfRoadRight:
       return <SubdirectoryArrowRightIcon sx={fs} />
-    case 47:
+    case ManeuverType.SharpLeft:
       return <TurnSharpLeftIcon sx={fs} />
-    case 48:
+    case ManeuverType.SharpRight:
       return <TurnSharpRightIcon sx={fs} />
-    case 49:
+    case ManeuverType.SlightLeft:
       return <TurnSlightLeftIcon sx={fs} />
-    case 50:
+    case ManeuverType.SlightRight:
       return <TurnSlightRightIcon sx={fs} />
-    case 51:
+    case ManeuverType.ChangeHighway:
       return <SwapHorizIcon sx={fs} />
-    case 52:
+    case ManeuverType.ChangeHighwayLeft:
       return <ForkLeftIcon sx={fs} />
-    case 53:
+    case ManeuverType.ChangeHighwayRight:
       return <ForkRightIcon sx={fs} />
     default:
       return <NavigationOutlinedIcon sx={fs} />

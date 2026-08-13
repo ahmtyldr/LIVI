@@ -4,7 +4,7 @@ import {
   decodeVendorSessionBase64,
   decryptVendorSessionInfo,
   decryptVendorSessionText
-} from '@main/helpers/vendorSessionInfo'
+} from '@main/services/projection/driver/dongle/vendorSessionInfo'
 
 const VENDOR_SESSION_KEY = Buffer.from('573245433158314e625a35385458746e', 'hex')
 

@@ -10,7 +10,6 @@ import { EventEmitter } from 'node:events'
 import type * as net from 'node:net'
 import { DEBUG } from '@main/constants'
 import { Microphone } from '@main/services/audio'
-import { MessageHeader, MessageType } from '@projection/messages/common'
 import {
   type SendableMessage,
   SendCloseDongle,
@@ -496,7 +495,7 @@ export class AaSession extends EventEmitter implements IPhoneDriver {
     }
 
     if (msg instanceof SendCommand) {
-      const cmd = (msg as SendCommand).getPayload().readUInt32LE(0)
+      const cmd = msg.value
       if (DEBUG) console.log(`[INPUT] cmd=${cmd} (${CommandMapping[cmd] ?? '?'})`)
 
       if (cmd === CommandMapping.selectDown || cmd === CommandMapping.knobDown) {

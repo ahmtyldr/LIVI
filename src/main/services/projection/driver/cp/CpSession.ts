@@ -24,20 +24,22 @@ import {
   TouchAction
 } from '@shared/types/ProjectionEnums'
 import { isClusterDisplayed } from '@shared/utils'
-import { MessageHeader, MessageType } from '../../messages/common'
 import {
-  buildAlbumArtMessage,
-  buildMediaJsonMessage,
-  buildNaviJsonMessage
-} from '../../messages/metaBuilders'
-import { AudioData, Command, DuckAudio } from '../../messages/readable'
+  AudioData,
+  Command,
+  DuckAudio,
+  MediaData,
+  MediaType,
+  NavigationData,
+  NavigationMetaType,
+  VideoData
+} from '../../messages/readable'
 import {
   type SendableMessage,
   SendCommand,
   SendMultiTouch,
   SendTouch
 } from '../../messages/sendable'
-import { buildVideoDataMessage } from '../aa/AaEventBridge'
 import { detectBtMac, detectWifiBssid } from '../aa/stack/system/hwaddr'
 import type { IPhoneDriver } from '../IPhoneDriver'
 import type { CpHelperSock } from './CpHelperSock'
@@ -48,45 +50,33 @@ import type { CpAudioProfile, CpIcon, CpStackConfig, CpStreamProfile } from './s
 /** Full knob-axis deflection: a d-pad direction maps to X/Y at the extreme (±127). */
 const KNOB_DEFLECT = 127
 
-/** Build a LIVI AudioData (PCM) message, matching the AA/dongle wire format. */
+/** PCM AudioData event; the PCM buffer is viewed as Int16 samples. */
 function buildCpAudioData(
   pcm: Buffer,
   sampleRate: number,
   channels: number,
   audioType: number
 ): AudioData {
-  const HEADER = 12
   const sampleBytes = pcm.length - (pcm.length % 2)
-  const data = Buffer.allocUnsafeSlow(HEADER + sampleBytes)
-  data.writeUInt32LE(0, 0)
-  data.writeFloatLE(0, 4)
-  data.writeUInt32LE(audioType, 8)
-  pcm.copy(data, HEADER, 0, sampleBytes)
-  const msg = new AudioData(new MessageHeader(data.length, MessageType.AudioData), data)
-  msg.sampleRate = sampleRate
-  msg.channels = channels
-  return msg
+  const samples = new Int16Array(
+    pcm.buffer,
+    pcm.byteOffset,
+    sampleBytes / Int16Array.BYTES_PER_ELEMENT
+  )
+  return new AudioData({ decodeType: 0, audioType, sampleRate, channels, data: samples })
 }
 
-/** Build a LIVI AudioData carrying a 1-byte AudioCommand (stream start/stop). */
+/** AudioData event carrying an AudioCommand (stream start/stop). */
 function buildCpAudioCommand(prof: CpAudioProfile, active: boolean): AudioData {
-  const HEADER = 12
-  const data = Buffer.allocUnsafeSlow(HEADER + 1)
-  data.writeUInt32LE(prof.decodeType, 0)
-  data.writeFloatLE(0, 4)
-  data.writeUInt32LE(prof.audioType, 8)
-  data.writeUInt8(active ? prof.startCmd : prof.stopCmd, HEADER)
-  return new AudioData(new MessageHeader(data.length, MessageType.AudioData), data)
+  return new AudioData({
+    decodeType: prof.decodeType,
+    audioType: prof.audioType,
+    command: active ? prof.startCmd : prof.stopCmd
+  })
 }
 
 function buildCpCallCommand(command: AudioCommand): AudioData {
-  const HEADER = 12
-  const data = Buffer.allocUnsafeSlow(HEADER + 1)
-  data.writeUInt32LE(5, 0)
-  data.writeFloatLE(0, 4)
-  data.writeUInt32LE(2, 8)
-  data.writeUInt8(command, HEADER)
-  return new AudioData(new MessageHeader(data.length, MessageType.AudioData), data)
+  return new AudioData({ decodeType: 5, audioType: 2, command })
 }
 
 export interface CpSessionSeed {
@@ -288,17 +278,15 @@ export class CpSession extends EventEmitter implements IPhoneDriver {
       else this._stopMicCapture()
     })
     stack.on('host-ui-requested', () => {
-      const buf = Buffer.allocUnsafe(4)
-      buf.writeUInt32LE(CommandMapping.requestHostUI, 0)
-      this.emit('message', new Command(new MessageHeader(buf.length, MessageType.Command), buf))
+      this.emit('message', new Command(CommandMapping.requestHostUI))
     })
     stack.on('speech-active', (active: boolean) => {
-      const buf = Buffer.allocUnsafe(4)
-      buf.writeUInt32LE(
-        active ? CommandMapping.voiceAssistantUiActive : CommandMapping.voiceAssistantUiIdle,
-        0
+      this.emit(
+        'message',
+        new Command(
+          active ? CommandMapping.voiceAssistantUiActive : CommandMapping.voiceAssistantUiIdle
+        )
       )
-      this.emit('message', new Command(new MessageHeader(buf.length, MessageType.Command), buf))
     })
     stack.on('disable-bluetooth', (deviceID: string) => {
       const mac = deviceID.trim()
@@ -322,14 +310,14 @@ export class CpSession extends EventEmitter implements IPhoneDriver {
         this._connected = true
         this.emit('connected')
       }
-      this.emit('message', buildVideoDataMessage(nal, w, h))
+      this.emit('message', new VideoData({ width: w, height: h, data: nal }))
     })
     stack.on('cluster-video-codec', (codec: string) => this.emit('cluster-video-codec', codec))
     stack.on('cluster-video-frame', (nal: Buffer) => {
       const cfg = this._getConfig()
       const w = cfg.clusterWidth || 1280
       const h = cfg.clusterHeight || 720
-      this.emit('message', buildVideoDataMessage(nal, w, h, MessageType.ClusterVideoData))
+      this.emit('message', new VideoData({ width: w, height: h, data: nal, cluster: true }))
     })
   }
 
@@ -342,7 +330,14 @@ export class CpSession extends EventEmitter implements IPhoneDriver {
     if (ev.type === 'albumart') {
       if (typeof ev.dataB64 === 'string') {
         const buf = Buffer.from(ev.dataB64, 'base64')
-        if (buf.length > 0) this.emit('message', buildAlbumArtMessage(buf))
+        if (buf.length > 0)
+          this.emit(
+            'message',
+            new MediaData(MediaType.AlbumCoverAlt, {
+              type: MediaType.AlbumCoverAlt,
+              base64Image: buf.toString('base64')
+            })
+          )
       }
       return
     }
@@ -386,7 +381,7 @@ export class CpSession extends EventEmitter implements IPhoneDriver {
     if (typeof ev.elapsedMs === 'number') media.MediaSongPlayTime = ev.elapsedMs
     if (typeof ev.playing === 'number') media.MediaPlayStatus = ev.playing
     if (Object.keys(media).length > 0) {
-      this.emit('message', buildMediaJsonMessage(media))
+      this.emit('message', new MediaData(MediaType.Data, { type: MediaType.Data, media }))
     }
   }
 
@@ -410,7 +405,7 @@ export class CpSession extends EventEmitter implements IPhoneDriver {
       navi.NaviETA = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
     }
     if (Object.keys(navi).length > 0) {
-      this.emit('message', buildNaviJsonMessage(navi))
+      this.emit('message', new NavigationData(NavigationMetaType.DashboardInfo, navi))
     }
   }
 

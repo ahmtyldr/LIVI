@@ -13,7 +13,7 @@
  */
 
 import type { DongleDriver } from '@projection/driver/dongle/dongleDriver'
-import { FileAddress, SendBoolean } from '@projection/messages/sendable'
+import { FileAddress, SendBoolean } from '@projection/driver/dongle/protocol/sendables'
 import { isWired, type TelemetryPayload } from '@shared/types/Telemetry'
 import { encodeNmea } from '../nmea'
 import type { TelemetryStore } from '../TelemetryStore'

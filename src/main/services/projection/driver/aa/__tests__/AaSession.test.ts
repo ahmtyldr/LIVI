@@ -377,13 +377,7 @@ describe('AaSession.send — SendCommand', () => {
     )
     if (unmapped !== undefined) {
       const cmd = new SendCommand('home')
-      vi.spyOn(cmd, 'getPayload').mockReturnValue(
-        (() => {
-          const b = Buffer.alloc(4)
-          b.writeUInt32LE(unmapped, 0)
-          return b
-        })()
-      )
+      ;(cmd as { value: number }).value = unmapped
       const ok = await d.send(cmd)
       expect(ok).toBe(true)
     }

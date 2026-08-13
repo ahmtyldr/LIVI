@@ -1,15 +1,14 @@
-import { MessageHeader, MessageType } from '@projection/messages/common'
-import {
-  buildAlbumArtMessage,
-  buildMediaJsonMessage,
-  buildNaviImageMessage,
-  buildNaviJsonMessage
-} from '@projection/messages/metaBuilders'
 import {
   AudioData,
   Command,
   DuckAudio,
+  MediaData,
+  type MediaInfo,
+  MediaType,
   type Message,
+  NavigationData,
+  NavigationMetaType,
+  type NaviInfo,
   VideoData
 } from '@projection/messages/readable'
 import { AudioCommand, CommandMapping } from '@shared/types/ProjectionEnums'
@@ -44,43 +43,25 @@ export function buildVideoDataMessage(
   buf: Buffer,
   width: number,
   height: number,
-  type: MessageType = MessageType.VideoData
+  cluster = false
 ): VideoData {
-  const HEADER = 20
-  const data = Buffer.allocUnsafeSlow(HEADER + buf.length)
-  data.writeUInt32LE(width, 0)
-  data.writeUInt32LE(height, 4)
-  data.writeUInt32LE(0, 8)
-  data.writeUInt32LE(buf.length, 12)
-  data.writeUInt32LE(0, 16)
-  buf.copy(data, HEADER)
-  const header = new MessageHeader(data.length, type)
-  return new VideoData(header, data)
+  return new VideoData({ width, height, data: buf, cluster })
 }
 
 function buildAudioDataMessage(buf: Buffer, channel: AudioChannelType): AudioData {
   const { audioType, decodeType } = AUDIO_MAP[channel]
-  const HEADER = 12
   const sampleBytes = buf.length - (buf.length % 2)
-  const data = Buffer.allocUnsafeSlow(HEADER + sampleBytes)
-  data.writeUInt32LE(decodeType, 0)
-  data.writeFloatLE(0, 4)
-  data.writeUInt32LE(audioType, 8)
-  buf.copy(data, HEADER, 0, sampleBytes)
-  const header = new MessageHeader(data.length, MessageType.AudioData)
-  return new AudioData(header, data)
+  const samples = new Int16Array(
+    buf.buffer,
+    buf.byteOffset,
+    sampleBytes / Int16Array.BYTES_PER_ELEMENT
+  )
+  return new AudioData({ decodeType, audioType, data: samples })
 }
 
 function buildAudioCommandMessage(channel: AudioChannelType, command: AudioCommand): AudioData {
   const { audioType, decodeType } = AUDIO_MAP[channel]
-  const HEADER = 12
-  const data = Buffer.allocUnsafeSlow(HEADER + 1)
-  data.writeUInt32LE(decodeType, 0)
-  data.writeFloatLE(0, 4)
-  data.writeUInt32LE(audioType, 8)
-  data.writeUInt8(command, HEADER)
-  const header = new MessageHeader(data.length, MessageType.AudioData)
-  return new AudioData(header, data)
+  return new AudioData({ decodeType, audioType, command })
 }
 
 function audioLifecycleCommand(channel: AudioChannelType, starting: boolean): AudioCommand {
@@ -197,7 +178,7 @@ export class AaEventBridge {
       }
       const w = cfg.videoWidth ?? 1280
       const h = cfg.videoHeight ?? 720
-      deps.emitMessage(buildVideoDataMessage(buf, w, h, MessageType.ClusterVideoData) as Message)
+      deps.emitMessage(buildVideoDataMessage(buf, w, h, true) as Message)
     })
 
     aa.on('cluster-video-codec', (codec: VideoCodec) => {
@@ -242,10 +223,7 @@ export class AaEventBridge {
 
     aa.on('host-ui-requested', () => {
       console.log('[AaEventBridge] host-ui-requested → emitting Command(requestHostUI)')
-      const buf = Buffer.allocUnsafe(4)
-      buf.writeUInt32LE(CommandMapping.requestHostUI, 0)
-      const header = new MessageHeader(buf.length, MessageType.Command)
-      deps.emitMessage(new Command(header, buf) as Message)
+      deps.emitMessage(new Command(CommandMapping.requestHostUI))
     })
 
     aa.on('media-metadata', (m: MediaPlaybackMetadata) => {
@@ -255,10 +233,17 @@ export class AaEventBridge {
       if (m.album !== undefined) media.MediaAlbumName = m.album
       if (m.durationSeconds !== undefined) media.MediaSongDuration = m.durationSeconds * 1000
       if (Object.keys(media).length > 0) {
-        deps.emitMessage(buildMediaJsonMessage(media) as Message)
+        deps.emitMessage(
+          new MediaData(MediaType.Data, { type: MediaType.Data, media: media as MediaInfo })
+        )
       }
       if (m.albumArt && m.albumArt.length > 0) {
-        deps.emitMessage(buildAlbumArtMessage(m.albumArt) as Message)
+        deps.emitMessage(
+          new MediaData(MediaType.AlbumCoverAlt, {
+            type: MediaType.AlbumCoverAlt,
+            base64Image: m.albumArt.toString('base64')
+          })
+        )
       }
     })
 
@@ -267,7 +252,9 @@ export class AaEventBridge {
       const media: Record<string, unknown> = { MediaPlayStatus: playStatus }
       if (s.mediaSource !== undefined) media.MediaAPPName = s.mediaSource
       if (s.playbackSeconds !== undefined) media.MediaSongPlayTime = s.playbackSeconds * 1000
-      deps.emitMessage(buildMediaJsonMessage(media) as Message)
+      deps.emitMessage(
+        new MediaData(MediaType.Data, { type: MediaType.Data, media: media as MediaInfo })
+      )
     })
 
     aa.on('nav-start', () => {
@@ -297,7 +284,11 @@ export class AaEventBridge {
       if (t.turnNumber !== undefined) patch.NaviRoundaboutExitNumber = t.turnNumber
       if (Object.keys(patch).length > 0) this.publishNavi(patch)
       if (t.image && t.image.length > 0) {
-        deps.emitMessage(buildNaviImageMessage(t.image) as Message)
+        deps.emitMessage(
+          new NavigationData(NavigationMetaType.DashboardImage, {
+            NaviImageBase64: t.image.toString('base64')
+          })
+        )
       }
     })
 
@@ -350,10 +341,7 @@ export class AaEventBridge {
   }
 
   private emitCommand(value: CommandMapping): void {
-    const buf = Buffer.allocUnsafe(4)
-    buf.writeUInt32LE(value, 0)
-    const header = new MessageHeader(buf.length, MessageType.Command)
-    this.deps.emitMessage(new Command(header, buf) as Message)
+    this.deps.emitMessage(new Command(value))
   }
 
   private publishNavi(patch: Record<string, unknown>): void {
@@ -361,6 +349,8 @@ export class AaEventBridge {
     if (this.naviApp !== undefined && this.naviBag.NaviAPPName === undefined) {
       this.naviBag.NaviAPPName = this.naviApp
     }
-    this.deps.emitMessage(buildNaviJsonMessage(this.naviBag) as Message)
+    this.deps.emitMessage(
+      new NavigationData(NavigationMetaType.DashboardInfo, { ...this.naviBag } as NaviInfo)
+    )
   }
 }

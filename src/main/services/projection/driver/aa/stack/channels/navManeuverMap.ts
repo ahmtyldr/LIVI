@@ -1,102 +1,102 @@
 /**
- * Maps AA navigation events to LIVI's NaviBag codes
- *
- * AA's deprecated NextTurnEnum (used in INSTRUMENT_CLUSTER_NAVIGATION_TURN_EVENT)
- * is coarser than the ManeuverType (0–53). We pick the closest match
- * and use turn_side to disambiguate left/right variants where it exists.
+ * Maps AA navigation events to the shared iAP2 codes (ManeuverType/DrivingSide).
  */
 
+import { DrivingSide, ManeuverType } from '@shared/types/NavigationTypes'
 import type { NavigationTurnEvent, NavigationTurnSide } from './NavigationChannel.js'
 
-/**
- * Returns the LIVI NaviManeuverType code (0–53) for a given AA turn-event +
- * turn-side combination. See translateNavigation.ts for the code → text table.
- */
+/** ManeuverType for a given AA turn-event + turn-side combination. */
 export function turnEventToManeuverType(
   event: NavigationTurnEvent | undefined,
   side: NavigationTurnSide | undefined
-): number | undefined {
+): ManeuverType | undefined {
   if (!event) return undefined
   const isLeft = side === 'left'
   const isRight = side === 'right'
 
   switch (event) {
     case 'unknown':
-      return 0 // noTurn
+      return ManeuverType.NoTurn
     case 'depart':
-      return 11 // proceedToRoute
+      return ManeuverType.ProceedToRoute
     case 'name-change':
-      return 5 // followRoad
+      return ManeuverType.FollowRoad
     case 'slight-turn':
-      return isRight ? 50 : 49 // slightRight / slightLeft
+      return isRight ? ManeuverType.SlightRight : ManeuverType.SlightLeft
     case 'turn':
-      return isRight ? 2 : 1 // right / left
+      return isRight ? ManeuverType.RightTurn : ManeuverType.LeftTurn
     case 'sharp-turn':
-      return isRight ? 48 : 47 // sharpRight / sharpLeft
+      return isRight ? ManeuverType.SharpRight : ManeuverType.SharpLeft
     case 'u-turn':
-      return 4 // uTurn
+      return ManeuverType.UTurn
     case 'on-ramp':
-      return 9 // rampOn
+      return ManeuverType.RampOn
     case 'off-ramp':
-      return isRight ? 23 : isLeft ? 22 : 8 // rampOffRight / rampOffLeft / rampOff
+      return isRight
+        ? ManeuverType.RampOffRight
+        : isLeft
+          ? ManeuverType.RampOffLeft
+          : ManeuverType.RampOff
     case 'fork':
-      return isRight ? 14 : 13 // keepRight / keepLeft
+      return isRight ? ManeuverType.KeepRight : ManeuverType.KeepLeft
     case 'merge':
-      return 9 // rampOn (closest match)
+      return ManeuverType.RampOn // closest match
     case 'roundabout-enter':
-      return 6 // enterRoundabout
+      return ManeuverType.EnterRoundabout
     case 'roundabout-exit':
-      return 7 // exitRoundabout
+      return ManeuverType.ExitRoundabout
     case 'roundabout-enter-and-exit':
-      return 6 // treat as enter; exit number isn't carried in deprecated event
+      return ManeuverType.EnterRoundabout // exit number isn't carried in deprecated event
     case 'straight':
-      return 3 // straight
+      return ManeuverType.Straight
     case 'ferry-boat':
     case 'ferry-train':
-      return 15 // enterFerry
+      return ManeuverType.EnterFerry
     case 'destination':
-      return isRight ? 25 : isLeft ? 24 : 12 // arrivedRight / arrivedLeft / arrived
+      return isRight
+        ? ManeuverType.ArrivedRight
+        : isLeft
+          ? ManeuverType.ArrivedLeft
+          : ManeuverType.Arrived
     default:
-      return 0
+      return ManeuverType.NoTurn
   }
 }
 
-/**
- * NaviTurnSide: 0 = right, 1 = left.
- */
-export function turnSideToNaviCode(side: NavigationTurnSide | undefined): number | undefined {
-  if (side === 'left') return 1
-  if (side === 'right') return 0
+export function turnSideToNaviCode(side: NavigationTurnSide | undefined): DrivingSide | undefined {
+  if (side === 'left') return DrivingSide.Left
+  if (side === 'right') return DrivingSide.Right
   return undefined
 }
 
-export function navManeuverTypeToCode(type: number | undefined): number | undefined {
+/** ManeuverType for an AA ManeuverType (modern nav, AA >= 1.7). */
+export function navManeuverTypeToCode(type: number | undefined): ManeuverType | undefined {
   switch (type) {
     case 0:
-      return 0 // UNKNOWN → noTurn
+      return ManeuverType.NoTurn // UNKNOWN
     case 1:
-      return 11 // DEPART → proceedToRoute
+      return ManeuverType.ProceedToRoute // DEPART
     case 2:
-      return 5 // NAME_CHANGE → followRoad
+      return ManeuverType.FollowRoad // NAME_CHANGE
     case 3:
-      return 13 // KEEP_LEFT
+      return ManeuverType.KeepLeft
     case 4:
-      return 14 // KEEP_RIGHT
+      return ManeuverType.KeepRight
     case 5:
-      return 49 // TURN_SLIGHT_LEFT → slightLeft
+      return ManeuverType.SlightLeft // TURN_SLIGHT_LEFT
     case 6:
-      return 50 // TURN_SLIGHT_RIGHT → slightRight
+      return ManeuverType.SlightRight // TURN_SLIGHT_RIGHT
     case 7:
-      return 1 // TURN_NORMAL_LEFT → left
+      return ManeuverType.LeftTurn // TURN_NORMAL_LEFT
     case 8:
-      return 2 // TURN_NORMAL_RIGHT → right
+      return ManeuverType.RightTurn // TURN_NORMAL_RIGHT
     case 9:
-      return 47 // TURN_SHARP_LEFT → sharpLeft
+      return ManeuverType.SharpLeft // TURN_SHARP_LEFT
     case 10:
-      return 48 // TURN_SHARP_RIGHT → sharpRight
+      return ManeuverType.SharpRight // TURN_SHARP_RIGHT
     case 11:
     case 12:
-      return 4 // U_TURN_* → uTurn
+      return ManeuverType.UTurn // U_TURN_*
     case 13:
     case 14:
     case 15:
@@ -105,49 +105,49 @@ export function navManeuverTypeToCode(type: number | undefined): number | undefi
     case 18:
     case 19:
     case 20:
-      return 9 // ON_RAMP_* → rampOn
+      return ManeuverType.RampOn // ON_RAMP_*
     case 21:
     case 23:
-      return 22 // OFF_RAMP_*_LEFT → rampOffLeft
+      return ManeuverType.RampOffLeft // OFF_RAMP_*_LEFT
     case 22:
     case 24:
-      return 23 // OFF_RAMP_*_RIGHT → rampOffRight
+      return ManeuverType.RampOffRight // OFF_RAMP_*_RIGHT
     case 25:
-      return 13 // FORK_LEFT → keepLeft
+      return ManeuverType.KeepLeft // FORK_LEFT
     case 26:
-      return 14 // FORK_RIGHT → keepRight
+      return ManeuverType.KeepRight // FORK_RIGHT
     case 27:
     case 28:
     case 29:
-      return 9 // MERGE_* → rampOn (closest)
+      return ManeuverType.RampOn // MERGE_* (closest)
     case 30:
-      return 6 // ROUNDABOUT_ENTER
+      return ManeuverType.EnterRoundabout // ROUNDABOUT_ENTER
     case 31:
-      return 7 // ROUNDABOUT_EXIT
+      return ManeuverType.ExitRoundabout // ROUNDABOUT_EXIT
     case 32:
     case 33:
     case 34:
     case 35:
-      return 6 // ROUNDABOUT_ENTER_AND_EXIT_* → enterRoundabout
+      return ManeuverType.EnterRoundabout // ROUNDABOUT_ENTER_AND_EXIT_*
     case 36:
-      return 3 // STRAIGHT
+      return ManeuverType.Straight // STRAIGHT
     case 37:
     case 38:
-      return 15 // FERRY_* → enterFerry
+      return ManeuverType.EnterFerry // FERRY_*
     case 39:
     case 40:
-      return 12 // DESTINATION(_STRAIGHT) → arrived
+      return ManeuverType.Arrived // DESTINATION(_STRAIGHT)
     case 41:
-      return 24 // DESTINATION_LEFT → arrivedLeft
+      return ManeuverType.ArrivedLeft // DESTINATION_LEFT
     case 42:
-      return 25 // DESTINATION_RIGHT → arrivedRight
+      return ManeuverType.ArrivedRight // DESTINATION_RIGHT
     default:
       return undefined
   }
 }
 
-/** Turn-side (0=right, 1=left) */
-export function navManeuverTypeToSide(type: number | undefined): number | undefined {
+/** DrivingSide implied by an AA ManeuverType. */
+export function navManeuverTypeToSide(type: number | undefined): DrivingSide | undefined {
   switch (type) {
     case 3: // KEEP_LEFT
     case 5: // TURN_SLIGHT_LEFT
@@ -156,7 +156,7 @@ export function navManeuverTypeToSide(type: number | undefined): number | undefi
     case 11: // U_TURN_LEFT
     case 25: // FORK_LEFT
     case 41: // DESTINATION_LEFT
-      return 1
+      return DrivingSide.Left
     case 4: // KEEP_RIGHT
     case 6: // TURN_SLIGHT_RIGHT
     case 8: // TURN_NORMAL_RIGHT
@@ -164,7 +164,7 @@ export function navManeuverTypeToSide(type: number | undefined): number | undefi
     case 12: // U_TURN_RIGHT
     case 26: // FORK_RIGHT
     case 42: // DESTINATION_RIGHT
-      return 0
+      return DrivingSide.Right
     default:
       return undefined
   }

@@ -20,11 +20,13 @@ import { type GstVideoCodec, probeGstCodecs } from '../../video/GstVideo'
 import { gstHost, VIDEO_PLANE_CLUSTER_RECV, VIDEO_PLANE_MAIN } from '../../video/gstHost'
 import { BluezDeviceClient } from '../bt/BluezDeviceClient'
 import { BtPairedRegistry } from '../bt/BtPairedRegistry'
-import { DongleState } from '../dongle/DongleState'
 import type { AaSession } from '../driver/aa/AaSession'
 import type { CpManager } from '../driver/cp/CpManager'
 import type { CpSession } from '../driver/cp/CpSession'
+import { DongleState } from '../driver/dongle/DongleState'
 import { DONGLE_APK_VER } from '../driver/dongle/dongleConfig'
+import { DongleDriver } from '../driver/dongle/dongleDriver'
+import { FirmwareUpdateService } from '../driver/dongle/FirmwareUpdateService'
 import { HelperSupervisor } from '../driver/helper/helperSupervisor'
 import type { IPhoneDriver } from '../driver/IPhoneDriver'
 import { ProjectionDriverManager } from '../drivers/ProjectionDriverManager'
@@ -37,13 +39,11 @@ import {
   BoxUpdateState,
   Command,
   DEFAULT_CONFIG,
-  DongleDriver,
   DuckAudio,
   decodeTypeMap,
   MediaData,
   MediaType,
   type Message,
-  MessageType,
   NavigationData,
   PhoneType,
   Plugged,
@@ -61,7 +61,6 @@ import {
 } from './constants'
 import { DeviceController } from './DeviceController'
 import { DeviceRegistry, type DeviceView } from './DeviceRegistry'
-import { FirmwareUpdateService } from './FirmwareUpdateService'
 import { MediaStore } from './MediaStore'
 import { NavStore } from './NavStore'
 import { ProjectionAudio } from './ProjectionAudio'
@@ -714,7 +713,7 @@ export class ProjectionService {
   }
 
   private handleVideoData(msg: VideoData): void {
-    const isCluster = msg.header.type === MessageType.ClusterVideoData
+    const isCluster = msg.cluster
     // cluster video stream (0x2c)
     if (isCluster) {
       if (!isClusterDisplayed(this.config)) return

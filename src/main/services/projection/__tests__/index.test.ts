@@ -6,11 +6,16 @@ describe('projection barrel exports', () => {
     expect(projection.DongleDriver).toBeDefined()
 
     expect(projection.Message).toBeDefined()
-    expect(projection.MessageHeader).toBeDefined()
-    expect(projection.MessageType).toBeDefined()
+    expect(projection.SendableMessage).toBeDefined()
 
     expect(projection.HandDriveType).toBeDefined()
     expect(projection.PhoneWorkMode).toBeDefined()
     expect(projection.MicType).toBeDefined()
+  })
+
+  test('no longer exports the dongle wire header types', () => {
+    const barrel = projection as Record<string, unknown>
+    expect(barrel.MessageHeader).toBeUndefined()
+    expect(barrel.MessageType).toBeUndefined()
   })
 })

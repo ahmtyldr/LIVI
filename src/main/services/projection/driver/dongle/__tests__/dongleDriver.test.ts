@@ -4,10 +4,16 @@ import {
   DriverStateError
 } from '@main/services/projection/driver/dongle/dongleDriver'
 import {
+  SendFile,
+  SendOpen,
+  SendSafeArea,
+  SendString
+} from '@main/services/projection/driver/dongle/protocol/sendables'
+import {
   HeaderBuildError,
   MessageHeader,
   MessageType
-} from '@main/services/projection/messages/common'
+} from '@main/services/projection/driver/dongle/protocol/wire'
 import {
   AudioData,
   BluetoothPeerConnected,
@@ -21,7 +27,7 @@ import {
   Unplugged,
   VendorSessionInfo,
   VideoData
-} from '@main/services/projection/messages/readable'
+} from '@main/services/projection/messages'
 import {
   SendAudio,
   SendAutoConnectByBtAddress,
@@ -29,11 +35,7 @@ import {
   SendCloseDongle,
   SendCommand,
   SendDisconnectPhone,
-  SendFile,
-  SendGnssData,
-  SendOpen,
-  SendSafeArea,
-  SendString
+  SendGnssData
 } from '@main/services/projection/messages/sendable'
 import { CARLINKIT_PIDS, CARLINKIT_VID } from '@main/services/usb/constants'
 import { CommandMapping, MicType, PhoneWorkMode } from '@shared/types'
@@ -41,7 +43,7 @@ import { InputCommand } from '@shared/types/InputCommand'
 import { AudioCommand } from '@shared/types/ProjectionEnums'
 import { usb } from 'usb'
 
-vi.mock('@main/helpers/vendorSessionInfo', () => ({
+vi.mock('@main/services/projection/driver/dongle/vendorSessionInfo', () => ({
   decryptVendorSessionText: vi.fn(async () => 'decrypted-session')
 }))
 
@@ -573,7 +575,9 @@ describe('DongleDriver core behavior', () => {
   })
 
   test('handleMessage emits message for VendorSessionInfo even when decrypt fails', async () => {
-    const { decryptVendorSessionText } = await vi.importMock('@main/helpers/vendorSessionInfo')
+    const { decryptVendorSessionText } = await vi.importMock(
+      '@main/services/projection/driver/dongle/vendorSessionInfo'
+    )
     decryptVendorSessionText.mockRejectedValueOnce(new Error('boom'))
 
     const d = new DongleDriver() as any
@@ -1339,12 +1343,12 @@ describe('DongleDriver core behavior', () => {
         DEBUG: true
       }))
 
-      vi.doMock('@main/helpers/vendorSessionInfo', () => ({
+      vi.doMock('@main/services/projection/driver/dongle/vendorSessionInfo', () => ({
         decryptVendorSessionText: vi.fn(async () => 'decrypted-session')
       }))
 
       const { DongleDriver } = await import('@main/services/projection/driver/dongle/dongleDriver')
-      const { VendorSessionInfo } = await import('@main/services/projection/messages/readable')
+      const { VendorSessionInfo } = await import('@main/services/projection/messages/dongleEvents')
 
       const d = new DongleDriver() as any
       const emitSpy = vi.spyOn(d, 'emit')
@@ -1361,7 +1365,7 @@ describe('DongleDriver core behavior', () => {
     logSpy.mockRestore()
     vi.resetModules()
     vi.doUnmock('@main/constants')
-    vi.doUnmock('@main/helpers/vendorSessionInfo')
+    vi.doUnmock('@main/services/projection/driver/dongle/vendorSessionInfo')
   })
 
   test('reconcileModes does nothing when no plugged type and no pending boxinfo hint exist', async () => {
@@ -1545,12 +1549,12 @@ describe('DongleDriver core behavior', () => {
         DEBUG: true
       }))
 
-      vi.doMock('@main/helpers/vendorSessionInfo', () => ({
+      vi.doMock('@main/services/projection/driver/dongle/vendorSessionInfo', () => ({
         decryptVendorSessionText: vi.fn(async () => 'decrypted-session')
       }))
 
       const { DongleDriver } = await import('@main/services/projection/driver/dongle/dongleDriver')
-      const { VendorSessionInfo } = await import('@main/services/projection/messages/readable')
+      const { VendorSessionInfo } = await import('@main/services/projection/messages/dongleEvents')
 
       const d = new DongleDriver() as any
       const emitSpy = vi.spyOn(d, 'emit')
@@ -1567,7 +1571,7 @@ describe('DongleDriver core behavior', () => {
     logSpy.mockRestore()
     vi.resetModules()
     vi.doUnmock('@main/constants')
-    vi.doUnmock('@main/helpers/vendorSessionInfo')
+    vi.doUnmock('@main/services/projection/driver/dongle/vendorSessionInfo')
   })
 
   test('sendPostOpenConfig falls back to carName and uses DongleMic route command', async () => {
@@ -1750,12 +1754,12 @@ describe('DongleDriver core behavior', () => {
         DEBUG: true
       }))
 
-      vi.doMock('@main/helpers/vendorSessionInfo', () => ({
+      vi.doMock('@main/services/projection/driver/dongle/vendorSessionInfo', () => ({
         decryptVendorSessionText: vi.fn(async () => 'decrypted-session')
       }))
 
       const { DongleDriver } = await import('@main/services/projection/driver/dongle/dongleDriver')
-      const { VendorSessionInfo } = await import('@main/services/projection/messages/readable')
+      const { VendorSessionInfo } = await import('@main/services/projection/messages/dongleEvents')
 
       const d = new DongleDriver() as any
       const emitSpy = vi.spyOn(d, 'emit')
@@ -1772,7 +1776,7 @@ describe('DongleDriver core behavior', () => {
     logSpy.mockRestore()
     vi.resetModules()
     vi.doUnmock('@main/constants')
-    vi.doUnmock('@main/helpers/vendorSessionInfo')
+    vi.doUnmock('@main/services/projection/driver/dongle/vendorSessionInfo')
   })
 
   test('sendPostOpenConfig falls back to carName when oemName is undefined and uses PhoneMic route', async () => {
@@ -1985,12 +1989,12 @@ describe('DongleDriver core behavior', () => {
         DEBUG: true
       }))
 
-      vi.doMock('@main/helpers/vendorSessionInfo', () => ({
+      vi.doMock('@main/services/projection/driver/dongle/vendorSessionInfo', () => ({
         decryptVendorSessionText: vi.fn(async () => 'decrypted-session')
       }))
 
       const { DongleDriver } = await import('@main/services/projection/driver/dongle/dongleDriver')
-      const { VendorSessionInfo } = await import('@main/services/projection/messages/readable')
+      const { VendorSessionInfo } = await import('@main/services/projection/messages/dongleEvents')
 
       const d = new DongleDriver() as any
       const emitSpy = vi.spyOn(d, 'emit')
@@ -2007,7 +2011,7 @@ describe('DongleDriver core behavior', () => {
     logSpy.mockRestore()
     vi.resetModules()
     vi.doUnmock('@main/constants')
-    vi.doUnmock('@main/helpers/vendorSessionInfo')
+    vi.doUnmock('@main/services/projection/driver/dongle/vendorSessionInfo')
   })
 
   test('close drains the reader before releasing the interface', async () => {
@@ -2146,7 +2150,9 @@ describe('DongleDriver core behavior', () => {
 
   test('handleMessage emits VendorSessionInfo without debug log when DEBUG is false', async () => {
     const logSpy = vi.spyOn(console, 'log').mockImplementation(function () {})
-    const { decryptVendorSessionText } = await vi.importMock('@main/helpers/vendorSessionInfo')
+    const { decryptVendorSessionText } = await vi.importMock(
+      '@main/services/projection/driver/dongle/vendorSessionInfo'
+    )
     decryptVendorSessionText.mockResolvedValueOnce('decrypted-session')
 
     const d = new DongleDriver() as any

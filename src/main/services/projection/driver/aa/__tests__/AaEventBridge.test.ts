@@ -1,13 +1,16 @@
 import { EventEmitter } from 'node:events'
-import { MessageType } from '@projection/messages/common'
 import {
   AudioData,
   Command,
+  DongleReady,
   MediaData,
   type Message,
   NavigationData,
+  Opened,
+  Plugged,
+  Unplugged,
   VideoData
-} from '@projection/messages/readable'
+} from '@projection/messages'
 import { CommandMapping } from '@shared/types/ProjectionEnums'
 import type { Mock } from 'vitest'
 import { AaEventBridge, type AaEventBridgeDeps } from '../AaEventBridge'
@@ -72,16 +75,29 @@ function makeBridge(over: Partial<AaEventBridgeDeps> = {}, cfgOver?: AAStackConf
   }
 }
 
-function messagesOfType(emitMessage: Mock, type: MessageType): Message[] {
-  return emitMessage.mock.calls.map((c) => c[0] as Message).filter((m) => m.header?.type === type)
+function allMessages(emitMessage: Mock): Message[] {
+  return emitMessage.mock.calls.map((c) => c[0] as Message)
+}
+
+function messagesOf<T extends Message>(
+  emitMessage: Mock,
+  cls: abstract new (...args: never[]) => T
+): T[] {
+  return allMessages(emitMessage).filter((m): m is T => m instanceof cls)
 }
 
 function commands(emitMessage: Mock): Command[] {
-  return messagesOfType(emitMessage, MessageType.Command) as Command[]
+  return messagesOf(emitMessage, Command)
 }
 
 function metas(emitMessage: Mock): (MediaData | NavigationData)[] {
-  return messagesOfType(emitMessage, MessageType.MetaData) as (MediaData | NavigationData)[]
+  return allMessages(emitMessage).filter(
+    (m): m is MediaData | NavigationData => m instanceof MediaData || m instanceof NavigationData
+  )
+}
+
+function videoFrames(emitMessage: Mock, cluster: boolean): VideoData[] {
+  return messagesOf(emitMessage, VideoData).filter((m) => m.cluster === cluster)
 }
 
 function asMedia(m: MediaData | NavigationData): MediaData {
@@ -100,9 +116,9 @@ describe('AaEventBridge', () => {
       const { aa, emitMessage } = makeBridge()
       aa.emit('connected')
 
-      const types = emitMessage.mock.calls.map((c) => (c[0] as Message).header.type)
-      expect(types).not.toContain(MessageType.Open)
-      expect(types).not.toContain(MessageType.Plugged)
+      const msgs = allMessages(emitMessage)
+      expect(msgs.some((m) => m instanceof Opened || m instanceof DongleReady)).toBe(false)
+      expect(msgs.some((m) => m instanceof Plugged)).toBe(false)
     })
 
     test('disconnected releases video focus if it was held and emits no Unplugged', async () => {
@@ -116,7 +132,7 @@ describe('AaEventBridge', () => {
         (c) => c.value === CommandMapping.releaseVideoFocus
       )
       expect(releaseEmitted).toBe(true)
-      expect(messagesOfType(emitMessage, MessageType.Unplugged)).toHaveLength(0)
+      expect(messagesOf(emitMessage, Unplugged)).toHaveLength(0)
     })
 
     test('disconnected without prior video focus does not emit releaseVideoFocus', async () => {
@@ -192,8 +208,8 @@ describe('AaEventBridge', () => {
       const { aa, emitMessage } = makeBridge({}, cfg)
       aa.emit('video-frame', Buffer.alloc(8), 0n)
       aa.emit('cluster-video-frame', Buffer.alloc(8), 0n)
-      expect(messagesOfType(emitMessage, MessageType.VideoData).length).toBeGreaterThan(0)
-      expect(messagesOfType(emitMessage, MessageType.ClusterVideoData).length).toBeGreaterThan(0)
+      expect(videoFrames(emitMessage, false).length).toBeGreaterThan(0)
+      expect(videoFrames(emitMessage, true).length).toBeGreaterThan(0)
     })
 
     test('cluster frame does not re-request focus once already projected', () => {
@@ -243,19 +259,17 @@ describe('AaEventBridge', () => {
     test('video-frame forwards a VideoData message with main MessageType', async () => {
       const { aa, emitMessage } = makeBridge()
       aa.emit('video-frame', Buffer.alloc(64), 0n)
-      const msg = emitMessage.mock.calls
-        .map((c) => c[0] as Message)
-        .find((m) => m.header.type === MessageType.VideoData) as VideoData
+      const msg = videoFrames(emitMessage, false)[0]
       expect(msg).toBeInstanceOf(VideoData)
+      expect(msg.cluster).toBe(false)
     })
 
-    test('cluster-video-frame forwards a ClusterVideoData message', async () => {
+    test('cluster-video-frame forwards a cluster VideoData message', async () => {
       const { aa, emitMessage } = makeBridge()
       aa.emit('cluster-video-frame', Buffer.alloc(64), 0n)
-      const msg = emitMessage.mock.calls
-        .map((c) => c[0] as Message)
-        .find((m) => m.header.type === MessageType.ClusterVideoData) as VideoData
+      const msg = videoFrames(emitMessage, true)[0]
       expect(msg).toBeInstanceOf(VideoData)
+      expect(msg.cluster).toBe(true)
     })
   })
 
@@ -277,30 +291,28 @@ describe('AaEventBridge', () => {
     test('audio-frame emits an AudioData message', async () => {
       const { aa, emitMessage } = makeBridge()
       aa.emit('audio-frame', Buffer.alloc(32), 0n, 'media', 0)
-      const msg = emitMessage.mock.calls
-        .map((c) => c[0] as Message)
-        .find((m) => m.header.type === MessageType.AudioData) as AudioData
+      const msg = messagesOf(emitMessage, AudioData)[0]
       expect(msg).toBeInstanceOf(AudioData)
     })
 
     test('audio-start emits an AudioData lifecycle command', async () => {
       const { aa, emitMessage } = makeBridge()
       aa.emit('audio-start', 'media', 0)
-      const msgs = messagesOfType(emitMessage, MessageType.AudioData)
+      const msgs = messagesOf(emitMessage, AudioData)
       expect(msgs.length).toBeGreaterThan(0)
     })
 
     test('audio-stop emits an AudioData lifecycle command', async () => {
       const { aa, emitMessage } = makeBridge()
       aa.emit('audio-stop', 'speech', 0)
-      const msgs = messagesOfType(emitMessage, MessageType.AudioData)
+      const msgs = messagesOf(emitMessage, AudioData)
       expect(msgs.length).toBeGreaterThan(0)
     })
 
     test('audio-stop on the media channel emits the media-stop command', async () => {
       const { aa, emitMessage } = makeBridge()
       aa.emit('audio-stop', 'media', 0)
-      expect(messagesOfType(emitMessage, MessageType.AudioData).length).toBeGreaterThan(0)
+      expect(messagesOf(emitMessage, AudioData).length).toBeGreaterThan(0)
     })
   })
 
@@ -564,14 +576,14 @@ describe('AaEventBridge', () => {
     const { aa, emitMessage } = makeBridge()
     aa.emit('audio-start', 'phone', 0)
     aa.emit('audio-stop', 'phone', 0)
-    expect(messagesOfType(emitMessage, MessageType.AudioData).length).toBeGreaterThanOrEqual(2)
+    expect(messagesOf(emitMessage, AudioData).length).toBeGreaterThanOrEqual(2)
   })
 
   test('audio lifecycle command for "speech" channel emits AudioNavi* commands', () => {
     const { aa, emitMessage } = makeBridge()
     aa.emit('audio-start', 'speech', 0)
     aa.emit('audio-stop', 'speech', 0)
-    expect(messagesOfType(emitMessage, MessageType.AudioData).length).toBeGreaterThanOrEqual(2)
+    expect(messagesOf(emitMessage, AudioData).length).toBeGreaterThanOrEqual(2)
   })
 
   test('watchdog forceReenum throwing is swallowed', async () => {

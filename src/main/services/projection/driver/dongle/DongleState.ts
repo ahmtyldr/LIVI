@@ -1,6 +1,6 @@
+import type { BoxInfo, SoftwareVersion } from '@projection/messages'
+import type { ProjectionEvent } from '@projection/services/types'
 import type { DevListEntry } from '@shared/types'
-import type { BoxInfo, SoftwareVersion } from '../messages'
-import type { ProjectionEvent } from '../services/types'
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return v !== null && typeof v === 'object' && !Array.isArray(v)

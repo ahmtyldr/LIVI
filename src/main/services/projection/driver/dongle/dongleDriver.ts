@@ -1,8 +1,7 @@
 import { DEBUG } from '@main/constants'
-import { decryptVendorSessionText } from '@main/helpers/vendorSessionInfo'
+import { decryptVendorSessionText } from '@main/services/projection/driver/dongle/vendorSessionInfo'
 import type { PendingStartupConnectTarget } from '@main/services/projection/services/types'
 import { CARLINKIT_PIDS, CARLINKIT_VID, isCarlinkitDongle } from '@main/services/usb/constants'
-import { HeaderBuildError, MessageHeader } from '@projection/messages/common'
 import {
   AudioData,
   BluetoothPeerConnected,
@@ -17,28 +16,16 @@ import {
   Unplugged,
   VendorSessionInfo,
   VideoData
-} from '@projection/messages/readable'
+} from '@projection/messages'
 import {
-  FileAddress,
-  HeartBeat,
-  SendAndroidAutoDpi,
   SendAudio,
   SendAutoConnectByBtAddress,
   SendableMessage,
   SendBluetoothPairedList,
-  SendBoolean,
-  SendBoxSettings,
   SendCloseDongle,
   SendCommand,
   SendDisconnectPhone,
-  SendFile,
-  SendGnssData,
-  SendIconConfig,
-  SendNumber,
-  SendOpen,
-  SendSafeArea,
-  SendString,
-  SendViewArea
+  SendGnssData
 } from '@projection/messages/sendable'
 import { asDomUSBDevice } from '@projection/services/utils/asDomUSBDevice'
 import type { Config } from '@shared/types'
@@ -49,6 +36,23 @@ import { isClusterDisplayed, matchFittingAAResolution } from '@shared/utils'
 import EventEmitter from 'events'
 import { usb } from 'usb'
 import { DONGLE_MIC_TYPE } from './dongleConfig'
+import { decodeMessage } from './protocol/decode.js'
+import {
+  encodeSendable,
+  FileAddress,
+  HeartBeat,
+  SendAndroidAutoDpi,
+  SendBoolean,
+  SendBoxSettings,
+  SendFile,
+  SendIconConfig,
+  SendNumber,
+  SendOpen,
+  SendSafeArea,
+  SendString,
+  SendViewArea
+} from './protocol/sendables.js'
+import { HeaderBuildError, MessageHeader } from './protocol/wire.js'
 
 const CONFIG_NUMBER = 1
 const MAX_ERROR_COUNT = 5
@@ -361,7 +365,7 @@ export class DongleDriver extends EventEmitter {
     if (!this._outEP) return false
 
     try {
-      const buf = msg.serialise()
+      const buf = encodeSendable(msg)
       const view = new Uint8Array(buf.buffer as ArrayBuffer, buf.byteOffset, buf.byteLength)
       const res = await dev.transferOut(this._outEP.endpointNumber, view)
       return res.status === 'ok'
@@ -489,7 +493,7 @@ export class DongleDriver extends EventEmitter {
       extra = Buffer.from(extraData.buffer, extraData.byteOffset, extraData.byteLength)
     }
 
-    return header.toMessage(extra)
+    return decodeMessage(header, extra)
   }
 
   // entral message dispatch

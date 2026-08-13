@@ -1,5 +1,5 @@
-import { SendTmpFile } from '@main/services/projection/messages/sendable'
-import { FirmwareUpdateService } from '@main/services/projection/services/FirmwareUpdateService'
+import { FirmwareUpdateService } from '@main/services/projection/driver/dongle/FirmwareUpdateService'
+import { SendTmpFile } from '@main/services/projection/driver/dongle/protocol/sendables'
 import { app } from 'electron'
 import { existsSync, promises as fsp } from 'fs'
 import type { Mock } from 'vitest'

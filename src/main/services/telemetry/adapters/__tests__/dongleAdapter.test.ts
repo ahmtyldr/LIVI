@@ -1,5 +1,5 @@
 import type { DongleDriver } from '@projection/driver/dongle/dongleDriver'
-import { SendBoolean } from '@projection/messages/sendable'
+import { SendBoolean } from '@projection/driver/dongle/protocol/sendables'
 import { TelemetryStore } from '../../TelemetryStore'
 import { attachDongleAdapter } from '../dongleAdapter'
 

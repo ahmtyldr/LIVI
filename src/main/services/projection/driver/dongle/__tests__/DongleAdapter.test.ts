@@ -1,33 +1,27 @@
 import { EventEmitter } from 'node:events'
-import { MessageHeader, MessageType } from '@projection/messages/common'
 import {
   BluetoothPairedList,
   BoxInfo,
+  type BoxInfoSettings,
   BoxUpdateProgress,
   GnssData,
   Plugged,
   SoftwareVersion,
   Unplugged
-} from '@projection/messages/readable'
+} from '@projection/messages'
 import { DongleAdapter, type DongleAdapterDeps } from '../DongleAdapter'
 import type { DongleDriver } from '../dongleDriver.js'
 
-function header(type: MessageType): MessageHeader {
-  return new MessageHeader(0, type)
-}
-
 function softwareVersion(v: string): SoftwareVersion {
-  return new SoftwareVersion(header(MessageType.SoftwareVersion), Buffer.from(v, 'ascii'))
+  return new SoftwareVersion(v)
 }
 
 function boxInfo(settings: Record<string, unknown>): BoxInfo {
-  return new BoxInfo(header(MessageType.BoxSettings), Buffer.from(JSON.stringify(settings), 'utf8'))
+  return new BoxInfo(settings as BoxInfoSettings)
 }
 
 function plugged(phoneType: number): Plugged {
-  const data = Buffer.alloc(4)
-  data.writeUInt32LE(phoneType, 0)
-  return new Plugged(header(MessageType.Plugged), data)
+  return new Plugged(phoneType)
 }
 
 function deps(): { [K in keyof DongleAdapterDeps]: ReturnType<typeof vi.fn> } {
@@ -68,10 +62,7 @@ describe('DongleAdapter wiring', () => {
 
   test('unknown message types are ignored', () => {
     const { dongle, d } = setup()
-    dongle.emit(
-      'message',
-      new GnssData(header(MessageType.GnssData), Buffer.from('$GPRMC\0', 'ascii'))
-    )
+    dongle.emit('message', new GnssData('$GPRMC'))
     dongle.emit('message', { not: 'a message' })
     expect(d.emitMessage).toHaveBeenCalledTimes(1)
     expect(d.emitConnected).not.toHaveBeenCalled()
@@ -136,8 +127,7 @@ describe('dongle info aggregation', () => {
 
   test('non-object settings payloads merge defensively', () => {
     const { dongle, adapter } = setup()
-    const rawBox = (json: string) =>
-      new BoxInfo(header(MessageType.BoxSettings), Buffer.from(json, 'utf8'))
+    const rawBox = (json: string) => new BoxInfo(JSON.parse(json) as BoxInfoSettings)
 
     dongle.emit('message', rawBox('null'))
     expect(adapter.getDongleInfo().boxInfo).toBeUndefined()
@@ -185,17 +175,14 @@ describe('dongle info aggregation', () => {
 describe('session events', () => {
   test('gnss data is forwarded as a message', () => {
     const { dongle, d } = setup()
-    const gnss = new GnssData(header(MessageType.GnssData), Buffer.from('$GPGGA,x\0', 'ascii'))
+    const gnss = new GnssData('$GPGGA,x')
     dongle.emit('message', gnss)
     expect(d.emitMessage).toHaveBeenCalledWith(gnss)
   })
 
   test('the paired list is cached and forwarded raw', () => {
     const { dongle, d, adapter } = setup()
-    dongle.emit(
-      'message',
-      new BluetoothPairedList(header(MessageType.BluetoothPairedList), Buffer.from('AABB,CCDD\0'))
-    )
+    dongle.emit('message', new BluetoothPairedList('AABB,CCDD'))
     expect(adapter.getDonglePairedRaw()).toBe('AABB,CCDD')
     expect(d.emitBluetoothPairedList).toHaveBeenCalledWith('AABB,CCDD')
   })
@@ -212,7 +199,7 @@ describe('session events', () => {
       'message',
       boxInfo({ btMacAddr: 'AA:BB:CC:DD:EE:FF', DevList: [{ mac: '11' }], uuid: 'box-1' })
     )
-    dongle.emit('message', new Unplugged(header(MessageType.Unplugged)))
+    dongle.emit('message', new Unplugged())
 
     expect(adapter.getDongleConnectedMac()).toBe('')
     expect(adapter.getDongleDevList()).toEqual([])
@@ -226,7 +213,7 @@ describe('session events', () => {
 
   test('unplugged without prior box info leaves it untouched', () => {
     const { dongle, d } = setup()
-    dongle.emit('message', new Unplugged(header(MessageType.Unplugged)))
+    dongle.emit('message', new Unplugged())
     expect(d.emitDongleInfo).toHaveBeenCalledWith({
       dongleFwVersion: undefined,
       boxInfo: undefined
@@ -235,9 +222,7 @@ describe('session events', () => {
 
   test('firmware update progress is forwarded', () => {
     const { dongle, d } = setup()
-    const data = Buffer.alloc(4)
-    data.writeInt32LE(42, 0)
-    dongle.emit('message', new BoxUpdateProgress(header(MessageType.BoxUpdateProgress), data))
+    dongle.emit('message', new BoxUpdateProgress(42))
     expect(d.emitFwUpdateProgress).toHaveBeenCalledWith(42)
   })
 })

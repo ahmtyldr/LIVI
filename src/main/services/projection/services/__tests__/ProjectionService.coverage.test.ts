@@ -117,7 +117,6 @@ vi.mock('../../messages', async () => {
       isTerminal = false
       ok = true
     },
-    MessageType: { ClusterVideoData: 0x2c },
     decodeTypeMap: {
       1: { frequency: 48000, channel: 2, bitDepth: 16 }
     },
@@ -125,6 +124,10 @@ vi.mock('../../messages', async () => {
   }
 })
 
+vi.mock('../../driver/dongle/dongleDriver', async () => {
+  const m = (await import('../../messages')) as Record<string, unknown>
+  return { DongleDriver: m.DongleDriver }
+})
 vi.mock('@main/ipc/register', () => ({
   registerIpcHandle: vi.fn(),
   registerIpcOn: vi.fn()
@@ -147,7 +150,7 @@ vi.mock('../ProjectionAudio', () => ({
   })
 }))
 
-vi.mock('../FirmwareUpdateService', () => ({
+vi.mock('../../driver/dongle/FirmwareUpdateService', () => ({
   FirmwareUpdateService: vi.fn().mockImplementation(function () {
     return {
       checkForUpdate: vi.fn(async () => ({ ok: true, hasUpdate: false, raw: {} })),
@@ -490,7 +493,7 @@ describe('ProjectionService video handling', () => {
     svc.config = { dashboards: null }
     svc.planes.pushCluster = vi.fn()
     const msg = Object.assign(new VideoData(), {
-      header: { type: 0x2c },
+      cluster: true,
       width: 100,
       height: 50,
       data: Buffer.from([1])
@@ -510,7 +513,7 @@ describe('ProjectionService video handling', () => {
     svc.sessions.activate(s.index)
 
     const msg = Object.assign(new VideoData(), {
-      header: { type: 0x2c },
+      cluster: true,
       width: 320,
       height: 180,
       data: Buffer.from([1, 2])
@@ -535,7 +538,7 @@ describe('ProjectionService video handling', () => {
     svc.sessions.activate(s.index)
 
     const msg = Object.assign(new VideoData(), {
-      header: { type: 0x06 },
+      cluster: false,
       width: 1920,
       height: 1080,
       data: Buffer.from([9])
@@ -2528,7 +2531,7 @@ describe('ProjectionService branch coverage fill', () => {
     svc.lastClusterVideoHeight = 180
     svc.planes.pushCluster = vi.fn()
     svc.planes.recropAllClusters = vi.fn()
-    const msg = Object.assign(new VideoData(), { header: { type: 0x2c }, width: 320, height: 180 })
+    const msg = Object.assign(new VideoData(), { cluster: true, width: 320, height: 180 })
     svc.handleVideoData(msg)
     expect(svc.planes.recropAllClusters).not.toHaveBeenCalled()
     expect(svc.planes.pushCluster).not.toHaveBeenCalled()
@@ -2541,7 +2544,7 @@ describe('ProjectionService branch coverage fill', () => {
     svc.planes.recropAllClusters = vi.fn()
     svc.getClusterTargetWebContents = vi.fn(() => [{ isDestroyed: () => true, send: vi.fn() }])
     const msg = Object.assign(new VideoData(), {
-      header: { type: 0x2c },
+      cluster: true,
       width: 640,
       height: 360,
       data: Buffer.from([1])
@@ -2558,7 +2561,7 @@ describe('ProjectionService branch coverage fill', () => {
     svc.planes.pushMain = vi.fn()
     svc.planes.updateMainCrop = vi.fn()
     const msg = Object.assign(new VideoData(), {
-      header: { type: 0x06 },
+      cluster: false,
       width: 1920,
       height: 1080
     })
@@ -2575,7 +2578,7 @@ describe('ProjectionService branch coverage fill', () => {
     svc.planes.pushMain = vi.fn()
     svc.planes.updateMainCrop = vi.fn()
     const msg = Object.assign(new VideoData(), {
-      header: { type: 0x06 },
+      cluster: false,
       width: 800,
       height: 600,
       data: Buffer.from([1])

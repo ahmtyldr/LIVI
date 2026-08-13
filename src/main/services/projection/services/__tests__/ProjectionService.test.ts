@@ -95,6 +95,10 @@ vi.mock('../../messages', async () => {
   }
 })
 
+vi.mock('../../driver/dongle/dongleDriver', async () => {
+  const m = (await import('../../messages')) as Record<string, unknown>
+  return { DongleDriver: m.DongleDriver }
+})
 vi.mock('@main/ipc/register', () => ({
   registerIpcHandle: vi.fn(),
   registerIpcOn: vi.fn()
@@ -113,7 +117,7 @@ vi.mock('../ProjectionAudio', () => ({
   })
 }))
 
-vi.mock('../FirmwareUpdateService', () => ({
+vi.mock('../../driver/dongle/FirmwareUpdateService', () => ({
   FirmwareUpdateService: vi.fn().mockImplementation(function () {
     return {
       checkForUpdate: vi.fn(async () => ({ ok: true, hasUpdate: false, raw: {} })),

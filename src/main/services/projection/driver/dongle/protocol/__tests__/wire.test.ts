@@ -1,4 +1,3 @@
-import { HeaderBuildError, MessageHeader, MessageType } from '../common'
 import {
   AudioData,
   BluetoothAddress,
@@ -24,7 +23,9 @@ import {
   VendorSessionInfo,
   VideoData,
   WifiDeviceName
-} from '../readable'
+} from '@projection/messages'
+import { decodeMessage } from '../decode.js'
+import { HeaderBuildError, MessageHeader, MessageType } from '../wire.js'
 
 const createVideoPayload = () => {
   const data = Buffer.alloc(20)
@@ -85,7 +86,7 @@ const createMetaPayload = () => {
   return data
 }
 
-describe('projection messages common', () => {
+describe('dongle protocol wire', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -163,37 +164,37 @@ describe('projection messages common', () => {
     [MessageType.UpdateState, BoxUpdateState, createInt32Payload(1)],
     [MessageType.PeerBluetoothAddress, BluetoothPeerConnecting, Buffer.from('11:22:33')],
     [MessageType.PeerBluetoothAddressAlt, BluetoothPeerConnected, Buffer.from('44:55:66')]
-  ])('toMessage maps payload type %s to the expected readable message', (type, Klass, data) => {
+  ])('decodeMessage maps payload type %s to the expected readable message', (type, Klass, data) => {
     const header = new MessageHeader(data.length, type as MessageType)
-    const message = header.toMessage(data)
+    const message = decodeMessage(header, data)
     expect(message).toBeInstanceOf(Klass as any)
   })
 
-  test('toMessage returns DongleReady for open message without payload', () => {
+  test('decodeMessage returns DongleReady for open message without payload', () => {
     const header = new MessageHeader(0, MessageType.Open)
 
-    const message = header.toMessage()
+    const message = decodeMessage(header)
 
     expect(message).toBeInstanceOf(DongleReady)
   })
 
-  test('toMessage returns Unplugged for unplugged message without payload', () => {
+  test('decodeMessage returns Unplugged for unplugged message without payload', () => {
     const header = new MessageHeader(0, MessageType.Unplugged)
 
-    const message = header.toMessage()
+    const message = decodeMessage(header)
 
     expect(message).toBeInstanceOf(Unplugged)
   })
 
-  test('toMessage returns null for UI-only messages without payload', () => {
-    expect(new MessageHeader(0, MessageType.UiHidePeerInfo).toMessage()).toBeNull()
-    expect(new MessageHeader(0, MessageType.UiBringToForeground).toMessage()).toBeNull()
+  test('decodeMessage returns null for UI-only messages without payload', () => {
+    expect(decodeMessage(new MessageHeader(0, MessageType.UiHidePeerInfo))).toBeNull()
+    expect(decodeMessage(new MessageHeader(0, MessageType.UiBringToForeground))).toBeNull()
   })
 
-  test('toMessage returns null and warns for unknown type without payload', () => {
+  test('decodeMessage returns null and warns for unknown type without payload', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(function () {})
 
-    const message = new MessageHeader(0, 0xdead as MessageType).toMessage()
+    const message = decodeMessage(new MessageHeader(0, 0xdead as MessageType))
 
     expect(message).toBeNull()
     expect(warnSpy).toHaveBeenCalledWith(
@@ -203,31 +204,31 @@ describe('projection messages common', () => {
     warnSpy.mockRestore()
   })
 
-  test('toMessage returns VideoData for video payload messages', () => {
+  test('decodeMessage returns VideoData for video payload messages', () => {
     const data = createVideoPayload()
 
     const header = new MessageHeader(data.length, MessageType.VideoData)
 
-    const message = header.toMessage(data)
+    const message = decodeMessage(header, data)
 
     expect(message).toBeInstanceOf(VideoData)
   })
 
-  test('toMessage returns VendorSessionInfo for vendor session payload messages', () => {
+  test('decodeMessage returns VendorSessionInfo for vendor session payload messages', () => {
     const data = Buffer.from('abcd')
     const header = new MessageHeader(data.length, MessageType.VendorSessionInfo)
 
-    const message = header.toMessage(data)
+    const message = decodeMessage(header, data)
 
     expect(message).toBeInstanceOf(VendorSessionInfo)
   })
 
-  test('toMessage returns null and warns for unknown type with binary payload', () => {
+  test('decodeMessage returns null and warns for unknown type with binary payload', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(function () {})
     const header = new MessageHeader(4, 0xbeef as MessageType)
     const data = Buffer.from([0xde, 0xad, 0xbe, 0xef])
 
-    const message = header.toMessage(data)
+    const message = decodeMessage(header, data)
 
     expect(message).toBeNull()
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Unknown type=0xbeef'))
@@ -235,12 +236,12 @@ describe('projection messages common', () => {
     warnSpy.mockRestore()
   })
 
-  test('toMessage also logs trimmed utf8 text for unknown text payloads', () => {
+  test('decodeMessage also logs trimmed utf8 text for unknown text payloads', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(function () {})
     const header = new MessageHeader(6, 0xbeef as MessageType)
     const data = Buffer.from('hello\0\0', 'utf8')
 
-    const message = header.toMessage(data)
+    const message = decodeMessage(header, data)
 
     expect(message).toBeNull()
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Unknown type=0xbeef'))
@@ -249,12 +250,12 @@ describe('projection messages common', () => {
     warnSpy.mockRestore()
   })
 
-  test('toMessage does not log utf8 text for unknown payloads with empty trimmed text', () => {
+  test('decodeMessage does not log utf8 text for unknown payloads with empty trimmed text', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(function () {})
     const header = new MessageHeader(4, 0xbeef as MessageType)
     const data = Buffer.from('\0\0\0\0', 'utf8')
 
-    const message = header.toMessage(data)
+    const message = decodeMessage(header, data)
 
     expect(message).toBeNull()
     expect(warnSpy).toHaveBeenCalledTimes(1)

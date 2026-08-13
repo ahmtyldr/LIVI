@@ -8,7 +8,7 @@ import {
   Plugged,
   SoftwareVersion,
   Unplugged
-} from '@projection/messages/readable'
+} from '@projection/messages'
 import type { DevListEntry } from '@shared/types'
 import type { DongleDriver } from './dongleDriver.js'
 
