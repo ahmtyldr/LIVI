@@ -46,9 +46,9 @@ export function panelPhysicalMm(
   if (!g || !(g.widthMm > 0) || !(g.heightMm > 0) || !(g.widthPx > 0) || !(g.heightPx > 0)) {
     return null
   }
-  // sqrt: doubling the stream resolution moves the phone up one UI size class.
-  const widthMm = Math.round(g.widthMm * Math.sqrt(widthPixels / g.widthPx))
-  const heightMm = Math.round(g.heightMm * Math.sqrt(heightPixels / g.heightPx))
+  // Sublinear so a resolution step moves the phone one UI size class, not two.
+  const widthMm = Math.round(g.widthMm * (widthPixels / g.widthPx) ** 0.75)
+  const heightMm = Math.round(g.heightMm * (heightPixels / g.heightPx) ** 0.75)
   if (widthMm <= 0 || heightMm <= 0) return null
   return { widthMm, heightMm }
 }

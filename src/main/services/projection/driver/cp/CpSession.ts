@@ -23,7 +23,7 @@ import {
   MultiTouchAction,
   TouchAction
 } from '@shared/types/ProjectionEnums'
-import { isClusterDisplayed } from '@shared/utils'
+import { isClusterDisplayed, toEven } from '@shared/utils'
 import {
   AudioData,
   Command,
@@ -597,8 +597,8 @@ export class CpSession extends EventEmitter implements IPhoneDriver {
   }
 
   private _buildStackConfig(cfg: Config): CpStackConfig {
-    const mainW = cfg.projectionWidth || 1920
-    const mainH = cfg.projectionHeight || 1080
+    const mainW = toEven(cfg.projectionWidth || 1920)
+    const mainH = toEven(cfg.projectionHeight || 1080)
     const mainPanel = panelPhysicalMm('main', mainW, mainH)
     const clusterPanel = panelPhysicalMm('cluster', cfg.clusterWidth, cfg.clusterHeight)
     const name = cfg.carName?.trim() ? cfg.carName : 'LIVI'

@@ -443,8 +443,6 @@ export class ProjectionService {
   private audio: ProjectionAudio
   private systemSound = new SystemSound(() => this.config)
 
-  private displayChangeTimer: ReturnType<typeof setTimeout> | null = null
-
   private readonly onConfigChanged = (next: Config) => {
     if (this.shuttingDown) return
     const prev = this.config
@@ -485,25 +483,6 @@ export class ProjectionService {
       this.audio.onAudioDeviceChanged()
       if (outChanged) this.systemSound.onDeviceChanged()
       this.connectConfiguredAudioDevices().catch(() => {})
-    }
-
-    // The advertised CarPlay displays are fixed per session, a stream size
-    // change needs a fresh session, the phones reconnect on their own.
-    const displaysChanged =
-      next.projectionWidth !== prev.projectionWidth ||
-      next.projectionHeight !== prev.projectionHeight ||
-      next.projectionFps !== prev.projectionFps ||
-      next.clusterWidth !== prev.clusterWidth ||
-      next.clusterHeight !== prev.clusterHeight ||
-      clusterToggled
-    if (displaysChanged && this.cpActive) {
-      if (this.displayChangeTimer) clearTimeout(this.displayChangeTimer)
-      this.displayChangeTimer = setTimeout(() => {
-        this.displayChangeTimer = null
-        if (!this.cpActive || this.shuttingDown) return
-        console.log('[ProjectionService] projection size changed -> dropping CarPlay sessions')
-        this.drivers.getCpManager()?.dropSessions()
-      }, 3000)
     }
   }
 
@@ -1434,6 +1413,9 @@ export class ProjectionService {
 
   // Restart the session to apply a config change that needs fresh negotiation
   public async restartSession(): Promise<void> {
+    // Native CarPlay renegotiates the advertised displays on reconnect.
+    if (this.cpActive) this.drivers.getCpManager()?.dropSessions()
+
     if (this.getActiveTransport() === 'dongle') {
       try {
         await this.driver.disconnectPhone?.()

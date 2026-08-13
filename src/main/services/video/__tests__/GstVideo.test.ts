@@ -278,9 +278,9 @@ describe('compositor control (linux + control path)', () => {
     sock.emit('data', 'el aux 200 100 100 50\n')
 
     expect(m.panelPhysicalMm('main', 1000, 500)).toEqual({ widthMm: 100, heightMm: 50 })
-    expect(m.panelPhysicalMm('main', 4000, 2000)).toEqual({ widthMm: 200, heightMm: 100 })
+    expect(m.panelPhysicalMm('main', 16000, 8000)).toEqual({ widthMm: 800, heightMm: 400 })
     expect(m.panelPhysicalMm('aux', 100, 50)).toEqual({ widthMm: 200, heightMm: 100 })
-    expect(m.panelPhysicalMm('aux', 400, 200)).toEqual({ widthMm: 400, heightMm: 200 })
+    expect(m.panelPhysicalMm('aux', 1600, 800)).toEqual({ widthMm: 1600, heightMm: 800 })
     expect(logSpy).toHaveBeenCalledWith("[compositor] panel 'main': 100x50 mm over 1000x500 px")
   })
 
@@ -296,7 +296,7 @@ describe('compositor control (linux + control path)', () => {
     expect(m.panelPhysicalMm('zy', 100, 100)).toBeNull()
     expect(m.panelPhysicalMm('ok', 0, 100)).toBeNull()
     expect(m.panelPhysicalMm('ok', 1000, 500)).toEqual({ widthMm: 100, heightMm: 50 })
-    expect(m.panelPhysicalMm('ok', 4000, 2000)).toEqual({ widthMm: 200, heightMm: 100 })
+    expect(m.panelPhysicalMm('ok', 16000, 8000)).toEqual({ widthMm: 800, heightMm: 400 })
   })
 })
 

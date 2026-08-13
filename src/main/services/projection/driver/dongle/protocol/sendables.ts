@@ -26,7 +26,8 @@ import {
   dongleDisplayName,
   getCurrentTimeInMs,
   isClusterDisplayed,
-  matchFittingAAResolution
+  matchFittingAAResolution,
+  toEven
 } from '@shared/utils'
 import {
   DONGLE_CALL_QUALITY,
@@ -125,10 +126,6 @@ export type ScreenInsets = {
   bottom: number
   left: number
   right: number
-}
-
-function toEven(n: number): number {
-  return n - (n % 2)
 }
 
 // 24 bytes LE: [screenW, screenH, viewW, viewH, originX, originY]

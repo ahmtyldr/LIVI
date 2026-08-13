@@ -1,3 +1,6 @@
+/** Video codecs need even dimensions. */
+export const toEven = (n: number): number => n - (n % 2)
+
 export const clamp = (number: number, min: number, max: number) => {
   return Math.max(min, Math.min(number, max))
 }
