@@ -102,11 +102,8 @@ function decodeMediaData(mediaType: MediaType, payloadOnly: Buffer): MediaData {
     }
   }
 
-  if (mediaType === MediaType.ControlAutoplayTrigger) {
-    return new MediaData(mediaType, { type: mediaType })
-  }
-
-  return new MediaData(mediaType)
+  // The caller only dispatches the four known types, so the trigger is the tail.
+  return new MediaData(mediaType, { type: MediaType.ControlAutoplayTrigger })
 }
 
 export function parseNaviInfoFromBuffer(buf: Buffer): NaviInfo | null {

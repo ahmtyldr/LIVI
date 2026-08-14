@@ -2105,6 +2105,16 @@ describe('ProjectionService transport switch / restart / connect', () => {
     expect(svc.drivers.getActive().disconnectPhone).toHaveBeenCalled()
   })
 
+  test('restartSession drops CarPlay sessions when native CarPlay is active', async () => {
+    const svc = makeSvc()
+    svc.cpActive = true
+    const dropSessions = vi.fn()
+    svc.drivers.getCpManager = vi.fn(() => ({ dropSessions }))
+    svc.getActiveTransport = vi.fn(() => null)
+    await svc.restartSession()
+    expect(dropSessions).toHaveBeenCalled()
+  })
+
   test('restartSession swallows a dongle disconnect failure', async () => {
     const svc = makeSvc()
     svc.getActiveTransport = vi.fn(() => 'dongle')

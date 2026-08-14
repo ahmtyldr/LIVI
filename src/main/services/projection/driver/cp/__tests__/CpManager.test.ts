@@ -44,6 +44,7 @@ type Priv = {
   _liveSession: SessionLike | null
   start: () => void
   close: () => Promise<void>
+  dropSessions: () => void
   setHevcSupported: (b: boolean) => void
   setVp9Supported: (b: boolean) => void
   setAv1Supported: (b: boolean) => void
@@ -324,6 +325,23 @@ describe('CpManager :7000 listener lifecycle', () => {
   it('close is safe before start', async () => {
     const { mgr } = makeManager()
     await expect(mgr.close()).resolves.toBeUndefined()
+  })
+})
+
+describe('CpManager dropSessions', () => {
+  it('closes every session while keeping the set for reconnects', () => {
+    const { mgr } = makeManager()
+    mgr._onHelperEvent({ type: 'nowplaying', phoneId: 'aa:aa', title: 'A' })
+    mgr._onHelperEvent({ type: 'nowplaying', phoneId: 'bb:bb', title: 'B' })
+    const [a] = sessionsFor(mgr, 'aa:aa')
+    const [b] = sessionsFor(mgr, 'bb:bb')
+    const closeA = vi.spyOn(a as never, 'close').mockResolvedValue(undefined as never)
+    const closeB = vi.spyOn(b as never, 'close').mockResolvedValue(undefined as never)
+
+    mgr.dropSessions()
+
+    expect(closeA).toHaveBeenCalledTimes(1)
+    expect(closeB).toHaveBeenCalledTimes(1)
   })
 })
 

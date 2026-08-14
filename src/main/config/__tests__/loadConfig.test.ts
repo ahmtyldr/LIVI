@@ -19,6 +19,12 @@ vi.mock('@main/config/paths', () => ({
 
 vi.mock('node:os', () => ({ hostname: vi.fn(() => 'test-host') }))
 
+const sysfsPanelGeometryMock = vi.fn(() => null as unknown)
+
+vi.mock('@main/services/video/panelEdid', () => ({
+  sysfsPanelGeometry: () => sysfsPanelGeometryMock()
+}))
+
 vi.mock('@shared/types', () => ({
   DEFAULT_CONFIG: {
     width: 800,
@@ -98,6 +104,32 @@ describe('loadConfig', () => {
     expect(writeFileSync).toHaveBeenCalledWith('/tmp/config.json', JSON.stringify(result, null, 2))
 
     warnSpy.mockRestore()
+  })
+
+  test('projection and cluster defaults come from the panel EDID when unset', () => {
+    ;(existsSync as Mock).mockReturnValue(false)
+    sysfsPanelGeometryMock.mockReturnValueOnce({
+      widthMm: 400,
+      heightMm: 234,
+      widthPx: 400,
+      heightPx: 234
+    })
+
+    const result = loadConfig() as Record<string, unknown>
+
+    expect(result.projectionWidth).toBe(400)
+    expect(result.projectionHeight).toBe(234)
+    expect(result.clusterWidth).toBe(400)
+    expect(result.clusterHeight).toBe(234)
+  })
+
+  test('a configured projection size skips the panel EDID lookup', () => {
+    ;(existsSync as Mock).mockReturnValue(true)
+    ;(readFileSync as Mock).mockReturnValue(JSON.stringify({ projectionWidth: 1280 }))
+
+    loadConfig()
+
+    expect(sysfsPanelGeometryMock).not.toHaveBeenCalled()
   })
 
   test('an existing carName is never replaced by the hostname', () => {

@@ -860,4 +860,10 @@ describe('dongle protocol encode', () => {
     expect(body.DashboardInfo).toBe(7)
     expect(body.GNSSCapability).toBe(15)
   })
+
+  test('throws for a sendable without a wire encoding', () => {
+    class Unwired extends SendableMessage {}
+
+    expect(() => encodeSendable(new Unwired())).toThrow('No dongle wire encoding for Unwired')
+  })
 })
