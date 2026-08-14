@@ -8,9 +8,9 @@ import FormControl from '@mui/material/FormControl'
 import FormLabel from '@mui/material/FormLabel'
 import OutlinedInput from '@mui/material/OutlinedInput'
 import { alpha, useTheme } from '@mui/material/styles'
+import { AppContext } from '@renderer/context'
 import * as React from 'react'
 import { useContext } from 'react'
-import { AppContext } from '../../../../../context'
 
 export default function NumberSpinner({
   id: idProp,

@@ -1,6 +1,6 @@
+import type { SettingsNode } from '@renderer/routes'
 import type { Config } from '@shared/types'
 import { useCallback, useMemo } from 'react'
-import type { SettingsNode } from '../../../../routes'
 import { getValueByPath } from '../utils'
 import { useSmartSettings } from './useSmartSettings'
 

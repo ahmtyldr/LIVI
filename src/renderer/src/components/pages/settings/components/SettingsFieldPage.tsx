@@ -1,5 +1,5 @@
+import { SettingsNode } from '@renderer/routes'
 import type { Config } from '@shared/types'
-import { SettingsNode } from '../../../../routes'
 import { SettingsFieldControl } from './SettingsFieldControl'
 
 type Props<T> = {

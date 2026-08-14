@@ -1,4 +1,4 @@
-import type { SelectOption } from '../../../../routes/types'
+import type { SelectOption } from '@renderer/routes/types'
 
 // PipeWire bluez_output uses underscores, bluez_input uses colons in the MAC
 export function extractBtMac(id: string | number | undefined | null): string | null {

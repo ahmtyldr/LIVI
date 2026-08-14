@@ -23,6 +23,8 @@ export default defineConfig({
         define,
         resolve: {
           alias: {
+            '@pkg': r('package.json'),
+            '@settings': r('src/renderer/src/components/pages/settings'),
             '@renderer': r('src/renderer/src'),
             '@worker': r('src/renderer/src/components/worker'),
             '@store': r('src/renderer/src/store'),

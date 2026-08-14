@@ -1,6 +1,6 @@
+import { SettingsNode } from '@renderer/routes'
 import type { Config } from '@shared/types'
 import { ReactNode } from 'react'
-import { SettingsNode } from '../../../routes'
 
 export interface StackItemProps {
   children?: ReactNode

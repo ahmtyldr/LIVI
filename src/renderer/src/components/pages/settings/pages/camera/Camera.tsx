@@ -1,10 +1,10 @@
 import { MenuItem, Select, Typography } from '@mui/material'
+import { UsbEvent } from '@renderer/components/pages/media/types'
+import type { SettingsCustomPageProps } from '@settings/type'
 import type { Config } from '@shared/types'
 import { useStatusStore } from '@store/store'
 import { updateCameras as detectCameras } from '@utils/cameraDetection'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { UsbEvent } from '../../../media/types'
-import type { SettingsCustomPageProps } from '../../type'
 
 function coerceSelectValue<T extends string | number>(
   value: T | null | undefined,

@@ -1,4 +1,4 @@
-import type { SelectNode, SelectOption } from '../../../../routes/types'
+import type { SelectNode, SelectOption } from '@renderer/routes/types'
 
 const cache = new Map<string, SelectOption[]>()
 const inflight = new Map<string, Promise<SelectOption[]>>()

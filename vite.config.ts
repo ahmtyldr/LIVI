@@ -80,6 +80,8 @@ const mainAlias = {
 }
 
 const rendererAlias = {
+  '@pkg': resolve(__dirname, 'package.json'),
+  '@settings': resolve(__dirname, 'src/renderer/src/components/pages/settings'),
   '@renderer': resolve(__dirname, 'src/renderer/src'),
   '@worker': path.resolve(__dirname, 'src/renderer/src/components/worker'),
   '@store': path.resolve(__dirname, 'src/renderer/src/store'),

@@ -8,11 +8,11 @@ import {
   Typography
 } from '@mui/material'
 import { EMPTY_STRING } from '@renderer/constants'
+import { SettingsButtonRow, SettingsSwitchRow, SettingsValueRow } from '@settings/components'
 import type { Config } from '@shared/types'
 import { useLiviStore } from '@store/store'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { SettingsButtonRow, SettingsSwitchRow, SettingsValueRow } from '../../../components'
 import { INSTALL_PHASES } from './constants'
 import { phaseMap, UpdatePhases, UpgradeText } from './types'
 import { buildTag, cmpSemver, human, parseSemver, sameNightlyBuild } from './utils'

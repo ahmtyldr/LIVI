@@ -1,9 +1,9 @@
 import RestartAltOutlinedIcon from '@mui/icons-material/RestartAltOutlined'
 import { Box, IconButton, Slider, Typography } from '@mui/material'
+import { SettingsNode } from '@renderer/routes'
 import type { Config } from '@shared/types'
 import { type CSSProperties, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { SettingsNode } from '../../../../../routes'
 import { defaultColorForPath, type Hsl, hexToHsl, hslToHex } from './colorUtils'
 
 type Props = {
