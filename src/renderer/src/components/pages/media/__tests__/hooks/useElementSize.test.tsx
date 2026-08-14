@@ -68,6 +68,74 @@ describe('useElementSize', () => {
     expect(screen.getByTestId('size')).toHaveTextContent('1280x720')
   })
 
+  test('seeds the real element box before the observer reports', () => {
+    Object.defineProperty(HTMLElement.prototype, 'clientWidth', {
+      configurable: true,
+      value: 640
+    })
+    Object.defineProperty(HTMLElement.prototype, 'clientHeight', {
+      configurable: true,
+      value: 480
+    })
+    try {
+      render(<TestComponent />)
+
+      expect(screen.getByTestId('size')).toHaveTextContent('640x480')
+    } finally {
+      delete (HTMLElement.prototype as { clientWidth?: number }).clientWidth
+      delete (HTMLElement.prototype as { clientHeight?: number }).clientHeight
+    }
+  })
+
+  test('the seed subtracts padding to match the observer content box', () => {
+    Object.defineProperty(HTMLElement.prototype, 'clientWidth', {
+      configurable: true,
+      value: 640
+    })
+    Object.defineProperty(HTMLElement.prototype, 'clientHeight', {
+      configurable: true,
+      value: 480
+    })
+    function PaddedComponent() {
+      const [ref, size] = useElementSize<HTMLDivElement>()
+      return (
+        <div>
+          <div ref={ref} style={{ padding: '10px 20px' }} />
+          <div data-testid="size">
+            {size.w}x{size.h}
+          </div>
+        </div>
+      )
+    }
+    try {
+      render(<PaddedComponent />)
+
+      expect(screen.getByTestId('size')).toHaveTextContent('600x460')
+    } finally {
+      delete (HTMLElement.prototype as { clientWidth?: number }).clientWidth
+      delete (HTMLElement.prototype as { clientHeight?: number }).clientHeight
+    }
+  })
+
+  test('the seed is a no-op when the element already matches the fallback', () => {
+    Object.defineProperty(HTMLElement.prototype, 'clientWidth', {
+      configurable: true,
+      value: 1280
+    })
+    Object.defineProperty(HTMLElement.prototype, 'clientHeight', {
+      configurable: true,
+      value: 720
+    })
+    try {
+      render(<TestComponent />)
+
+      expect(screen.getByTestId('size')).toHaveTextContent('1280x720')
+    } finally {
+      delete (HTMLElement.prototype as { clientWidth?: number }).clientWidth
+      delete (HTMLElement.prototype as { clientHeight?: number }).clientHeight
+    }
+  })
+
   test('observes attached element and updates rounded size', () => {
     render(<TestComponent />)
 
