@@ -1118,7 +1118,10 @@ export class Session extends EventEmitter {
         this._transition(State.AUTH)
         void this._postTlsSetup()
       },
-      onError: (err) => this.emit('error', err),
+      onError: (err) => {
+        this.emit('error', err)
+        this._transition(State.CLOSED, `tls error: ${err.message}`)
+      },
       isHandshakePhase: () => this._state === State.TLS_HANDSHAKE
     })
   }

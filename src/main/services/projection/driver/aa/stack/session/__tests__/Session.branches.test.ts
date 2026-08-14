@@ -750,9 +750,13 @@ describe('_startTls callbacks', () => {
     expect(post).toHaveBeenCalled()
 
     const err = vi.fn()
+    const down = vi.fn()
     session.on('error', err)
+    session.on('disconnected', down)
     tlsOpts.onError(new Error('tls fail'))
     expect(err).toHaveBeenCalled()
+    expect((session as unknown as { _state: number })._state).toBe(7)
+    expect(down).toHaveBeenCalledWith('tls error: tls fail')
 
     ;(session as unknown as { _state: number })._state = 2
     expect(tlsOpts.isHandshakePhase()).toBe(true)
