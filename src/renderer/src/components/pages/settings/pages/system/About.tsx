@@ -1,16 +1,9 @@
-import { Box, Stack, Typography } from '@mui/material'
+import { author, contributors, description, homepage, name, version } from '@pkg'
 import { EMPTY_STRING } from '@renderer/constants'
+import { SettingsValueRow } from '@settings/components'
 import type { CSSProperties } from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  author,
-  contributors,
-  description,
-  homepage,
-  name,
-  version
-} from '../../../../../../../../package.json'
 
 type Row = {
   label: string
@@ -114,28 +107,28 @@ export const About = () => {
   }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      <Stack spacing={0.75}>
-        {rows.map((r) => (
-          <Stack key={r.label} direction="row" spacing={1} sx={{ alignItems: 'baseline' }}>
-            <Typography sx={{ minWidth: 110 }} color="text.secondary">
-              {r.label}:
-            </Typography>
-
-            <Typography
-              sx={{
+    <div style={{ width: '100%', boxSizing: 'border-box' }}>
+      {rows.map((r) => (
+        <SettingsValueRow
+          key={r.label}
+          label={r.label}
+          value={
+            <span
+              style={{
                 ...(r.mono ? Mono : null),
+                display: 'inline-block',
+                maxWidth: '42ch',
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
-                maxWidth: '42ch'
+                verticalAlign: 'bottom'
               }}
             >
               {r.value}
-            </Typography>
-          </Stack>
-        ))}
-      </Stack>
-    </Box>
+            </span>
+          }
+        />
+      ))}
+    </div>
   )
 }

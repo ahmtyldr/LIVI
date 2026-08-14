@@ -13,13 +13,13 @@ describe('About page', () => {
   test('renders package metadata rows', () => {
     render(<About />)
 
-    expect(screen.getByText('settings.name:')).toBeInTheDocument()
-    expect(screen.getByText('settings.description:')).toBeInTheDocument()
-    expect(screen.getByText('settings.version:')).toBeInTheDocument()
-    expect(screen.getByText('Commit:')).toBeInTheDocument()
-    expect(screen.getByText('settings.url:')).toBeInTheDocument()
-    expect(screen.getByText('settings.author:')).toBeInTheDocument()
-    expect(screen.getByText('settings.contributors:')).toBeInTheDocument()
+    expect(screen.getByText('settings.name')).toBeInTheDocument()
+    expect(screen.getByText('settings.description')).toBeInTheDocument()
+    expect(screen.getByText('settings.version')).toBeInTheDocument()
+    expect(screen.getByText('Commit')).toBeInTheDocument()
+    expect(screen.getByText('settings.url')).toBeInTheDocument()
+    expect(screen.getByText('settings.author')).toBeInTheDocument()
+    expect(screen.getByText('settings.contributors')).toBeInTheDocument()
 
     expect(screen.getByText('test-app')).toBeInTheDocument()
     expect(screen.getByText((v) => /^\d+\.\d+\.\d+/.test(v))).toBeInTheDocument()
@@ -28,8 +28,8 @@ describe('About page', () => {
   test('renders author and contributors rows with values', () => {
     render(<About />)
 
-    const authorLabel = screen.getByText('settings.author:')
-    const contributorsLabel = screen.getByText('settings.contributors:')
+    const authorLabel = screen.getByText('settings.author')
+    const contributorsLabel = screen.getByText('settings.contributors')
 
     expect(authorLabel.nextSibling).toBeInTheDocument()
     expect(contributorsLabel.nextSibling).toBeInTheDocument()
@@ -40,7 +40,7 @@ describe('About page', () => {
 
 // Test the helper functions via a mock of package.json
 vi.mock(
-  '../../../../../../../../../package.json',
+  '@pkg',
   () => ({
     name: 'test-app',
     version: '9.9.9',
@@ -56,7 +56,7 @@ describe('About page with object author and contributors', () => {
   test('renders object author as formatted string (name email url)', () => {
     render(<About />)
 
-    const authorLabel = screen.getByText('settings.author:')
+    const authorLabel = screen.getByText('settings.author')
     expect(authorLabel.nextSibling?.textContent).toContain('Jane')
     expect(authorLabel.nextSibling?.textContent).toContain('jane@example.com')
   })
@@ -64,13 +64,13 @@ describe('About page with object author and contributors', () => {
   test('renders contributor objects and strings from array', () => {
     render(<About />)
 
-    const contribLabel = screen.getByText('settings.contributors:')
+    const contribLabel = screen.getByText('settings.contributors')
     expect(contribLabel.nextSibling?.textContent).toContain('Alice')
     expect(contribLabel.nextSibling?.textContent).toContain('Bob')
   })
 })
 
-const pkgPath = '../../../../../../../../../package.json'
+const pkgPath = '@pkg'
 
 const renderWith = async (pkg: Record<string, unknown>, run: unknown, sha: unknown) => {
   vi.resetModules()
@@ -98,10 +98,10 @@ describe('About page metadata edge cases', () => {
 
     expect(screen.getByText('5')).toBeInTheDocument()
 
-    const authorLabel = screen.getByText('settings.author:')
+    const authorLabel = screen.getByText('settings.author')
     expect(authorLabel.nextSibling?.textContent).toBe('Solo')
 
-    const contribLabel = screen.getByText('settings.contributors:')
+    const contribLabel = screen.getByText('settings.contributors')
     expect(contribLabel.nextSibling?.textContent).toBe('—')
   })
 
@@ -119,10 +119,10 @@ describe('About page metadata edge cases', () => {
       'abc1234'
     )
 
-    const authorLabel = screen.getByText('settings.author:')
+    const authorLabel = screen.getByText('settings.author')
     expect(authorLabel.nextSibling?.textContent).toBe('—')
 
-    const contribLabel = screen.getByText('settings.contributors:')
+    const contribLabel = screen.getByText('settings.contributors')
     expect(contribLabel.nextSibling?.textContent).toBe('—')
 
     expect(screen.getByText('#9')).toBeInTheDocument()
@@ -143,10 +143,10 @@ describe('About page metadata edge cases', () => {
       undefined
     )
 
-    const authorLabel = screen.getByText('settings.author:')
+    const authorLabel = screen.getByText('settings.author')
     expect(authorLabel.nextSibling?.textContent).toBe('—')
 
-    const contribLabel = screen.getByText('settings.contributors:')
+    const contribLabel = screen.getByText('settings.contributors')
     expect(contribLabel.nextSibling?.textContent).toBe('—')
 
     expect(screen.getByText('dev')).toBeInTheDocument()

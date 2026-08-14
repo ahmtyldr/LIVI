@@ -198,7 +198,7 @@ describe('IconUploader', () => {
         requestRestart={requestRestart}
       />
     )
-    const iconBox = screen.getAllByRole('button')[0]
+    const iconBox = screen.getByLabelText('icon preview')
     fireEvent.keyDown(iconBox, { key: 'Enter' })
     expect(iconBox).toBeInTheDocument()
   })
@@ -214,7 +214,7 @@ describe('IconUploader', () => {
     )
     const input = container.querySelector('input[type="file"]') as HTMLInputElement
     const clickSpy = vi.spyOn(input, 'click')
-    const iconBox = screen.getAllByRole('button')[0]
+    const iconBox = screen.getByLabelText('icon preview')
     fireEvent.click(iconBox)
     expect(clickSpy).toHaveBeenCalled()
   })
@@ -230,7 +230,7 @@ describe('IconUploader', () => {
     )
     const input = container.querySelector('input[type="file"]') as HTMLInputElement
     const clickSpy = vi.spyOn(input, 'click')
-    const iconBox = screen.getAllByRole('button')[0]
+    const iconBox = screen.getByLabelText('icon preview')
     fireEvent.keyDown(iconBox, { key: ' ' })
     expect(clickSpy).toHaveBeenCalled()
   })
@@ -276,7 +276,7 @@ describe('IconUploader', () => {
     )
     const input = container.querySelector('input[type="file"]') as HTMLInputElement
     const clickSpy = vi.spyOn(input, 'click')
-    fireEvent.keyDown(screen.getAllByRole('button')[0], { key: 'a' })
+    fireEvent.keyDown(screen.getByLabelText('icon preview'), { key: 'a' })
     expect(clickSpy).not.toHaveBeenCalled()
   })
 

@@ -1,5 +1,6 @@
-import { Box, Button, CircularProgress, Stack, Typography } from '@mui/material'
+import { Box, Typography } from '@mui/material'
 import type { SettingsCustomPageProps } from '@renderer/routes/types'
+import { SettingsButtonRow } from '@settings/components'
 import { ICON_120_B64, ICON_180_B64, ICON_256_B64 } from '@shared/assets/carIcons'
 import type { Config } from '@shared/types'
 import { useLiviStore, useStatusStore } from '@store/store'
@@ -144,69 +145,76 @@ export function IconUploader(props: SettingsCustomPageProps<Config, unknown>) {
   if (!settings) return null
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      <Box
-        role="button"
-        tabIndex={0}
-        onClick={() => !isImporting && pickFile()}
-        onKeyDown={(e) => {
-          if (!isImporting && (e.key === 'Enter' || e.key === ' ')) {
-            e.preventDefault()
-            e.stopPropagation()
-            pickFile()
-          }
-        }}
-        sx={(theme) => ({
-          width: 160,
-          height: 160,
-          borderRadius: 2,
-          border: `1px solid ${theme.palette.divider}`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          overflow: 'hidden',
-          cursor: isImporting ? 'default' : 'pointer'
-        })}
-      >
-        {iconPreviewSrc ? (
-          <Box
-            component="img"
-            src={iconPreviewSrc}
-            alt="icon preview"
-            sx={{ width: '100%', height: '100%', objectFit: 'contain' }}
-          />
-        ) : (
-          <Typography variant="caption" color="text.secondary">
-            No icon found
-          </Typography>
-        )}
-      </Box>
+    <div style={{ width: '100%', boxSizing: 'border-box' }}>
+      <SettingsButtonRow
+        label={t('settings.importPng')}
+        buttonLabel={t('settings.import')}
+        variant="outlined"
+        onClick={pickFile}
+        loading={isImporting}
+      />
 
-      <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-        <Button variant="outlined" onClick={pickFile} disabled={isImporting}>
-          {isImporting ? t('settings.importing') : t('settings.importPng')}
-        </Button>
+      <SettingsButtonRow
+        label={t('settings.uiIcon')}
+        buttonLabel={t('settings.reset')}
+        variant="outlined"
+        onClick={resetToDefaults}
+        loading={isResetting}
+      />
 
-        <Button variant="outlined" onClick={resetToDefaults} disabled={isResetting}>
-          {isResetting ? t('settings.resetting') : t('settings.reset')}
-        </Button>
-
-        <Button
-          variant="contained"
-          onClick={uploadToDongle}
-          disabled={isUploading || !isDongleConnected}
-        >
-          {isUploading ? t('settings.uploading') : t('settings.upload')}
-        </Button>
-
-        {(isImporting || isUploading || isResetting) && <CircularProgress size={18} />}
-      </Stack>
+      <SettingsButtonRow
+        label={t('settings.usbDongle')}
+        buttonLabel={t('settings.upload')}
+        onClick={uploadToDongle}
+        disabled={!isDongleConnected}
+        loading={isUploading}
+      />
 
       {message && (
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5, px: 2 }}>
           {message}
         </Typography>
       )}
+
+      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+        <Box
+          role="button"
+          tabIndex={0}
+          aria-label="icon preview"
+          onClick={() => !isImporting && pickFile()}
+          onKeyDown={(e) => {
+            if (!isImporting && (e.key === 'Enter' || e.key === ' ')) {
+              e.preventDefault()
+              e.stopPropagation()
+              pickFile()
+            }
+          }}
+          sx={(theme) => ({
+            width: 'clamp(140px, 28svh, 220px)',
+            height: 'clamp(140px, 28svh, 220px)',
+            borderRadius: 2,
+            border: `1px solid ${theme.palette.divider}`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            overflow: 'hidden',
+            cursor: isImporting ? 'default' : 'pointer'
+          })}
+        >
+          {iconPreviewSrc ? (
+            <Box
+              component="img"
+              src={iconPreviewSrc}
+              alt="icon preview"
+              sx={{ width: '100%', height: '100%', objectFit: 'contain' }}
+            />
+          ) : (
+            <Typography variant="caption" color="text.secondary">
+              No icon found
+            </Typography>
+          )}
+        </Box>
+      </Box>
 
       <input
         ref={fileInputRef}
@@ -215,6 +223,6 @@ export function IconUploader(props: SettingsCustomPageProps<Config, unknown>) {
         style={{ display: 'none' }}
         onChange={onFileChange}
       />
-    </Box>
+    </div>
   )
 }
