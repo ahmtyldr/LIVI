@@ -82,16 +82,22 @@ describe('Devices', () => {
         signalStrength: 2
       })
     ]
-    render(<Devices />)
-    expect(screen.getByText('CarPlay')).toBeInTheDocument()
-    expect(screen.getByText('Android Auto')).toBeInTheDocument()
-    expect(screen.getByText('Device')).toBeInTheDocument()
+    const { container } = render(<Devices />)
     expect(screen.getByText('iPhone')).toBeInTheDocument()
+    expect(screen.getByText('Pixel')).toBeInTheDocument()
     expect(screen.getByText('Model X')).toBeInTheDocument()
-    expect(screen.getByText('Active')).toBeInTheDocument()
-    expect(screen.getByText('Not available')).toBeInTheDocument()
-    expect(screen.getByText('Available')).toBeInTheDocument()
-    expect(screen.getByText('T-Mobile')).toBeInTheDocument()
+    expect(container.querySelector('svg[data-testid="PhoneIphoneIcon"]')).toBeTruthy()
+    expect(container.querySelector('svg[data-testid="AndroidIcon"]')).toBeTruthy()
+    expect(container.querySelector('svg[data-testid="DirectionsCarIcon"]')).toBeTruthy()
+    expect(container.querySelector('svg[data-testid="DeviceHubIcon"]')).toBeTruthy()
+    expect(container.querySelector('svg[data-testid="CableOutlinedIcon"]')).toBeTruthy()
+    expect(container.querySelector('svg[data-testid="WifiOutlinedIcon"]')).toBeTruthy()
+    const dots = screen.getAllByRole('status')
+    expect(dots.map((d) => d.getAttribute('aria-label'))).toEqual([
+      'active',
+      'offline',
+      'available'
+    ])
     expect(screen.getByTitle('50% charging')).toBeInTheDocument()
   })
 
@@ -136,5 +142,13 @@ describe('Devices', () => {
     fireEvent.click(deleteButtons[1])
     expect(forgetDongleMock).toHaveBeenCalledWith('dg')
     expect(forgetMock).toHaveBeenCalledWith('bt')
+    expect(selectMock).not.toHaveBeenCalled()
+  })
+
+  test('keyboard activation on delete never selects the row', () => {
+    deviceState.list = [dev({ id: 'a', name: 'Phone', session: 1 })]
+    render(<Devices />)
+    fireEvent.keyDown(screen.getByLabelText('Delete device'), { key: 'Enter' })
+    expect(selectMock).not.toHaveBeenCalled()
   })
 })
