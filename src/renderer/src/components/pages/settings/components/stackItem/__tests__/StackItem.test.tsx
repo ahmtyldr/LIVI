@@ -10,6 +10,44 @@ vi.mock('react-i18next', () => ({
 }))
 
 describe('StackItem', () => {
+  test('renders a leading icon when the node carries an icon key', () => {
+    const node = {
+      type: 'route',
+      label: 'Devices',
+      route: 'devices',
+      path: '',
+      icon: 'devices',
+      children: []
+    } as SettingsNode<Config>
+
+    const { container } = render(
+      <StackItem node={node} withForwardIcon onClick={() => {}}>
+        <span>Devices</span>
+      </StackItem>
+    )
+
+    expect(container.querySelector('svg[data-testid="SmartphoneOutlinedIcon"]')).toBeTruthy()
+  })
+
+  test('renders no leading icon for an unknown icon key', () => {
+    const node = {
+      type: 'route',
+      label: 'X',
+      route: 'x',
+      path: '',
+      icon: 'nope',
+      children: []
+    } as SettingsNode<Config>
+
+    const { container } = render(
+      <StackItem node={node}>
+        <span>X</span>
+      </StackItem>
+    )
+
+    expect(container.querySelectorAll('svg')).toHaveLength(0)
+  })
+
   test('renders translated label for select option', () => {
     const node = {
       type: 'select',

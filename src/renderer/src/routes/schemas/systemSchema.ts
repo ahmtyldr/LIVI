@@ -9,6 +9,7 @@ export const systemSchema: SettingsNode<Config> = {
   route: 'system',
   label: 'System',
   labelKey: 'settings.system',
+  icon: 'system',
   type: 'route',
   path: '',
   children: [
@@ -16,6 +17,7 @@ export const systemSchema: SettingsNode<Config> = {
       type: 'route',
       label: 'About',
       labelKey: 'settings.about',
+      icon: 'about',
       route: 'about',
       path: '',
       children: [
@@ -32,6 +34,7 @@ export const systemSchema: SettingsNode<Config> = {
       type: 'route',
       label: 'Software Update',
       labelKey: 'settings.softwareUpdate',
+      icon: 'softwareUpdate',
       route: 'softwareUpdate',
       path: '',
       children: [
@@ -48,6 +51,7 @@ export const systemSchema: SettingsNode<Config> = {
       type: 'route',
       label: 'Restart System',
       labelKey: 'settings.restartSystem',
+      icon: 'restart',
       route: 'restart',
       path: '',
       children: [
@@ -64,6 +68,7 @@ export const systemSchema: SettingsNode<Config> = {
       type: 'route',
       label: 'Power Off',
       labelKey: 'settings.powerOff',
+      icon: 'poweroff',
       route: 'poweroff',
       path: '',
       children: [

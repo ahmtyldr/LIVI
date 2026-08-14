@@ -25,6 +25,7 @@ export type NodeMeta = {
     title?: string
     labelTitle?: string
   }
+  icon?: string
   displayValue?: boolean
   displayValueUnit?: string
   valueTransform?: ValueTransform<unknown, unknown>

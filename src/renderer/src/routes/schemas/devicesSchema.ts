@@ -6,6 +6,7 @@ export const devicesSchema: SettingsNode<Config> = {
   route: 'devices',
   label: 'Devices',
   labelKey: 'settings.devices',
+  icon: 'devices',
   path: '',
   children: [
     {

@@ -9,18 +9,21 @@ export const appearanceSchema: SettingsNode<Config> = {
   route: 'appearance',
   label: 'Appearance',
   labelKey: 'settings.appearance',
+  icon: 'appearance',
   path: '',
   children: [
     {
       type: 'checkbox',
       label: 'Dark Mode',
       labelKey: 'settings.darkMode',
+      icon: 'darkMode',
       path: 'darkMode'
     },
     {
       type: 'select',
       label: 'Phone Appearance',
       labelKey: 'settings.phoneAppearance',
+      icon: 'phoneAppearance',
       path: 'appearanceMode',
       displayValue: true,
       options: [
@@ -37,6 +40,7 @@ export const appearanceSchema: SettingsNode<Config> = {
       type: 'route',
       label: 'UI Colors',
       route: 'ui-colors',
+      icon: 'uiColors',
       path: '',
       children: [
         {
@@ -93,6 +97,7 @@ export const appearanceSchema: SettingsNode<Config> = {
       type: 'route',
       label: 'Contrast / Gamma',
       route: 'display-contrast-gamma',
+      icon: 'contrastGamma',
       path: '',
       children: [
         {
@@ -107,6 +112,7 @@ export const appearanceSchema: SettingsNode<Config> = {
       type: 'route',
       label: 'Color',
       route: 'display-color',
+      icon: 'displayColor',
       path: '',
       children: [
         {
@@ -121,6 +127,7 @@ export const appearanceSchema: SettingsNode<Config> = {
       type: 'route',
       label: 'UI Icon',
       labelKey: 'settings.uiIcon',
+      icon: 'uiIcon',
       route: 'ui-icon',
       path: '',
       children: [

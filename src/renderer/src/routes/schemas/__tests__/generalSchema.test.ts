@@ -89,6 +89,10 @@ describe('generalSchema', () => {
       })
     )
     expect(mfi.children.map((x) => x.path)).toEqual(['carPlayMfiI2cBus', 'carPlayMfiPowerGpio'])
+
+    const powerPin = mfi.children[1]
+    expect(powerPin.valueTransform?.format?.(-1)).toBe('-')
+    expect(powerPin.valueTransform?.format?.(21)).toBe('21')
   })
 
   test('usb dongle route lives at the bottom with a single custom entry', () => {

@@ -1,14 +1,15 @@
 import ArrowForwardIosOutlinedIcon from '@mui/icons-material/ArrowForwardIosOutlined'
 import Paper from '@mui/material/Paper'
 import { styled } from '@mui/material/styles'
+import type { SelectNode } from '@renderer/routes/types'
 import { useLiviStore } from '@renderer/store/store'
+import { StackItemProps } from '@settings/type'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { SelectNode } from '../../../../../routes/types'
-import { StackItemProps } from '../../type'
 import { defaultColorForPath } from '../colorPicker/colorUtils'
 import { findOptionForValue, withGhostOption } from '../ghostOption'
 import { getCachedOptions, resolveOptions } from '../selectOptionsCache'
+import { SettingsRowIcon } from '../settingsRowIcon'
 
 const Item = styled(Paper)(({ theme }) => {
   const activeColor = theme.palette.primary.main
@@ -20,7 +21,7 @@ const Item = styled(Paper)(({ theme }) => {
   const activeRowStyles = {
     borderBottom: `2px solid ${activeColor}`,
     a: { color: activeColor },
-    svg: { right: '3px', color: activeColor }
+    '& .row-chevron': { right: '3px', color: activeColor }
   } as const
 
   return {
@@ -33,7 +34,7 @@ const Item = styled(Paper)(({ theme }) => {
     borderBottom: `2px solid ${theme.palette.divider}`,
     fontSize: rowFont,
 
-    '& svg': {
+    '& .row-chevron': {
       position: 'relative',
       right: 0,
       transition: 'all 0.3s ease-in-out'
@@ -86,20 +87,20 @@ const Item = styled(Paper)(({ theme }) => {
       'html[data-input="mouse"] &': {
         '&:hover': {
           color: activeColor,
-          '+ svg': { right: '3px', color: activeColor }
+          '+ .row-chevron': { right: '3px', color: activeColor }
         }
       },
 
       // Press feedback (mouse + touch) - same as keyboard highlight
       '&:active': {
         color: activeColor,
-        '+ svg': { right: '3px', color: activeColor }
+        '+ .row-chevron': { right: '3px', color: activeColor }
       },
 
       // Keyboard highlight
       '&:focus-visible': {
         color: activeColor,
-        '+ svg': { right: '3px', color: activeColor }
+        '+ .row-chevron': { right: '3px', color: activeColor }
       },
 
       '&:focus': { outline: 'none' }
@@ -189,6 +190,7 @@ export const StackItem = ({
       tabIndex={onClick ? 0 : -1}
       role={onClick ? 'button' : undefined}
     >
+      <SettingsRowIcon name={node?.icon} />
       {children}
       {showValue && node?.type === 'color' && (
         <div
@@ -212,6 +214,7 @@ export const StackItem = ({
       )}
       {withForwardIcon && (
         <ArrowForwardIosOutlinedIcon
+          className="row-chevron"
           sx={{ color: 'inherit', fontSize: 'clamp(18px, 3.2svh, 28px)' }}
         />
       )}

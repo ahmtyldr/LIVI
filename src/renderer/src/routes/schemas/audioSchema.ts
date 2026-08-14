@@ -42,12 +42,14 @@ export const audioSchema: SettingsNode<Config> = {
   route: 'audio',
   label: 'Audio',
   labelKey: 'settings.audio',
+  icon: 'audio',
   path: '',
   children: [
     {
       type: 'slider',
       label: 'Head Unit',
       labelKey: 'settings.huVolume',
+      icon: 'huVolume',
       path: 'huVolume',
       displayValue: true,
       displayValueUnit: '%',
@@ -61,6 +63,7 @@ export const audioSchema: SettingsNode<Config> = {
       type: 'slider',
       label: 'Music',
       labelKey: 'settings.music',
+      icon: 'music',
       path: 'audioVolume',
       displayValue: true,
       displayValueUnit: '%',
@@ -74,6 +77,7 @@ export const audioSchema: SettingsNode<Config> = {
       type: 'slider',
       label: 'Navigation',
       labelKey: 'settings.navigation',
+      icon: 'navigation',
       path: 'navVolume',
       displayValue: true,
       displayValueUnit: '%',
@@ -87,6 +91,7 @@ export const audioSchema: SettingsNode<Config> = {
       type: 'slider',
       label: 'Voice Assistant',
       labelKey: 'settings.voiceAssistant',
+      icon: 'voiceAssistant',
       path: 'voiceAssistantVolume',
       displayValue: true,
       displayValueUnit: '%',
@@ -100,6 +105,7 @@ export const audioSchema: SettingsNode<Config> = {
       type: 'slider',
       label: 'Phone Calls',
       labelKey: 'settings.phoneCalls',
+      icon: 'phoneCalls',
       path: 'callVolume',
       displayValue: true,
       displayValueUnit: '%',
@@ -113,6 +119,7 @@ export const audioSchema: SettingsNode<Config> = {
       type: 'slider',
       label: 'System Sounds',
       labelKey: 'settings.systemSounds',
+      icon: 'systemSounds',
       path: 'systemSoundsVolume',
       displayValue: true,
       displayValueUnit: '%',
@@ -126,6 +133,7 @@ export const audioSchema: SettingsNode<Config> = {
       type: 'select',
       label: 'Audio Output',
       labelKey: 'settings.audioOutputDevice',
+      icon: 'audioOutput',
       path: 'audioOutputDevice',
       labelPath: 'audioOutputDeviceLabel',
       displayValue: true,
@@ -140,6 +148,7 @@ export const audioSchema: SettingsNode<Config> = {
       type: 'select',
       label: 'Audio Input',
       labelKey: 'settings.audioInputDevice',
+      icon: 'audioInput',
       path: 'audioInputDevice',
       labelPath: 'audioInputDeviceLabel',
       displayValue: true,
@@ -154,6 +163,7 @@ export const audioSchema: SettingsNode<Config> = {
       type: 'select',
       label: 'Sampling Frequency',
       labelKey: 'settings.samplingFrequency',
+      icon: 'samplingFrequency',
       path: 'samplingFrequency',
       displayValue: true,
       options: [
@@ -169,12 +179,14 @@ export const audioSchema: SettingsNode<Config> = {
       type: 'checkbox',
       label: 'Link Head Unit to System Volume',
       labelKey: 'settings.huVolumeLinkSystem',
+      icon: 'volumeLink',
       path: 'huVolumeLinkSystem'
     },
     {
       type: 'checkbox',
       label: 'Disable Audio',
       labelKey: 'settings.disableAudio',
+      icon: 'audioOff',
       path: 'disableAudioOutput'
     }
   ]

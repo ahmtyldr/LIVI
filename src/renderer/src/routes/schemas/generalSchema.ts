@@ -50,6 +50,7 @@ export const generalSchema: SettingsNode<Config> = {
   route: 'general',
   label: 'General',
   labelKey: 'settings.general',
+  icon: 'general',
   type: 'route',
   path: '',
   children: [
@@ -58,12 +59,14 @@ export const generalSchema: SettingsNode<Config> = {
       route: 'connections',
       label: 'Connections',
       labelKey: 'settings.connections',
+      icon: 'connections',
       path: '',
       children: [
         {
           type: 'string',
           label: 'Car Name',
           labelKey: 'settings.carName',
+          icon: 'carName',
           path: 'carName',
           displayValue: true,
           page: {
@@ -75,6 +78,7 @@ export const generalSchema: SettingsNode<Config> = {
           type: 'string',
           label: 'UI Name',
           labelKey: 'settings.uiName',
+          icon: 'uiName',
           path: 'oemName',
           displayValue: true,
           page: {
@@ -87,12 +91,14 @@ export const generalSchema: SettingsNode<Config> = {
           route: 'wifi',
           label: 'Wi-Fi',
           labelKey: 'settings.wifi',
+          icon: 'wifi',
           path: '',
           children: [
             {
               type: 'select',
               label: 'Wi-Fi Frequency',
               labelKey: 'settings.wifiFrequency',
+              icon: 'wifiFrequency',
               path: 'wifiType',
               displayValue: true,
               options: [
@@ -114,6 +120,7 @@ export const generalSchema: SettingsNode<Config> = {
               type: 'string',
               label: 'Wi-Fi Password',
               labelKey: 'settings.wifiPassword',
+              icon: 'wifiPassword',
               path: 'wifiPassword',
               minLength: WIFI_PASSWORD_MIN,
               maxLength: WIFI_PASSWORD_MAX,
@@ -127,6 +134,7 @@ export const generalSchema: SettingsNode<Config> = {
               type: 'select',
               label: 'Wi-Fi Channel',
               labelKey: 'settings.wifiChannel',
+              icon: 'wifiChannel',
               path: 'wifiChannel',
               displayValue: true,
               options: [],
@@ -140,6 +148,7 @@ export const generalSchema: SettingsNode<Config> = {
               type: 'select',
               label: 'Wi-Fi Country',
               labelKey: 'settings.wifiCountry',
+              icon: 'wifiCountry',
               path: 'country',
               displayValue: true,
               options: [],
@@ -153,8 +162,10 @@ export const generalSchema: SettingsNode<Config> = {
               type: 'select',
               label: 'Wi-Fi Interface',
               labelKey: 'settings.wifiInterface',
+              icon: 'wifiInterface',
               path: 'wifiInterface',
               displayValue: true,
+              disabled: window.app?.platform !== 'linux',
               options: [],
               loadOptions: loadWifiInterfaces,
               page: {
@@ -166,8 +177,10 @@ export const generalSchema: SettingsNode<Config> = {
               type: 'select',
               label: 'Bluetooth Interface',
               labelKey: 'settings.btAdapter',
+              icon: 'btInterface',
               path: 'btAdapter',
               displayValue: true,
+              disabled: window.app?.platform !== 'linux',
               options: [],
               loadOptions: loadBtAdapters,
               page: {
@@ -179,6 +192,7 @@ export const generalSchema: SettingsNode<Config> = {
               type: 'checkbox',
               label: 'Dedicated Interface',
               labelKey: 'settings.wifiDedicatedInterface',
+              icon: 'dedicatedInterface',
               path: 'wifiDedicatedInterface',
               disabled: window.app?.platform !== 'linux'
             }
@@ -188,6 +202,7 @@ export const generalSchema: SettingsNode<Config> = {
           type: 'checkbox',
           label: 'Wireless Android Auto',
           labelKey: 'settings.wirelessAaEnabled',
+          icon: 'wirelessAa',
           path: 'wirelessAaEnabled',
           disabled: window.app?.platform !== 'linux'
         },
@@ -195,6 +210,7 @@ export const generalSchema: SettingsNode<Config> = {
           type: 'checkbox',
           label: 'Wireless CarPlay',
           labelKey: 'settings.wirelessCpEnabled',
+          icon: 'wirelessCp',
           path: 'wirelessCpEnabled',
           disabled: window.app?.platform !== 'linux'
         },
@@ -202,6 +218,7 @@ export const generalSchema: SettingsNode<Config> = {
           type: 'checkbox',
           label: 'Auto Connect',
           labelKey: 'settings.autoConnect',
+          icon: 'autoConnect',
           path: 'autoConn'
         }
       ]
@@ -211,12 +228,14 @@ export const generalSchema: SettingsNode<Config> = {
       route: 'windowSettings',
       label: 'Window Settings',
       labelKey: 'settings.windowSettings',
+      icon: 'windowSettings',
       path: '',
       children: [
         {
           type: 'route',
           label: 'Main Screen',
           labelKey: 'settings.mainScreen',
+          icon: 'mainScreen',
           route: 'mainScreen',
           path: '',
           children: [
@@ -224,6 +243,7 @@ export const generalSchema: SettingsNode<Config> = {
               type: 'select',
               label: 'Display Mode',
               labelKey: 'settings.displayMode',
+              icon: 'displayMode',
               path: 'displayMode',
               displayValue: true,
               options: [panelDefaultOption],
@@ -237,6 +257,7 @@ export const generalSchema: SettingsNode<Config> = {
               type: 'number',
               label: 'Width',
               labelKey: 'settings.mainScreenWidth',
+              icon: 'width',
               path: 'mainScreenWidth',
               min: MIN_WIDTH,
               max: MAX_WIDTH,
@@ -251,6 +272,7 @@ export const generalSchema: SettingsNode<Config> = {
               type: 'number',
               label: 'Height',
               labelKey: 'settings.mainScreenHeight',
+              icon: 'height',
               path: 'mainScreenHeight',
               min: MIN_HEIGHT,
               max: MAX_HEIGHT,
@@ -265,6 +287,7 @@ export const generalSchema: SettingsNode<Config> = {
               type: 'checkbox',
               label: 'Fullscreen',
               labelKey: 'settings.fullscreen',
+              icon: 'fullscreen',
               path: 'kiosk.main'
             }
           ]
@@ -273,6 +296,7 @@ export const generalSchema: SettingsNode<Config> = {
           type: 'route',
           label: 'Dash Screen',
           labelKey: 'settings.dashScreen',
+          icon: 'dashScreen',
           route: 'dashScreen',
           path: '',
           children: [
@@ -280,12 +304,14 @@ export const generalSchema: SettingsNode<Config> = {
               type: 'checkbox',
               label: 'Active',
               labelKey: 'settings.dashScreenActive',
+              icon: 'active',
               path: 'dashScreenActive'
             },
             {
               type: 'number',
               label: 'Width',
               labelKey: 'settings.dashScreenWidth',
+              icon: 'width',
               path: 'dashScreenWidth',
               min: MIN_WIDTH,
               max: MAX_WIDTH,
@@ -300,6 +326,7 @@ export const generalSchema: SettingsNode<Config> = {
               type: 'number',
               label: 'Height',
               labelKey: 'settings.dashScreenHeight',
+              icon: 'height',
               path: 'dashScreenHeight',
               min: MIN_HEIGHT,
               max: MAX_HEIGHT,
@@ -314,6 +341,7 @@ export const generalSchema: SettingsNode<Config> = {
               type: 'checkbox',
               label: 'Fullscreen',
               labelKey: 'settings.fullscreen',
+              icon: 'fullscreen',
               path: 'kiosk.dash'
             }
           ]
@@ -322,6 +350,7 @@ export const generalSchema: SettingsNode<Config> = {
           type: 'route',
           label: 'Aux Screen',
           labelKey: 'settings.auxScreen',
+          icon: 'auxScreen',
           route: 'auxScreen',
           path: '',
           children: [
@@ -329,12 +358,14 @@ export const generalSchema: SettingsNode<Config> = {
               type: 'checkbox',
               label: 'Active',
               labelKey: 'settings.auxScreenActive',
+              icon: 'active',
               path: 'auxScreenActive'
             },
             {
               type: 'number',
               label: 'Width',
               labelKey: 'settings.auxScreenWidth',
+              icon: 'width',
               path: 'auxScreenWidth',
               min: MIN_WIDTH,
               max: MAX_WIDTH,
@@ -349,6 +380,7 @@ export const generalSchema: SettingsNode<Config> = {
               type: 'number',
               label: 'Height',
               labelKey: 'settings.auxScreenHeight',
+              icon: 'height',
               path: 'auxScreenHeight',
               min: MIN_HEIGHT,
               max: MAX_HEIGHT,
@@ -363,6 +395,7 @@ export const generalSchema: SettingsNode<Config> = {
               type: 'checkbox',
               label: 'Fullscreen',
               labelKey: 'settings.fullscreen',
+              icon: 'fullscreen',
               path: 'kiosk.aux'
             }
           ]
@@ -373,6 +406,7 @@ export const generalSchema: SettingsNode<Config> = {
       type: 'route',
       label: 'Tab Settings',
       labelKey: 'settings.tabSettings',
+      icon: 'tabSettings',
       route: 'tabSettings',
       path: '',
       children: [
@@ -380,6 +414,7 @@ export const generalSchema: SettingsNode<Config> = {
           type: 'route',
           label: 'Dashboards',
           labelKey: 'settings.telemetryDashboards',
+          icon: 'dashboards',
           route: 'dashboards',
           path: '',
           children: [
@@ -407,18 +442,21 @@ export const generalSchema: SettingsNode<Config> = {
                   type: 'checkbox' as const,
                   label: 'Main',
                   labelKey: 'settings.mainScreen',
+                  icon: 'mainScreen',
                   path: `dashboards.${id}.main`
                 },
                 {
                   type: 'checkbox' as const,
                   label: 'Dash',
                   labelKey: 'settings.dashScreen',
+                  icon: 'dashScreen',
                   path: `dashboards.${id}.dash`
                 },
                 {
                   type: 'checkbox' as const,
                   label: 'Aux',
                   labelKey: 'settings.auxScreen',
+                  icon: 'auxScreen',
                   path: `dashboards.${id}.aux`
                 }
               ]
@@ -429,6 +467,7 @@ export const generalSchema: SettingsNode<Config> = {
           type: 'route',
           label: 'Media',
           labelKey: 'settings.media',
+          icon: 'media',
           route: 'media',
           path: '',
           children: [
@@ -436,18 +475,21 @@ export const generalSchema: SettingsNode<Config> = {
               type: 'checkbox',
               label: 'Main',
               labelKey: 'settings.mainScreen',
+              icon: 'mainScreen',
               path: 'media.main'
             },
             {
               type: 'checkbox',
               label: 'Dash',
               labelKey: 'settings.dashScreen',
+              icon: 'dashScreen',
               path: 'media.dash'
             },
             {
               type: 'checkbox',
               label: 'Aux',
               labelKey: 'settings.auxScreen',
+              icon: 'auxScreen',
               path: 'media.aux'
             }
           ]
@@ -456,6 +498,7 @@ export const generalSchema: SettingsNode<Config> = {
           type: 'route',
           label: 'Reverse Camera',
           labelKey: 'settings.reverseCamera',
+          icon: 'reverseCamera',
           route: 'camera',
           path: '',
           displayValue: true,
@@ -464,36 +507,42 @@ export const generalSchema: SettingsNode<Config> = {
               type: 'checkbox',
               label: 'Automatic on reverse gear',
               labelKey: 'settings.autoSwitchOnReverse',
+              icon: 'autoReverse',
               path: 'autoSwitchOnReverse'
             },
             {
               type: 'checkbox',
               label: 'Main',
               labelKey: 'settings.mainScreen',
+              icon: 'mainScreen',
               path: 'camera.main'
             },
             {
               type: 'checkbox',
               label: 'Dash',
               labelKey: 'settings.dashScreen',
+              icon: 'dashScreen',
               path: 'camera.dash'
             },
             {
               type: 'checkbox',
               label: 'Aux',
               labelKey: 'settings.auxScreen',
+              icon: 'auxScreen',
               path: 'camera.aux'
             },
             {
               type: 'checkbox',
               label: 'Mirror',
               labelKey: 'settings.cameraMirror',
+              icon: 'cameraMirror',
               path: 'cameraMirror'
             },
             {
               type: 'select',
               label: 'Rotation',
               labelKey: 'settings.cameraRotation',
+              icon: 'cameraRotation',
               path: 'cameraRotation',
               displayValue: true,
               options: [
@@ -511,6 +560,7 @@ export const generalSchema: SettingsNode<Config> = {
               type: 'route',
               label: 'Camera',
               labelKey: 'settings.camera',
+              icon: 'camera',
               route: 'select',
               path: '',
               children: [
@@ -531,6 +581,7 @@ export const generalSchema: SettingsNode<Config> = {
       type: 'route',
       label: 'Key Bindings',
       labelKey: 'settings.keyBindings',
+      icon: 'keyBindings',
       route: 'keyBindings',
       path: '',
       children: [
@@ -794,6 +845,7 @@ export const generalSchema: SettingsNode<Config> = {
       type: 'select',
       label: 'Start Page',
       labelKey: 'settings.startPage',
+      icon: 'startPage',
       path: 'startPage',
       displayValue: true,
       options: [
@@ -812,6 +864,7 @@ export const generalSchema: SettingsNode<Config> = {
       type: 'number',
       label: 'FFT Delay',
       labelKey: 'settings.fftDelay',
+      icon: 'fftDelay',
       path: 'visualAudioDelayMs',
       displayValue: true,
       valueTransform: {
@@ -828,6 +881,7 @@ export const generalSchema: SettingsNode<Config> = {
       type: 'select',
       label: 'Steering wheel position',
       labelKey: 'settings.steeringWheelPosition',
+      icon: 'steering',
       path: 'hand',
       displayValue: true,
       options: [
@@ -843,6 +897,7 @@ export const generalSchema: SettingsNode<Config> = {
       type: 'number',
       label: 'UI Zoom',
       labelKey: 'settings.uiZoom',
+      icon: 'uiZoom',
       path: 'uiZoomPercent',
       displayValue: true,
       min: 50,
@@ -862,6 +917,7 @@ export const generalSchema: SettingsNode<Config> = {
       type: 'select',
       label: 'Language',
       labelKey: 'settings.language',
+      icon: 'language',
       path: 'language',
       displayValue: true,
       options: [
@@ -879,6 +935,7 @@ export const generalSchema: SettingsNode<Config> = {
       type: 'route',
       label: 'MFi',
       labelKey: 'settings.mfi',
+      icon: 'mfi',
       route: 'mfi',
       path: '',
       children: [
@@ -886,6 +943,7 @@ export const generalSchema: SettingsNode<Config> = {
           type: 'number',
           label: 'I2C Bus',
           labelKey: 'settings.i2cBus',
+          icon: 'i2cBus',
           path: 'carPlayMfiI2cBus',
           min: 0,
           max: 20,
@@ -901,6 +959,7 @@ export const generalSchema: SettingsNode<Config> = {
           type: 'number',
           label: 'Power Pin',
           labelKey: 'settings.mfiPowerGpio',
+          icon: 'powerPin',
           path: 'carPlayMfiPowerGpio',
           min: -1,
           max: 27,
@@ -923,6 +982,7 @@ export const generalSchema: SettingsNode<Config> = {
       type: 'route',
       label: 'USB Dongle',
       labelKey: 'settings.usbDongle',
+      icon: 'usbDongle',
       route: 'usbDongle',
       path: '',
       children: [
