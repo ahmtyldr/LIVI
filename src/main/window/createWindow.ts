@@ -13,7 +13,8 @@ import {
   attachResizeReflow,
   currentKiosk,
   persistKioskAndBroadcast,
-  sanitizeBounds
+  sanitizeBounds,
+  uiZoomFactor
 } from './utils'
 
 let mainWindow: BrowserWindow | null = null
@@ -193,7 +194,9 @@ export function createMainWindow(runtimeState: runtimeStateProps, services: Serv
       }
     }
 
-    win.webContents.setZoomFactor((runtimeState.config.uiZoomPercent ?? 100) / 100)
+    win.webContents.setZoomFactor(
+      uiZoomFactor(runtimeState.config.uiZoomPercent, win.getContentSize()[1])
+    )
 
     pushSettingsToRenderer(runtimeState, {
       kiosk: { ...runtimeState.config.kiosk, main: currentKiosk(runtimeState.config) }

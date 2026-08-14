@@ -89,7 +89,8 @@ vi.mock('@main/window/utils', () => ({
   attachResizeReflow: vi.fn(),
   currentKiosk: vi.fn(() => false),
   persistKioskAndBroadcast: vi.fn(),
-  sanitizeBounds: vi.fn((b) => b)
+  sanitizeBounds: vi.fn((b) => b),
+  uiZoomFactor: vi.fn((pct?: number) => (pct ?? 100) / 100)
 }))
 
 vi.mock('@main/ipc/utils', () => ({

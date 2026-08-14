@@ -203,3 +203,10 @@ export function attachResizeReflow() {
     }, 200)
   })
 }
+
+export const MIN_UI_VIEWPORT_HEIGHT = 292
+
+export function uiZoomFactor(uiZoomPercent: number | undefined, contentHeight: number): number {
+  const base = contentHeight > 0 ? Math.min(1, contentHeight / MIN_UI_VIEWPORT_HEIGHT) : 1
+  return ((uiZoomPercent ?? 100) / 100) * base
+}

@@ -7,7 +7,8 @@ import { getMainWindow } from '@main/window/createWindow'
 import {
   applyAspectRatioFullscreen,
   applyAspectRatioWindowed,
-  applyWindowedContentSize
+  applyWindowedContentSize,
+  uiZoomFactor
 } from '@main/window/utils'
 import type { Config } from '@shared/types'
 import { DEFAULT_BINDINGS } from '@shared/types'
@@ -76,7 +77,9 @@ export function saveSettings(runtimeState: runtimeStateProps, next: Partial<Conf
 
   configEvents.emit('changed', merged, prev)
 
-  mainWindow?.webContents.setZoomFactor((runtimeState.config.uiZoomPercent ?? 100) / 100)
+  mainWindow?.webContents.setZoomFactor(
+    uiZoomFactor(runtimeState.config.uiZoomPercent, mainWindow.getContentSize()[1])
+  )
 
   pushSettingsToRenderer(runtimeState)
 

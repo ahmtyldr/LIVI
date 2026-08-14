@@ -70,7 +70,8 @@ vi.mock('@main/utils', () => ({
 vi.mock('@main/window/utils', () => ({
   applyAspectRatioFullscreen: vi.fn(),
   applyAspectRatioWindowed: vi.fn(),
-  applyWindowedContentSize: vi.fn()
+  applyWindowedContentSize: vi.fn(),
+  uiZoomFactor: vi.fn((pct?: number) => (pct ?? 100) / 100)
 }))
 
 const mockedExistsSync = existsSync as Mock
@@ -325,6 +326,7 @@ describe('ipc utils', () => {
     const setZoomFactor = vi.fn()
     mockedGetMainWindow.mockReturnValue({
       webContents: { setZoomFactor },
+      getContentSize: vi.fn(() => [1280, 720]),
       isFullScreen: vi.fn(() => false),
       setFullScreen: vi.fn()
     })
@@ -350,6 +352,7 @@ describe('ipc utils', () => {
 
     const mainWindow = {
       webContents: { setZoomFactor: vi.fn() },
+      getContentSize: vi.fn(() => [1280, 720]),
       isFullScreen: vi.fn(() => false),
       setFullScreen: vi.fn()
     }
@@ -381,6 +384,7 @@ describe('ipc utils', () => {
 
     const mainWindow = {
       webContents: { setZoomFactor: vi.fn() },
+      getContentSize: vi.fn(() => [1280, 720]),
       isFullScreen: vi.fn(() => true),
       setFullScreen: vi.fn()
     }
@@ -411,6 +415,7 @@ describe('ipc utils', () => {
 
     const mainWindow = {
       webContents: { setZoomFactor: vi.fn() },
+      getContentSize: vi.fn(() => [1280, 720]),
       isFullScreen: vi.fn(() => true),
       setFullScreen: vi.fn()
     }
@@ -438,6 +443,7 @@ describe('ipc utils', () => {
 
     const mainWindow = {
       webContents: { setZoomFactor: vi.fn() },
+      getContentSize: vi.fn(() => [1280, 720]),
       isFullScreen: vi.fn(() => false),
       setFullScreen: vi.fn()
     }
@@ -464,6 +470,7 @@ describe('ipc utils', () => {
 
     const mainWindow = {
       webContents: { setZoomFactor: vi.fn() },
+      getContentSize: vi.fn(() => [1280, 720]),
       setKiosk: vi.fn(),
       getBounds: vi.fn(function () {
         return { x: 0, y: 0, width: 800, height: 480 }
@@ -501,6 +508,7 @@ describe('ipc utils', () => {
 
     const mainWindow = {
       webContents: { setZoomFactor: vi.fn() },
+      getContentSize: vi.fn(() => [1280, 720]),
       setKiosk: vi.fn(),
       on,
       removeListener,
@@ -548,6 +556,7 @@ describe('ipc utils', () => {
 
     const mainWindow = {
       webContents: { setZoomFactor: vi.fn() },
+      getContentSize: vi.fn(() => [1280, 720]),
       setKiosk: vi.fn(),
       on: vi.fn(),
       removeListener: vi.fn(),
@@ -583,6 +592,7 @@ describe('ipc utils', () => {
 
     const mainWindow = {
       webContents: { setZoomFactor: vi.fn() },
+      getContentSize: vi.fn(() => [1280, 720]),
       setKiosk: vi.fn()
     }
     mockedGetMainWindow.mockReturnValue(mainWindow)
@@ -607,6 +617,7 @@ describe('ipc utils', () => {
 
     const mainWindow = {
       webContents: { setZoomFactor: vi.fn() },
+      getContentSize: vi.fn(() => [1280, 720]),
       isFullScreen: vi.fn(() => false),
       setFullScreen: vi.fn()
     }
@@ -634,6 +645,7 @@ describe('ipc utils', () => {
 
     const mainWindow = {
       webContents: { setZoomFactor: vi.fn() },
+      getContentSize: vi.fn(() => [1280, 720]),
       isFullScreen: vi.fn(() => true),
       setFullScreen: vi.fn()
     }
@@ -660,6 +672,7 @@ describe('ipc utils', () => {
 
     const mainWindow = {
       webContents: { setZoomFactor: vi.fn() },
+      getContentSize: vi.fn(() => [1280, 720]),
       setKiosk: vi.fn()
     }
     mockedGetMainWindow.mockReturnValue(mainWindow)
@@ -693,6 +706,7 @@ describe('ipc utils', () => {
 
       const mainWindow = {
         webContents: { setZoomFactor: vi.fn() },
+        getContentSize: vi.fn(() => [1280, 720]),
         isFullScreen: vi.fn(() => isFs),
         setFullScreen: vi.fn()
       }
@@ -725,6 +739,7 @@ describe('ipc utils', () => {
 
     const mainWindow = {
       webContents: { setZoomFactor: vi.fn() },
+      getContentSize: vi.fn(() => [1280, 720]),
       setFullScreen: vi.fn(),
       setKiosk: vi.fn()
     }

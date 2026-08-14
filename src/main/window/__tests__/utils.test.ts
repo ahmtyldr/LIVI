@@ -11,7 +11,8 @@ import {
   persistKioskAndBroadcast,
   restoreKioskAfterWmExit,
   sanitizeBounds,
-  sendKioskSync
+  sendKioskSync,
+  uiZoomFactor
 } from '@main/window/utils'
 import { screen } from 'electron'
 import type { Mock } from 'vitest'
@@ -732,5 +733,22 @@ describe('window utils', () => {
       expect(() => win.handlers.resize()).not.toThrow()
       expect(win.setContentSize).not.toHaveBeenCalled()
     })
+  })
+})
+
+describe('uiZoomFactor', () => {
+  test('keeps the plain percent on normal-height windows', () => {
+    expect(uiZoomFactor(100, 720)).toBe(1)
+    expect(uiZoomFactor(125, 720)).toBe(1.25)
+    expect(uiZoomFactor(undefined, 480)).toBe(1)
+  })
+
+  test('shrinks the base zoom below the minimum UI viewport height', () => {
+    expect(uiZoomFactor(100, 234)).toBeCloseTo(234 / 292, 5)
+    expect(uiZoomFactor(50, 234)).toBeCloseTo(0.5 * (234 / 292), 5)
+  })
+
+  test('falls back to base 1 when the height is unknown', () => {
+    expect(uiZoomFactor(100, 0)).toBe(1)
   })
 })
