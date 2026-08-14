@@ -8,11 +8,12 @@ type Props = {
   label: string
   node?: SettingsNode<Config>
   children?: ReactNode
+  focusable?: boolean
 }
 
-export const SettingsItemRow = ({ label, node, children }: Props) => {
+export const SettingsItemRow = ({ label, node, children, focusable }: Props) => {
   return (
-    <StackItem node={node}>
+    <StackItem node={node} focusable={focusable}>
       <Typography>{label}</Typography>
       {children}
     </StackItem>

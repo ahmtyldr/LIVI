@@ -1,4 +1,4 @@
-import { author, contributors, description, homepage, name, version } from '@pkg'
+import { author, contributors, description, homepage, version } from '@pkg'
 import { EMPTY_STRING } from '@renderer/constants'
 import { SettingsValueRow } from '@settings/components'
 import type { CSSProperties } from 'react'
@@ -63,43 +63,30 @@ export const About = () => {
     return ''
   }, [])
 
-  // Build metadata injected by electron.vite.config.ts
-  const buildRunStr = useMemo(() => {
+  // Build metadata injected by electron.vite.config.ts, run + sha as one line.
+  const buildStr = useMemo(() => {
     const run = __BUILD_RUN__?.trim?.() ? __BUILD_RUN__.trim() : ''
-    return run ? `#${run}` : EMPTY_STRING
-  }, [])
-
-  const commitShaStr = useMemo(() => {
     const sha = __BUILD_SHA__?.trim?.() ? __BUILD_SHA__.trim() : 'dev'
-    return sha
+    return run ? `#${run} - ${sha}` : sha
   }, [])
 
   const rows = useMemo<Row[]>(() => {
-    const appName = toStringOrDash(name)
     const appDesc = toStringOrDash(description)
     const appVersion = toStringOrDash(version)
     const appHomepage = toStringOrDash(homepage)
     const appAuthor = toAuthorString(author)
     const appContrib = contributorsStr || EMPTY_STRING
 
-    const out: Row[] = [
-      { label: t('settings.name'), value: appName },
-      { label: t('settings.description'), value: appDesc },
-      { label: t('settings.version'), value: appVersion, mono: true }
-    ]
-
-    out.push({ label: t('settings.build'), value: buildRunStr, mono: true })
-
-    out.push({ label: t('settings.commit', 'Commit'), value: commitShaStr, mono: true })
-
-    out.push(
+    // The description doubles as the display name ("LIVI - Linux In-Vehicle…").
+    return [
+      { label: t('settings.name'), value: appDesc },
       { label: t('settings.url'), value: appHomepage },
       { label: t('settings.author'), value: appAuthor },
-      { label: t('settings.contributors'), value: appContrib }
-    )
-
-    return out
-  }, [contributorsStr, t, buildRunStr, commitShaStr])
+      { label: t('settings.contributors'), value: appContrib },
+      { label: t('settings.version'), value: appVersion, mono: true },
+      { label: t('settings.build'), value: buildStr, mono: true }
+    ]
+  }, [contributorsStr, t, buildStr])
 
   const Mono: CSSProperties = {
     fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace',

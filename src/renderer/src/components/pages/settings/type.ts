@@ -10,6 +10,8 @@ export interface StackItemProps {
   onClick?: () => void
   node?: SettingsNode<Config>
   savedLabel?: string
+  // Static rows opt into key navigation (focus stop + scroll anchor) without acting as buttons.
+  focusable?: boolean
 }
 
 export type SettingsCustomPageProps<TState = Config, TValue = unknown> = {

@@ -149,12 +149,24 @@ describe('StackItem', () => {
   })
 
   test('does not get button role or tab focus without onClick', () => {
-    render(
+    const { container } = render(
       <StackItem>
         <span>Static item</span>
       </StackItem>
     )
 
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    expect(container.querySelector('[tabindex="0"]')).not.toBeInTheDocument()
+  })
+
+  test('a focusable static item gets tab focus but no button role', () => {
+    const { container } = render(
+      <StackItem focusable>
+        <span>Info row</span>
+      </StackItem>
+    )
+
+    expect(container.querySelector('[tabindex="0"]')).toBeInTheDocument()
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 

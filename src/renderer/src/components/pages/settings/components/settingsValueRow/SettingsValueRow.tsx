@@ -9,7 +9,7 @@ type Props = {
 
 export const SettingsValueRow = ({ label, value }: Props) => {
   return (
-    <SettingsItemRow label={label}>
+    <SettingsItemRow label={label} focusable>
       <Typography
         component="span"
         sx={{ color: 'text.secondary', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}

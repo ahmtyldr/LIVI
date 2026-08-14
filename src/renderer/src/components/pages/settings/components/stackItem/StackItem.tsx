@@ -115,7 +115,8 @@ export const StackItem = ({
   showValue,
   withForwardIcon,
   onClick,
-  savedLabel
+  savedLabel,
+  focusable
 }: StackItemProps) => {
   const { t } = useTranslation()
 
@@ -187,7 +188,7 @@ export const StackItem = ({
     <Item
       onClick={onClick}
       onKeyDown={handleKeyDown}
-      tabIndex={onClick ? 0 : -1}
+      tabIndex={onClick || focusable ? 0 : -1}
       role={onClick ? 'button' : undefined}
     >
       <SettingsRowIcon name={node?.icon} />

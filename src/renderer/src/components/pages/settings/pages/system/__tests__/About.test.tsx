@@ -14,14 +14,17 @@ describe('About page', () => {
     render(<About />)
 
     expect(screen.getByText('settings.name')).toBeInTheDocument()
-    expect(screen.getByText('settings.description')).toBeInTheDocument()
+    expect(screen.queryByText('settings.description')).not.toBeInTheDocument()
     expect(screen.getByText('settings.version')).toBeInTheDocument()
-    expect(screen.getByText('Commit')).toBeInTheDocument()
+    expect(screen.queryByText('Commit')).not.toBeInTheDocument()
+    expect(screen.getByText('#123 - abcdef0')).toBeInTheDocument()
     expect(screen.getByText('settings.url')).toBeInTheDocument()
     expect(screen.getByText('settings.author')).toBeInTheDocument()
     expect(screen.getByText('settings.contributors')).toBeInTheDocument()
 
-    expect(screen.getByText('test-app')).toBeInTheDocument()
+    const nameLabel = screen.getByText('settings.name')
+    expect(nameLabel.nextSibling?.textContent).toBe('A test')
+    expect(screen.queryByText('test-app')).not.toBeInTheDocument()
     expect(screen.getByText((v) => /^\d+\.\d+\.\d+/.test(v))).toBeInTheDocument()
   })
 
@@ -125,8 +128,7 @@ describe('About page metadata edge cases', () => {
     const contribLabel = screen.getByText('settings.contributors')
     expect(contribLabel.nextSibling?.textContent).toBe('—')
 
-    expect(screen.getByText('#9')).toBeInTheDocument()
-    expect(screen.getByText('abc1234')).toBeInTheDocument()
+    expect(screen.getByText('#9 - abc1234')).toBeInTheDocument()
   })
 
   test('renders blank author and commit dev when metadata is missing', async () => {
@@ -135,7 +137,7 @@ describe('About page metadata edge cases', () => {
         name: 'App',
         description: 'D',
         version: '1',
-        homepage: 'h',
+        homepage: '   ',
         author: null,
         contributors: []
       },
