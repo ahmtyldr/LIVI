@@ -152,6 +152,74 @@ describe('DeviceRegistry', () => {
   })
 
   describe('noteDevice', () => {
+    test('the generic AA device_name "Android" is never stored as a name', async () => {
+      const { reg } = await mkLoaded()
+
+      reg.noteDevice({
+        usbSerial: 'ser-px',
+        instanceId: 'inst-px',
+        name: 'Android',
+        model: 'Google Pixel 8',
+        protocol: 'androidauto',
+        transport: 'usb'
+      })
+
+      const e = reg.list()[0]
+      expect(e.name).toBeUndefined()
+      expect(e.model).toBe('Google Pixel 8')
+    })
+
+    test('a generic name never clobbers a previously learned personal name', async () => {
+      const { reg } = await mkLoaded()
+
+      reg.noteDevice({
+        btMac: 'AA:BB:CC:DD:EE:02',
+        name: 'LaPixel',
+        protocol: 'androidauto',
+        transport: 'wifi'
+      })
+      reg.noteDevice({
+        btMac: 'AA:BB:CC:DD:EE:02',
+        name: 'android',
+        model: 'Google Pixel 8',
+        protocol: 'androidauto',
+        transport: 'usb'
+      })
+
+      expect(reg.list()[0].name).toBe('LaPixel')
+    })
+
+    test('a whitespace-only name is treated as absent', async () => {
+      const { reg } = await mkLoaded()
+
+      reg.noteDevice({
+        usbSerial: 'ser-ws',
+        name: '   ',
+        model: 'Pixel',
+        protocol: 'androidauto',
+        transport: 'usb'
+      })
+
+      expect(reg.list()[0].name).toBeUndefined()
+    })
+
+    test('load scrubs a persisted generic name so the model shows instead', async () => {
+      const { reg } = await mkLoaded([
+        {
+          usbSerial: '39181FDJH00276',
+          instanceId: 'dbb43f9e',
+          name: 'Android',
+          model: 'Google Pixel 8',
+          protocol: 'androidauto',
+          lastTransport: 'usb'
+        }
+      ])
+
+      const e = reg.list()[0]
+      expect(e.name).toBeUndefined()
+      expect(e.model).toBe('Google Pixel 8')
+    })
+
     test('fills every field, marks usb presence and defaults the protocol chain', async () => {
       const { reg } = await mkLoaded()
 

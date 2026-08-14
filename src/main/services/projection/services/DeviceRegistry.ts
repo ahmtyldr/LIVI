@@ -58,6 +58,15 @@ function normMac(v?: string): string | undefined {
   return v.toLowerCase()
 }
 
+/** AA's ServiceDiscoveryRequest only carries the generic "Android" as device_name,
+ *  the phone's model lives in device_brand. A generic name must never be stored.
+ */
+function realDeviceName(v?: string): string | undefined {
+  const name = v?.trim()
+  if (!name || name.toLowerCase() === 'android') return undefined
+  return name
+}
+
 const IDENTITY_KEYS = [
   'btMac',
   'wifiMac',
@@ -111,6 +120,7 @@ export class DeviceRegistry {
       let collapsed = false
       for (const s of stored) {
         const e: DeviceEntry = { ...s, presence: {} }
+        e.name = realDeviceName(e.name)
         e.btMac = normMac(e.btMac)
         e.wifiMac = normMac(e.wifiMac)
         const dups = this.matchAll({
@@ -269,7 +279,8 @@ export class DeviceRegistry {
     if (d.usbUdid) e.usbUdid = d.usbUdid
     if (d.usbSerial) e.usbSerial = d.usbSerial
     if (d.instanceId) e.instanceId = d.instanceId
-    if (d.name) e.name = d.name
+    const presenceName = realDeviceName(d.name)
+    if (presenceName) e.name = presenceName
     if (d.model) e.model = d.model
     if (d.transport) e.lastTransport = d.transport
     if (d.ip) e.currentIp = d.ip
