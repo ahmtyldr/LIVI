@@ -1,7 +1,7 @@
 import { Typography } from '@mui/material'
+import { SettingsNode } from '@renderer/routes'
 import type { Config } from '@shared/types'
 import { useTranslation } from 'react-i18next'
-import { SettingsNode } from '../../../../routes'
 import { Devices } from '../pages/devices'
 import { getValueByPath } from '../utils'
 import { PosSensitiveList } from './posSensitiveList/PosSensitiveList'
@@ -49,22 +49,26 @@ export const SettingsFieldRow = <T, K>({
   }
 
   if (onClick) {
+    // A disabled node keeps its row (the value stays visible) but loses the navigation.
+    const rowDisabled = 'disabled' in node && node.disabled === true
     return (
-      <StackItem
-        withForwardIcon
-        onClick={onClick}
-        node={node}
-        value={getValueByPath(state, node.path)}
-        savedLabel={savedLabel}
-        showValue={node.displayValue}
-      >
-        <Typography>{label}</Typography>
-      </StackItem>
+      <div style={rowDisabled ? { opacity: 0.45, pointerEvents: 'none' } : undefined}>
+        <StackItem
+          withForwardIcon
+          onClick={rowDisabled ? undefined : onClick}
+          node={node}
+          value={getValueByPath(state, node.path)}
+          savedLabel={savedLabel}
+          showValue={node.displayValue}
+        >
+          <Typography>{label}</Typography>
+        </StackItem>
+      </div>
     )
   }
 
   return (
-    <SettingsItemRow label={label}>
+    <SettingsItemRow label={label} node={node}>
       <SettingsFieldControl
         node={node}
         value={value}

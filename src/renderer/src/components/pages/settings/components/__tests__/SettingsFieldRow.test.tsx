@@ -89,6 +89,44 @@ describe('SettingsFieldRow', () => {
     expect(screen.getByText('Audio')).toBeInTheDocument()
   })
 
+  test('a clickable row still navigates when the node is enabled', () => {
+    const onClick = vi.fn()
+    render(
+      <SettingsFieldRow
+        node={{ type: 'select', path: 'wifiInterface', label: 'Wi-Fi', options: [] } as any}
+        value={null}
+        state={{}}
+        onChange={vi.fn()}
+        onClick={onClick}
+      />
+    )
+    fireEvent.click(screen.getByTestId('stack-item'))
+    expect(onClick).toHaveBeenCalledTimes(1)
+  })
+
+  test('a disabled node dims the row and drops the navigation', () => {
+    const onClick = vi.fn()
+    render(
+      <SettingsFieldRow
+        node={
+          {
+            type: 'select',
+            path: 'wifiInterface',
+            label: 'Wi-Fi',
+            options: [],
+            disabled: true
+          } as any
+        }
+        value={null}
+        state={{}}
+        onChange={vi.fn()}
+        onClick={onClick}
+      />
+    )
+    fireEvent.click(screen.getByTestId('stack-item'))
+    expect(onClick).not.toHaveBeenCalled()
+  })
+
   test('renders SettingsItemRow + SettingsFieldControl by default', () => {
     render(
       <SettingsFieldRow
