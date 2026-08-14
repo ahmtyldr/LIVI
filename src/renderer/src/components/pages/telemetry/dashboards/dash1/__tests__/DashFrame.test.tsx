@@ -1,18 +1,11 @@
 import { createTheme, ThemeProvider } from '@mui/material'
 import { CarType } from '@shared/types'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { DashFrame } from '../DashFrame'
 
 const useVehicleTelemetryMock = vi.fn()
 const setClusterDashActive = vi.fn()
 let carType: unknown
-
-let resizeObserverCallback:
-  | ((entries: Array<{ contentRect: { width: number; height: number } }>) => void)
-  | null = null
-
-const observeMock = vi.fn()
-const disconnectMock = vi.fn()
 
 vi.mock('../../../hooks/useVehicleTelemetry', () => ({
   useVehicleTelemetry: () => useVehicleTelemetryMock()
@@ -68,17 +61,6 @@ describe('DashFrame', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     carType = undefined
-    resizeObserverCallback = null
-    ;(global as any).ResizeObserver = class {
-      constructor(
-        cb: (entries: Array<{ contentRect: { width: number; height: number } }>) => void
-      ) {
-        resizeObserverCallback = cb
-      }
-
-      observe = observeMock
-      disconnect = disconnectMock
-    }
 
     useVehicleTelemetryMock.mockReturnValue({ telemetry: {} })
   })
@@ -132,22 +114,52 @@ describe('DashFrame', () => {
     expect(screen.getByText('Telltale:right:false:false:false:false:undefined')).toBeInTheDocument()
   })
 
-  test('reacts to ResizeObserver measurements and disconnects on unmount', async () => {
-    const { unmount } = render(<DashFrame />)
+  test('derives the stage scale from the window at first render', () => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 640 })
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 360 })
+    try {
+      const { container } = render(<DashFrame />)
 
-    expect(observeMock).toHaveBeenCalledTimes(1)
+      const stage = Array.from(container.querySelectorAll('div')).find((d) =>
+        window.getComputedStyle(d).transform.includes('scale(0.5)')
+      )
+      expect(stage).toBeTruthy()
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1024 })
+      Object.defineProperty(window, 'innerHeight', { configurable: true, value: 768 })
+    }
+  })
 
-    resizeObserverCallback?.([{ contentRect: { width: 1280, height: 720 } }])
-    resizeObserverCallback?.([{ contentRect: { width: 0, height: 0 } }])
-    resizeObserverCallback?.([{} as never])
+  test('rescales on window resize and stops listening on unmount', async () => {
+    const { container, unmount } = render(<DashFrame />)
+
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1280 })
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 720 })
+    fireEvent(window, new Event('resize'))
 
     await waitFor(() => {
-      expect(screen.getByText('Fuel:fuel:0')).toBeInTheDocument()
+      const stage = Array.from(container.querySelectorAll('div')).find((d) =>
+        window.getComputedStyle(d).transform.includes('scale(1)')
+      )
+      expect(stage).toBeTruthy()
+    })
+
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 0 })
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 0 })
+    fireEvent(window, new Event('resize'))
+
+    await waitFor(() => {
+      const stage = Array.from(container.querySelectorAll('div')).find((d) =>
+        window.getComputedStyle(d).transform.includes('scale(1)')
+      )
+      expect(stage).toBeTruthy()
     })
 
     unmount()
-
-    expect(disconnectMock).toHaveBeenCalledTimes(1)
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1024 })
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 768 })
+    fireEvent(window, new Event('resize'))
+    expect(container.firstChild).toBeNull()
   })
 
   test('renders under a dark theme', () => {

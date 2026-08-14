@@ -49,12 +49,10 @@ export function SoftReadout({
           display: 'inline-flex',
           flexDirection: 'column',
           alignItems: flexAlign,
-          ...(backdropColor && {
-            backgroundColor: backdropColor,
-            borderRadius: '16px',
-            px: '18px',
-            py: '10px'
-          })
+          borderRadius: '16px',
+          px: '18px',
+          py: '10px',
+          backgroundColor: backdropColor ?? 'transparent'
         }}
       >
         <Box

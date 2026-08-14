@@ -190,6 +190,50 @@ describe('AppLayout', () => {
     expect((container.querySelector('#nav-root') as HTMLElement).style.width).toBe('56px')
   })
 
+  test('overlays the nav on auto-hide pages so the content keeps full width', async () => {
+    mockPathname = '/cluster'
+    const navRef = createRef<HTMLDivElement>()
+    const mainRef = createRef<HTMLDivElement>()
+    const { container } = render(
+      <AppLayout navRef={navRef} mainRef={mainRef} receivingVideo={false}>
+        <div>Content</div>
+      </AppLayout>
+    )
+    const nav = container.querySelector('#nav-root') as HTMLElement
+    expect(nav.style.position).toBe('absolute')
+    expect(nav.style.left).toBe('0px')
+    expect(nav.style.right).toBe('')
+  })
+
+  test('anchors the overlay nav on the right for right-hand drive', async () => {
+    mockPathname = '/telemetry'
+    mockHand = 1
+    const navRef = createRef<HTMLDivElement>()
+    const mainRef = createRef<HTMLDivElement>()
+    const { container } = render(
+      <AppLayout navRef={navRef} mainRef={mainRef} receivingVideo={false}>
+        <div>Content</div>
+      </AppLayout>
+    )
+    const nav = container.querySelector('#nav-root') as HTMLElement
+    expect(nav.style.position).toBe('absolute')
+    expect(nav.style.right).toBe('0px')
+    expect(nav.style.left).toBe('')
+  })
+
+  test('keeps the nav in the layout flow on regular pages', async () => {
+    mockPathname = '/media'
+    const navRef = createRef<HTMLDivElement>()
+    const mainRef = createRef<HTMLDivElement>()
+    const { container } = render(
+      <AppLayout navRef={navRef} mainRef={mainRef} receivingVideo={false}>
+        <div>Content</div>
+      </AppLayout>
+    )
+    const nav = container.querySelector('#nav-root') as HTMLElement
+    expect(nav.style.position).toBe('relative')
+  })
+
   test('mirrors the layout for a right-hand-drive steering position', async () => {
     mockHand = 1
     const navRef = createRef<HTMLDivElement>()

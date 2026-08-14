@@ -1,14 +1,7 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { Dash1 } from '../Dash1'
 
 const useVehicleTelemetryMock = vi.fn()
-
-let resizeObserverCallback:
-  | ((entries: Array<{ contentRect: { width: number; height: number } }>) => void)
-  | null = null
-
-const observeMock = vi.fn()
-const disconnectMock = vi.fn()
 
 vi.mock('../../../hooks/useVehicleTelemetry', () => ({
   useVehicleTelemetry: () => useVehicleTelemetryMock()
@@ -43,17 +36,6 @@ vi.mock('../../../widgets', () => ({
 describe('Dash1', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
-    resizeObserverCallback = null
-    ;(global as any).ResizeObserver = class {
-      constructor(
-        cb: (entries: Array<{ contentRect: { width: number; height: number } }>) => void
-      ) {
-        resizeObserverCallback = cb
-      }
-
-      observe = observeMock
-      disconnect = disconnectMock
-    }
 
     useVehicleTelemetryMock.mockReturnValue({
       telemetry: {
@@ -105,53 +87,19 @@ describe('Dash1', () => {
     expect(screen.getByText('Soft:GEAR:3')).toBeInTheDocument()
   })
 
-  test('observes host element with ResizeObserver', async () => {
-    render(<Dash1 />)
-
-    expect(observeMock).toHaveBeenCalledTimes(1)
-  })
-
-  test('handles ResizeObserver update with valid size without breaking rendered widgets', async () => {
-    render(<Dash1 />)
-
-    resizeObserverCallback?.([{ contentRect: { width: 640, height: 360 } }])
-
-    await waitFor(() => {
-      expect(screen.getByText('Soft:KPH:123')).toBeInTheDocument()
-      expect(screen.getByText('Gauge:3456')).toBeInTheDocument()
-      expect(screen.getByText('NavMini:84')).toBeInTheDocument()
-    })
-  })
-
-  test('falls back safely when ResizeObserver reports invalid size', async () => {
-    render(<Dash1 />)
-
-    resizeObserverCallback?.([{ contentRect: { width: 0, height: 0 } }])
-
-    await waitFor(() => {
-      expect(screen.getByText('Soft:KPH:123')).toBeInTheDocument()
-      expect(screen.getByText('Gauge:3456')).toBeInTheDocument()
-      expect(screen.getByText('NavMini:84')).toBeInTheDocument()
-    })
-  })
-
-  test('disconnects ResizeObserver on unmount', async () => {
+  test('handles a window resize without breaking rendered widgets', async () => {
     const { unmount } = render(<Dash1 />)
 
-    unmount()
-
-    expect(disconnectMock).toHaveBeenCalledTimes(1)
-  })
-
-  test('ignores ResizeObserver entries without contentRect', async () => {
-    render(<Dash1 />)
-
-    resizeObserverCallback?.([{} as never])
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 640 })
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 360 })
+    fireEvent(window, new Event('resize'))
 
     await waitFor(() => {
       expect(screen.getByText('Soft:KPH:123')).toBeInTheDocument()
       expect(screen.getByText('Gauge:3456')).toBeInTheDocument()
       expect(screen.getByText('NavMini:84')).toBeInTheDocument()
     })
+
+    unmount()
   })
 })

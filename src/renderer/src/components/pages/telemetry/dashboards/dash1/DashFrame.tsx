@@ -1,7 +1,7 @@
 import { Box, useTheme } from '@mui/material'
 import { CarType } from '@shared/types'
 import { useLiviStore, useStatusStore } from '@store/store'
-import { type ReactNode, useEffect, useRef, useState } from 'react'
+import { type ReactNode, useEffect, useState } from 'react'
 import { DashShell } from '../../components/DashShell'
 import { useVehicleTelemetry } from '../../hooks/useVehicleTelemetry'
 import {
@@ -39,6 +39,21 @@ import {
 
 const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v))
 
+const stageScale = (w: number, h: number): number => {
+  const s = Math.min(w / BASE_W, h / BASE_H)
+  return Number.isFinite(s) && s > 0 ? s : 1
+}
+
+const stagePush = (w: number, safe: number): number => Math.max(0, (w / safe - BASE_W) / 2)
+
+const stageOffset = (w: number, h: number): { left: number; top: number } => {
+  const safe = stageScale(w, h)
+  return {
+    left: Math.round((w - BASE_W * safe) / 2),
+    top: Math.round((h - BASE_H * safe) / 2)
+  }
+}
+
 export type DashFrameProps = {
   /** Centre slot, e.g. the mini-nav or the full nav. */
   children?: ReactNode
@@ -55,9 +70,6 @@ export type DashFrameProps = {
 export function DashFrame({ children, clusterFull }: DashFrameProps) {
   const theme = useTheme()
   const { telemetry } = useVehicleTelemetry()
-
-  // Either cluster mode reveals the full-window plane via the single App-level <Cluster> overlay:
-  // flag this dash active on mount, clear on unmount.
   const isClusterDash = clusterFull === true
   const setClusterDashActive = useStatusStore((s) => s.setClusterDashActive)
   useEffect(() => {
@@ -83,24 +95,42 @@ export function DashFrame({ children, clusterFull }: DashFrameProps) {
   const carType = useLiviStore((s) => s.settings?.carType)
   const fuelMode: 'fuel' | 'battery' = carType === CarType.Electric ? 'battery' : 'fuel'
 
-  const hostRef = useRef<HTMLDivElement | null>(null)
-  const [scale, setScale] = useState(1)
-  const [sidePush, setSidePush] = useState(0)
+  const [scale, setScale] = useState(() => stageScale(window.innerWidth, window.innerHeight))
+  const [sidePush, setSidePush] = useState(() =>
+    stagePush(window.innerWidth, stageScale(window.innerWidth, window.innerHeight))
+  )
+  const [offset, setOffset] = useState(() => stageOffset(window.innerWidth, window.innerHeight))
+  const [scaleLive, setScaleLive] = useState(false)
+
+  // Single source of truth: the dash fills the fixed full-window telemetry root, so
+  // the window size IS the host size. It is read once at first render and again only
+  // on window resize / fullscreen transitions — never re-measured in between.
+  useEffect(() => {
+    let settle: ReturnType<typeof setTimeout> | null = null
+    // Debounced: attaching the native cluster plane makes macOS relayout the window,
+    // which fires transient 1-2px resize blips. Only a size that holds for a beat is
+    // a real resize/fullscreen change; a blip collapses to a no-op.
+    const onResize = () => {
+      if (settle != null) clearTimeout(settle)
+      settle = setTimeout(() => {
+        settle = null
+        const w = window.innerWidth
+        const h = window.innerHeight
+        const safe = stageScale(w, h)
+        setScale(safe)
+        setSidePush(stagePush(w, safe))
+        setOffset(stageOffset(w, h))
+      }, 150)
+    }
+    window.addEventListener('resize', onResize)
+    return () => {
+      if (settle != null) clearTimeout(settle)
+      window.removeEventListener('resize', onResize)
+    }
+  }, [])
 
   useEffect(() => {
-    const el = hostRef.current as HTMLDivElement
-
-    const ro = new ResizeObserver(([entry]) => {
-      const r = entry?.contentRect
-      if (!r) return
-      const s = Math.min(r.width / BASE_W, r.height / BASE_H)
-      const safe = Number.isFinite(s) && s > 0 ? s : 1
-      setScale(safe)
-      setSidePush(Math.max(0, (r.width / safe - BASE_W) / 2))
-    })
-
-    ro.observe(el)
-    return () => ro.disconnect()
+    setScaleLive(true)
   }, [])
 
   const clusterBg = theme.palette.background.default
@@ -110,10 +140,7 @@ export function DashFrame({ children, clusterFull }: DashFrameProps) {
 
   return (
     <DashShell>
-      <Box
-        ref={hostRef}
-        sx={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }}
-      >
+      <Box sx={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }}>
         {/* Normal dash: a plain dark backdrop. Either cluster mode drops it so the plane shows. */}
         {!isClusterDash && (
           <Box sx={{ position: 'absolute', inset: 0, backgroundColor: clusterBg }} />
@@ -123,13 +150,14 @@ export function DashFrame({ children, clusterFull }: DashFrameProps) {
         <Box
           sx={{
             position: 'absolute',
-            left: '50%',
-            top: '50%',
+            left: offset.left,
+            top: offset.top,
             width: BASE_W,
             height: BASE_H,
-            transform: `translate(-50%, -50%) scale(${scale})`,
-            transformOrigin: 'center',
-            transition: 'transform 0.05s ease-out'
+            transform: `scale(${scale})`,
+            transformOrigin: 'top left',
+            willChange: 'transform',
+            transition: scaleLive ? 'transform 0.05s ease-out' : 'none'
           }}
         >
           {/* LEFT RING — speed */}

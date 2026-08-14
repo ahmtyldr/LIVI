@@ -77,7 +77,10 @@ export const AppLayout: FC<PropsWithChildren<AppLayoutProps>> = ({
             borderRight: isRhd ? undefined : '1px solid #444',
             borderLeft: isRhd ? '1px solid #444' : undefined,
             flex: '0 0 auto',
-            position: 'relative',
+            position: inAutoHideNavPage ? 'absolute' : 'relative',
+            top: inAutoHideNavPage ? 0 : undefined,
+            left: inAutoHideNavPage && !isRhd ? 0 : undefined,
+            right: inAutoHideNavPage && isRhd ? 0 : undefined,
             zIndex: 10,
             opacity: hideNav ? 0 : 1,
             transform: hideNav

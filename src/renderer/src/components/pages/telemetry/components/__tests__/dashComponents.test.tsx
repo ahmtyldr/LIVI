@@ -3,12 +3,9 @@ import { DashPlaceholder } from '../DashPlaceholder'
 import { DashShell } from '../DashShell'
 
 describe('DashShell', () => {
-  test('renders children and attaches ResizeObserver', () => {
-    const observe = vi.fn()
-    const disconnect = vi.fn()
-    ;(global as any).ResizeObserver = vi.fn(function () {
-      return { observe, disconnect }
-    })
+  test('renders children and listens for window resize', () => {
+    const addSpy = vi.spyOn(window, 'addEventListener')
+    const removeSpy = vi.spyOn(window, 'removeEventListener')
 
     const { unmount } = render(
       <div style={{ width: 400, height: 300 }}>
@@ -19,10 +16,13 @@ describe('DashShell', () => {
     )
 
     expect(screen.getByText('dash-child')).toBeInTheDocument()
-    expect(observe).toHaveBeenCalledTimes(1)
+    expect(addSpy).toHaveBeenCalledWith('resize', expect.any(Function))
 
     unmount()
-    expect(disconnect).toHaveBeenCalledTimes(1)
+    expect(removeSpy).toHaveBeenCalledWith('resize', expect.any(Function))
+
+    addSpy.mockRestore()
+    removeSpy.mockRestore()
   })
 })
 

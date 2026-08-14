@@ -1,49 +1,29 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, waitFor } from '@testing-library/react'
 import { DashShell } from '../DashShell'
 
-type ResizeObserverCallback = (
-  entries: Array<{ contentRect: { width: number; height: number } }>
-) => void
+function setWindowSize(w: number, h: number): void {
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: w })
+  Object.defineProperty(window, 'innerHeight', { configurable: true, value: h })
+}
 
 describe('DashShell', () => {
-  let resizeObserverCallback: ResizeObserverCallback | null = null
-  const observeMock = vi.fn()
-  const disconnectMock = vi.fn()
-
   beforeEach(async () => {
     vi.clearAllMocks()
-    resizeObserverCallback = null
-    ;(global as any).ResizeObserver = class {
-      constructor(cb: ResizeObserverCallback) {
-        resizeObserverCallback = cb
-      }
-
-      observe = observeMock
-      disconnect = disconnectMock
-    }
+    setWindowSize(1024, 768)
   })
 
-  test('renders children', async () => {
-    render(
+  test('derives the initial scale from the window before resize information is available', async () => {
+    const { container } = render(
       <DashShell>
         <div>Telemetry content</div>
       </DashShell>
     )
 
-    expect(screen.getByText('Telemetry content')).toBeInTheDocument()
+    expect(container.firstChild).toHaveStyle('--dash-scale: 0.8')
   })
 
-  test('applies className to root element', async () => {
-    const { container } = render(
-      <DashShell className="dash-shell-test">
-        <div>Telemetry content</div>
-      </DashShell>
-    )
-
-    expect(container.firstChild).toHaveClass('dash-shell-test')
-  })
-
-  test('starts with default scale 1 before resize information is available', async () => {
+  test('falls back to scale 1 while the window reports no size', async () => {
+    setWindowSize(0, 0)
     const { container } = render(
       <DashShell>
         <div>Telemetry content</div>
@@ -53,38 +33,30 @@ describe('DashShell', () => {
     expect(container.firstChild).toHaveStyle('--dash-scale: 1')
   })
 
-  test('observes the root element with ResizeObserver', async () => {
-    render(
-      <DashShell>
-        <div>Telemetry content</div>
-      </DashShell>
-    )
-
-    expect(observeMock).toHaveBeenCalledTimes(1)
-  })
-
-  test('updates scale using default design size', async () => {
+  test('updates scale on window resize using the default design size', async () => {
     const { container } = render(
       <DashShell>
         <div>Telemetry content</div>
       </DashShell>
     )
 
-    resizeObserverCallback?.([{ contentRect: { width: 640, height: 360 } }])
+    setWindowSize(640, 360)
+    fireEvent(window, new Event('resize'))
 
     await waitFor(() => {
       expect(container.firstChild).toHaveStyle('--dash-scale: 0.5')
     })
   })
 
-  test('updates scale using custom design size', async () => {
+  test('updates scale on window resize using a custom design size', async () => {
     const { container } = render(
       <DashShell designWidth={1000} designHeight={500}>
         <div>Telemetry content</div>
       </DashShell>
     )
 
-    resizeObserverCallback?.([{ contentRect: { width: 500, height: 400 } }])
+    setWindowSize(500, 400)
+    fireEvent(window, new Event('resize'))
 
     await waitFor(() => {
       expect(container.firstChild).toHaveStyle('--dash-scale: 0.5')
@@ -98,15 +70,16 @@ describe('DashShell', () => {
       </DashShell>
     )
 
-    resizeObserverCallback?.([{ contentRect: { width: 900, height: 200 } }])
+    setWindowSize(900, 200)
+    fireEvent(window, new Event('resize'))
 
     await waitFor(() => {
       expect(container.firstChild).toHaveStyle('--dash-scale: 0.4')
     })
   })
 
-  test('disconnects ResizeObserver on unmount', async () => {
-    const { unmount } = render(
+  test('stops listening to window resize on unmount', async () => {
+    const { container, unmount } = render(
       <DashShell>
         <div>Telemetry content</div>
       </DashShell>
@@ -114,20 +87,9 @@ describe('DashShell', () => {
 
     unmount()
 
-    expect(disconnectMock).toHaveBeenCalledTimes(1)
-  })
+    setWindowSize(640, 360)
+    fireEvent(window, new Event('resize'))
 
-  test('ignores resize entries without contentRect', async () => {
-    const { container } = render(
-      <DashShell>
-        <div>Telemetry content</div>
-      </DashShell>
-    )
-
-    resizeObserverCallback?.([{} as never])
-
-    await waitFor(() => {
-      expect(container.firstChild).toHaveStyle('--dash-scale: 1')
-    })
+    expect(container.firstChild).toBeNull()
   })
 })
