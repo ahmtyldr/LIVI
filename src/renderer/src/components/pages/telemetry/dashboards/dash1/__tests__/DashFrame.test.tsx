@@ -1,6 +1,6 @@
 import { createTheme, ThemeProvider } from '@mui/material'
 import { CarType } from '@shared/types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { DashFrame } from '../DashFrame'
 
 const useVehicleTelemetryMock = vi.fn()
@@ -130,36 +130,53 @@ describe('DashFrame', () => {
     }
   })
 
-  test('rescales on window resize and stops listening on unmount', async () => {
-    const { container, unmount } = render(<DashFrame />)
+  test('rescales on a settled window resize, collapses blips and cancels on unmount', () => {
+    vi.useFakeTimers()
+    try {
+      const { container, unmount } = render(<DashFrame />)
 
-    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1280 })
-    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 720 })
-    fireEvent(window, new Event('resize'))
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1278 })
+      Object.defineProperty(window, 'innerHeight', { configurable: true, value: 720 })
+      fireEvent(window, new Event('resize'))
+      act(() => {
+        vi.advanceTimersByTime(50)
+      })
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1280 })
+      fireEvent(window, new Event('resize'))
+      act(() => {
+        vi.advanceTimersByTime(150)
+      })
 
-    await waitFor(() => {
       const stage = Array.from(container.querySelectorAll('div')).find((d) =>
         window.getComputedStyle(d).transform.includes('scale(1)')
       )
       expect(stage).toBeTruthy()
-    })
 
-    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 0 })
-    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 0 })
-    fireEvent(window, new Event('resize'))
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 0 })
+      Object.defineProperty(window, 'innerHeight', { configurable: true, value: 0 })
+      fireEvent(window, new Event('resize'))
+      act(() => {
+        vi.advanceTimersByTime(150)
+      })
 
-    await waitFor(() => {
-      const stage = Array.from(container.querySelectorAll('div')).find((d) =>
+      const fallback = Array.from(container.querySelectorAll('div')).find((d) =>
         window.getComputedStyle(d).transform.includes('scale(1)')
       )
-      expect(stage).toBeTruthy()
-    })
+      expect(fallback).toBeTruthy()
 
-    unmount()
-    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1024 })
-    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 768 })
-    fireEvent(window, new Event('resize'))
-    expect(container.firstChild).toBeNull()
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 640 })
+      Object.defineProperty(window, 'innerHeight', { configurable: true, value: 360 })
+      fireEvent(window, new Event('resize'))
+      unmount()
+      act(() => {
+        vi.advanceTimersByTime(300)
+      })
+      expect(container.firstChild).toBeNull()
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1024 })
+      Object.defineProperty(window, 'innerHeight', { configurable: true, value: 768 })
+      vi.useRealTimers()
+    }
   })
 
   test('renders under a dark theme', () => {

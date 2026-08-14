@@ -1,4 +1,4 @@
-import { fireEvent, render, waitFor } from '@testing-library/react'
+import { act, fireEvent, render } from '@testing-library/react'
 import { DashShell } from '../DashShell'
 
 function setWindowSize(w: number, h: number): void {
@@ -33,63 +33,114 @@ describe('DashShell', () => {
     expect(container.firstChild).toHaveStyle('--dash-scale: 1')
   })
 
-  test('updates scale on window resize using the default design size', async () => {
-    const { container } = render(
-      <DashShell>
-        <div>Telemetry content</div>
-      </DashShell>
-    )
+  test('applies a settled window resize using the default design size', () => {
+    vi.useFakeTimers()
+    try {
+      const { container } = render(
+        <DashShell>
+          <div>Telemetry content</div>
+        </DashShell>
+      )
 
-    setWindowSize(640, 360)
-    fireEvent(window, new Event('resize'))
+      setWindowSize(640, 360)
+      fireEvent(window, new Event('resize'))
+      act(() => {
+        vi.advanceTimersByTime(150)
+      })
 
-    await waitFor(() => {
       expect(container.firstChild).toHaveStyle('--dash-scale: 0.5')
-    })
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
-  test('updates scale on window resize using a custom design size', async () => {
-    const { container } = render(
-      <DashShell designWidth={1000} designHeight={500}>
-        <div>Telemetry content</div>
-      </DashShell>
-    )
+  test('applies a settled window resize using a custom design size', () => {
+    vi.useFakeTimers()
+    try {
+      const { container } = render(
+        <DashShell designWidth={1000} designHeight={500}>
+          <div>Telemetry content</div>
+        </DashShell>
+      )
 
-    setWindowSize(500, 400)
-    fireEvent(window, new Event('resize'))
+      setWindowSize(500, 400)
+      fireEvent(window, new Event('resize'))
+      act(() => {
+        vi.advanceTimersByTime(150)
+      })
 
-    await waitFor(() => {
       expect(container.firstChild).toHaveStyle('--dash-scale: 0.5')
-    })
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
-  test('uses the smaller width/height ratio for scale', async () => {
-    const { container } = render(
-      <DashShell designWidth={1000} designHeight={500}>
-        <div>Telemetry content</div>
-      </DashShell>
-    )
+  test('uses the smaller width/height ratio for scale', () => {
+    vi.useFakeTimers()
+    try {
+      const { container } = render(
+        <DashShell designWidth={1000} designHeight={500}>
+          <div>Telemetry content</div>
+        </DashShell>
+      )
 
-    setWindowSize(900, 200)
-    fireEvent(window, new Event('resize'))
+      setWindowSize(900, 200)
+      fireEvent(window, new Event('resize'))
+      act(() => {
+        vi.advanceTimersByTime(150)
+      })
 
-    await waitFor(() => {
       expect(container.firstChild).toHaveStyle('--dash-scale: 0.4')
-    })
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
-  test('stops listening to window resize on unmount', async () => {
-    const { container, unmount } = render(
-      <DashShell>
-        <div>Telemetry content</div>
-      </DashShell>
-    )
+  test('collapses a transient resize blip into a single settled update', () => {
+    vi.useFakeTimers()
+    try {
+      const { container } = render(
+        <DashShell>
+          <div>Telemetry content</div>
+        </DashShell>
+      )
 
-    unmount()
+      setWindowSize(1022, 768)
+      fireEvent(window, new Event('resize'))
+      act(() => {
+        vi.advanceTimersByTime(50)
+      })
+      setWindowSize(1024, 768)
+      fireEvent(window, new Event('resize'))
+      act(() => {
+        vi.advanceTimersByTime(150)
+      })
 
-    setWindowSize(640, 360)
-    fireEvent(window, new Event('resize'))
+      expect(container.firstChild).toHaveStyle('--dash-scale: 0.8')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 
-    expect(container.firstChild).toBeNull()
+  test('cancels a pending resize and stops listening on unmount', () => {
+    vi.useFakeTimers()
+    try {
+      const { container, unmount } = render(
+        <DashShell>
+          <div>Telemetry content</div>
+        </DashShell>
+      )
+
+      setWindowSize(640, 360)
+      fireEvent(window, new Event('resize'))
+      unmount()
+      act(() => {
+        vi.advanceTimersByTime(300)
+      })
+
+      expect(container.firstChild).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
