@@ -6,7 +6,7 @@ import DeviceHubIcon from '@mui/icons-material/DeviceHub'
 import DirectionsCarIcon from '@mui/icons-material/DirectionsCar'
 import PhoneIphoneIcon from '@mui/icons-material/PhoneIphone'
 import WifiOutlinedIcon from '@mui/icons-material/WifiOutlined'
-import { Typography, useTheme } from '@mui/material'
+import { IconButton, Typography, useTheme } from '@mui/material'
 import type { DeviceView } from '@shared/types'
 import { StackItem } from '../stackItem'
 
@@ -27,7 +27,7 @@ const SourceBadge = ({ d, size }: { d: DeviceView; size: number }) => {
 }
 
 const batteryColor = (pct: number): string =>
-  pct < 10 ? '#ff3b30' : pct < 20 ? '#ffcc00' : '#34c759'
+  pct < 10 ? '#ff3b30' : pct < 20 ? '#ffcc00' : '#248a3d'
 
 const BatteryIcon = ({ level, charging }: { level: number; charging?: boolean }) => {
   const theme = useTheme()
@@ -78,11 +78,22 @@ const BatteryIcon = ({ level, charging }: { level: number; charging?: boolean })
           fontSize: 10.5,
           fontWeight: 700,
           lineHeight: 1,
+          transform: 'translateY(2px)',
           color: theme.palette.text.primary,
-          textShadow: `0 0 2px ${theme.palette.background.paper}, 0 0 2px ${theme.palette.background.paper}`
+          // Crisp outline instead of a soft glow — the digits must survive the coloured fill on small panels.
+          textShadow: `0 1px 1px ${theme.palette.background.paper}, 1px 0 1px ${theme.palette.background.paper}, 0 -1px 1px ${theme.palette.background.paper}, -1px 0 1px ${theme.palette.background.paper}`
         }}
       >
-        {charging ? <BoltIcon sx={{ fontSize: 12, color: '#34c759' }} /> : null}
+        {charging ? (
+          <BoltIcon
+            sx={{
+              fontSize: 12,
+              color: theme.palette.text.primary,
+              // The bolt glyph sits low in its viewBox — pull it back up against the digits.
+              transform: 'translateY(-1px)'
+            }}
+          />
+        ) : null}
         {pct}
       </span>
     </span>
@@ -199,29 +210,24 @@ export const SettingsDeviceRow = ({ device: d, onSelect, onForget }: Props) => {
           <span style={{ width: 20, display: 'inline-flex', justifyContent: 'center' }}>
             <StatusDot status={d.status} />
           </span>
-          <button
-            type="button"
+          <IconButton
             aria-label="Delete device"
+            className="nav-focus-primary"
             onClick={(e) => {
               e.stopPropagation()
               onForget()
             }}
             onKeyDown={(e) => e.stopPropagation()}
-            style={{
+            sx={{
               flex: 'none',
               width: 'clamp(30px, 4.8svh, 40px)',
               height: 'clamp(30px, 4.8svh, 40px)',
-              border: 'none',
-              background: 'transparent',
-              color: theme.palette.text.secondary,
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center'
+              p: 0,
+              color: theme.palette.text.secondary
             }}
           >
             <CloseIcon sx={{ fontSize: 'clamp(18px, 3.2svh, 22px)' }} />
-          </button>
+          </IconButton>
         </span>
       </StackItem>
     </div>
