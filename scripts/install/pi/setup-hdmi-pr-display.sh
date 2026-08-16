@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+export PATH="$PATH:/usr/sbin:/sbin"
 
 # ============================================================================
 # HDMI-PR mode (Raspberry Pi)
@@ -21,8 +22,10 @@ CONNECTOR="HDMI-A-1"
 EDID_SRC=""
 DO_BUILD=1
 KVER="$(uname -r)"   # --kernel builds for another installed kernel (postinst hook)
+CUR_SRC_VER=""       # source version of the current build, set by fetch_rpt_apt
 KSRC=""   # set by fetch_and_sync from the running kernel version
 STATE_DIR="/var/lib/livi/hdmi-pr"
+WORK_ROOT="${HOME}/LIVI/kernel-src"
 FW_EDID="/lib/firmware/edid/livi-display.edid"
 CMDLINE="/boot/firmware/cmdline.txt"
 MARKER="LIVI HDMI-PR"
@@ -114,10 +117,11 @@ fetch_rpt_apt() {
   kver="$KVER"
   ver="$(dpkg-query -W -f='${Version}' "linux-image-${kver}")"   # 1:6.18.34-1+rpt1
   ver="${ver#*:}"                                                # 6.18.34-1+rpt1
+  CUR_SRC_VER="$ver"
   upstream="${ver%%-*}"                                          # 6.18.34
   pool="https://archive.raspberrypi.com/debian/pool/main/l/linux"
-  work="${HOME}/.cache/livi-kernel-src"
-  KSRC="${HOME}/linux-${ver}"
+  work="${WORK_ROOT}/cache"
+  KSRC="${WORK_ROOT}/linux-${ver}"
   vc4src="${KSRC}/drivers/gpu/drm/vc4/vc4_hdmi.c"
 
   if [[ ! -f "$vc4src" ]]; then
@@ -350,7 +354,7 @@ PY
     echo "ERROR: built module does not match kernel ${kver}, not installing." >&2
     echo "  built:  ${new_vm:-<none>}" >&2
     echo "  target: ${run_vm:-<none>}" >&2
-    echo "If you changed kernels, run 'rm -rf ~/linux-*' and re-run." >&2
+    echo "If you changed kernels, run 'rm -rf ${WORK_ROOT}' and re-run." >&2
     exit 1
   fi
   echo "   vermagic OK: ${new_vm}"
@@ -372,13 +376,34 @@ PY
   sudo touch "$done_marker"
   sudo rm -f "${STATE_DIR}/BUILD-FAILED-${kver}"
   echo "   vc4 patched and installed (original backed up to ${target}.livi-bak)"
+
+  cleanup_kernel_src
+}
+
+# Keep only the tarball cache of the version
+cleanup_kernel_src() {
+  local d f
+  [[ -d "$WORK_ROOT" ]] || return 0
+  echo "→ Cleaning up kernel sources"
+  for d in "$WORK_ROOT"/linux-*; do
+    [[ -d "$d" ]] && rm -rf "$d"
+  done
+  for f in "$WORK_ROOT"/cache/*; do
+    [[ -f "$f" ]] || continue
+    case "$(basename "$f")" in
+      *"${CUR_SRC_VER%%-*}"*) [[ -n "$CUR_SRC_VER" ]] || rm -f "$f" ;;
+      *) rm -f "$f" ;;
+    esac
+  done
 }
 
 # Rebuild the module for every future kernel, a failure warns before the reboot.
 install_kernel_hook() {
   local self="/usr/local/lib/livi/setup-hdmi-pr-display.sh"
   echo "→ Installing the kernel post-install hook"
-  sudo install -m 0755 "$0" "$self"
+  if ! [[ "$0" -ef "$self" ]]; then
+    sudo install -m 0755 "$0" "$self"
+  fi
   sudo tee /etc/kernel/postinst.d/livi-vc4 >/dev/null <<EOF
 #!/bin/sh
 # LIVI HDMI-PR: rebuild the patched vc4 for a freshly installed kernel.
