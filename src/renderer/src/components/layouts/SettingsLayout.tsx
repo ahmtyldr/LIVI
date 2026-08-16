@@ -92,127 +92,9 @@ export const SettingsLayout = ({
         pl: `${px.pl}px`,
         pr: `${px.pr}px`,
         pt: `${px.pt}px`,
-        pb: `${px.pb}px`,
-        gap: '0.75rem'
+        pb: `${px.pb}px`
       }}
     >
-      <Box
-        sx={{
-          position: 'relative',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          height: `${px.headerH}px`,
-          px: '0.5rem',
-          boxSizing: 'border-box',
-          flex: '0 0 auto'
-        }}
-      >
-        <Box
-          sx={{
-            width: `${px.slotLeftW}px`,
-            height: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'flex-start',
-            flex: '0 0 auto'
-          }}
-        >
-          {showBack ? (
-            <IconButton
-              onClick={handleNavigate}
-              aria-label="Back"
-              className="nav-focus-primary"
-              disableRipple
-              disableFocusRipple
-              disableTouchRipple
-              sx={{
-                width: `${px.slotLeftW}px`,
-                height: '100%',
-                p: 0,
-                m: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-            >
-              <ArrowBackIosOutlinedIcon sx={{ fontSize: `${px.iconPx}px` }} />
-            </IconButton>
-          ) : null}
-        </Box>
-
-        <Box
-          sx={{
-            position: 'absolute',
-            top: 0,
-            bottom: 0,
-            left: `${Math.max(px.slotLeftW, px.slotRightW)}px`,
-            right: `${Math.max(px.slotLeftW, px.slotRightW)}px`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            pointerEvents: 'none'
-          }}
-        >
-          <Typography
-            sx={{
-              textAlign: 'center',
-              fontWeight: 800,
-              lineHeight: 1.05,
-              fontSize: `${px.titlePx}px`,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              maxWidth: '100%'
-            }}
-          >
-            {title}
-          </Typography>
-        </Box>
-
-        <Box
-          sx={{
-            width: `${px.slotRightW}px`,
-            height: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'flex-end',
-            flex: '0 0 auto'
-          }}
-        >
-          {showRestart ? (
-            <IconButton
-              onClick={onRestart}
-              aria-label="Apply"
-              sx={{
-                width: `${px.slotRightW}px`,
-                height: '100%',
-                p: 0,
-                m: 0,
-                color: theme.palette.primary.main,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-            >
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  whiteSpace: 'nowrap',
-                  fontSize: `${px.applyPx}px`,
-                  gap: '0.5rem'
-                }}
-              >
-                <span>Apply</span>
-                <RestartAltOutlinedIcon sx={{ fontSize: `${px.iconPx}px` }} />
-              </Box>
-            </IconButton>
-          ) : null}
-        </Box>
-      </Box>
-
       <Box
         sx={{
           flex: '1 1 auto',
@@ -224,7 +106,125 @@ export const SettingsLayout = ({
           touchAction: 'pan-y'
         }}
       >
-        <Stack spacing={0} sx={{ minHeight: '100%', padding: '0 0.5rem' }}>
+        <Box
+          sx={{
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            height: `${px.headerH}px`,
+            px: '0.5rem',
+            boxSizing: 'border-box',
+            flex: '0 0 auto',
+            mb: '0.75rem'
+          }}
+        >
+          <Box
+            sx={{
+              width: `${px.slotLeftW}px`,
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'flex-start',
+              flex: '0 0 auto'
+            }}
+          >
+            {showBack ? (
+              <IconButton
+                onClick={handleNavigate}
+                aria-label="Back"
+                className="nav-focus-primary"
+                disableRipple
+                disableFocusRipple
+                disableTouchRipple
+                sx={{
+                  width: `${px.slotLeftW}px`,
+                  height: '100%',
+                  p: 0,
+                  m: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <ArrowBackIosOutlinedIcon sx={{ fontSize: `${px.iconPx}px` }} />
+              </IconButton>
+            ) : null}
+          </Box>
+
+          <Box
+            sx={{
+              position: 'absolute',
+              top: 0,
+              bottom: 0,
+              left: `${Math.max(px.slotLeftW, px.slotRightW)}px`,
+              right: `${Math.max(px.slotLeftW, px.slotRightW)}px`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              pointerEvents: 'none'
+            }}
+          >
+            <Typography
+              sx={{
+                textAlign: 'center',
+                fontWeight: 800,
+                lineHeight: 1.05,
+                fontSize: `${px.titlePx}px`,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                maxWidth: '100%'
+              }}
+            >
+              {title}
+            </Typography>
+          </Box>
+
+          <Box
+            sx={{
+              width: `${px.slotRightW}px`,
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'flex-end',
+              flex: '0 0 auto'
+            }}
+          >
+            {showRestart ? (
+              <IconButton
+                onClick={onRestart}
+                aria-label="Apply"
+                sx={{
+                  width: `${px.slotRightW}px`,
+                  height: '100%',
+                  p: 0,
+                  m: 0,
+                  color: theme.palette.primary.main,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    whiteSpace: 'nowrap',
+                    fontSize: `${px.applyPx}px`,
+                    gap: '0.5rem'
+                  }}
+                >
+                  <span>Apply</span>
+                  <RestartAltOutlinedIcon sx={{ fontSize: `${px.iconPx}px` }} />
+                </Box>
+              </IconButton>
+            ) : null}
+          </Box>
+        </Box>
+
+        <Stack spacing={0} sx={{ padding: '0 0.5rem' }}>
           {children}
         </Stack>
       </Box>
