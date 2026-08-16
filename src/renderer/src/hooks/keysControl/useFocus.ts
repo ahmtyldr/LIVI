@@ -135,16 +135,22 @@ export const useFocus = () => {
         }
 
         if (scrolledWrapper) {
-          const nr = next.getBoundingClientRect()
+          const rowEl = (next.closest('[data-nav-row]') as HTMLElement | null) ?? next
+          const nr = rowEl.getBoundingClientRect()
           const wr = scrolledWrapper.getBoundingClientRect()
 
-          if (nr.top < wr.top) {
-            scrolledWrapper.scrollTop -= wr.top - nr.top
-          } else if (nr.bottom > wr.bottom) {
-            scrolledWrapper.scrollTop += nr.bottom - wr.bottom
+          let top = scrolledWrapper.scrollTop
+          if (nr.top < wr.top) top -= Math.ceil(wr.top - nr.top)
+          else if (nr.bottom > wr.bottom) top += Math.ceil(nr.bottom - wr.bottom)
+          if (top !== scrolledWrapper.scrollTop) {
+            if (typeof scrolledWrapper.scrollTo === 'function') {
+              scrolledWrapper.scrollTo({ top, behavior: 'smooth' })
+            } else {
+              scrolledWrapper.scrollTop = top
+            }
           }
         } else {
-          next.scrollIntoView({ block: 'nearest' })
+          next.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
         }
 
         next.focus({ preventScroll: true })
@@ -158,6 +164,17 @@ export const useFocus = () => {
         return true
       }
 
+      // Down past the last element: rubber-band bounce, swallow the key so the
+      // native fallthrough cannot nudge the container. Up keeps the old
+      // fallthrough (used to leave the list).
+      const wrapper = mainRoot?.querySelector('[data-scrolled-wrapper]') as HTMLElement | null
+      if (delta > 0 && wrapper && active && list.includes(active)) {
+        wrapper.classList.remove('livi-bounce-down')
+        void wrapper.offsetWidth
+        wrapper.classList.add('livi-bounce-down')
+        window.setTimeout(() => wrapper.classList.remove('livi-bounce-down'), 250)
+        return true
+      }
       return false
     },
     [appContext, getFocusableList, getMainRoot]

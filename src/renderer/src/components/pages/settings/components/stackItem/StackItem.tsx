@@ -14,30 +14,42 @@ import { SettingsRowIcon } from '../settingsRowIcon'
 const Item = styled(Paper)(({ theme }) => {
   const activeColor = theme.palette.primary.main
 
-  const rowPad = 'clamp(10px, 1.9svh, 16px)'
+  const rowPad = 'var(--livi-row-pad, 12px)'
+  const rowH = 'var(--livi-row-h, 44px)'
   const rowFont = 'clamp(0.9rem, 2.2svh, 1rem)'
-  const rowGap = 'clamp(0.75rem, 2.6svh, 3rem)'
+  const rowGap = 'var(--livi-row-gap, 16px)'
 
   const activeRowStyles = {
-    borderBottom: `2px solid ${activeColor}`,
-    a: { color: activeColor },
-    '& .row-chevron': { right: '3px', color: activeColor }
+    '& > a, & > p': { color: activeColor },
+    '& .row-chevron': { transform: 'translateX(-3px)', color: activeColor }
   } as const
 
   return {
+    position: 'relative',
+    borderRadius: 0,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
     flexDirection: 'row',
     gap: rowGap,
+    height: rowH,
     paddingRight: rowPad,
-    borderBottom: `2px solid ${theme.palette.divider}`,
     fontSize: rowFont,
 
+    // Inset divider; group ends (rounding, last divider off) are styled by the list container
+    '&::after': {
+      content: '""',
+      position: 'absolute',
+      left: 'var(--livi-row-inset, 52px)',
+      right: 'var(--livi-row-inset-r, 28px)',
+      bottom: 0,
+      height: '2px',
+      backgroundColor: theme.palette.divider
+    },
+
     '& .row-chevron': {
-      position: 'relative',
-      right: 0,
-      transition: 'all 0.3s ease-in-out'
+      transform: 'translateX(0)',
+      transition: 'transform 0.3s ease-in-out, color 0.3s ease-in-out'
     },
 
     // Hover ONLY for real mouse (prevents sticky hover after touch)
@@ -65,7 +77,8 @@ const Item = styled(Paper)(({ theme }) => {
       display: 'flex',
       alignItems: 'center',
       width: '100%',
-      padding: rowPad,
+      height: '100%',
+      padding: `0 ${rowPad}`,
       textDecoration: 'none',
       fontSize: rowFont,
       outline: 'none',
@@ -77,7 +90,8 @@ const Item = styled(Paper)(({ theme }) => {
       display: 'flex',
       alignItems: 'center',
       width: '100%',
-      padding: rowPad,
+      height: '100%',
+      padding: `0 ${rowPad}`,
       textDecoration: 'none',
       fontSize: rowFont,
       outline: 'none',
@@ -87,20 +101,20 @@ const Item = styled(Paper)(({ theme }) => {
       'html[data-input="mouse"] &': {
         '&:hover': {
           color: activeColor,
-          '+ .row-chevron': { right: '3px', color: activeColor }
+          '+ .row-chevron': { transform: 'translateX(-3px)', color: activeColor }
         }
       },
 
       // Press feedback (mouse + touch) - same as keyboard highlight
       '&:active': {
         color: activeColor,
-        '+ .row-chevron': { right: '3px', color: activeColor }
+        '+ .row-chevron': { transform: 'translateX(-3px)', color: activeColor }
       },
 
       // Keyboard highlight
       '&:focus-visible': {
         color: activeColor,
-        '+ .row-chevron': { right: '3px', color: activeColor }
+        '+ .row-chevron': { transform: 'translateX(-3px)', color: activeColor }
       },
 
       '&:focus': { outline: 'none' }
@@ -116,7 +130,10 @@ export const StackItem = ({
   withForwardIcon,
   onClick,
   savedLabel,
-  focusable
+  focusable,
+  ownIcon,
+  dimmed,
+  disabled
 }: StackItemProps) => {
   const { t } = useTranslation()
 
@@ -176,7 +193,7 @@ export const StackItem = ({
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!onClick) return
+    if (!onClick || disabled) return
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault()
       e.stopPropagation()
@@ -186,12 +203,18 @@ export const StackItem = ({
 
   return (
     <Item
-      onClick={onClick}
+      data-nav-row
+      onClick={disabled ? undefined : onClick}
       onKeyDown={handleKeyDown}
-      tabIndex={onClick || focusable ? 0 : -1}
-      role={onClick ? 'button' : undefined}
+      tabIndex={(onClick && !disabled) || focusable ? 0 : -1}
+      role={onClick && !disabled ? 'button' : undefined}
+      style={
+        dimmed || disabled
+          ? { opacity: 0.45, pointerEvents: disabled ? 'none' : undefined }
+          : undefined
+      }
     >
-      <SettingsRowIcon name={node?.icon} />
+      {!ownIcon && <SettingsRowIcon name={node?.icon} />}
       {children}
       {showValue && node?.type === 'color' && (
         <div

@@ -184,6 +184,15 @@ function buildTheme(mode: THEME.LIGHT | THEME.DARK, bg?: string) {
 
           ':focus': {
             outline: 'none'
+          },
+
+          '@keyframes livi-bounce-down': {
+            '0%': { transform: 'translateY(0)' },
+            '40%': { transform: 'translateY(-8px)' },
+            '100%': { transform: 'translateY(0)' }
+          },
+          '.livi-bounce-down': {
+            animation: 'livi-bounce-down 0.25s ease-out'
           }
         }
       },

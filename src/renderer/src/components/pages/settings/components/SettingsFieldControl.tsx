@@ -1,5 +1,5 @@
 import VolumeOffRounded from '@mui/icons-material/VolumeOffRounded'
-import { Box, Slider, Switch, TextField, Typography } from '@mui/material'
+import { Slider, Switch, TextField } from '@mui/material'
 import { SettingsNode } from '@renderer/routes'
 import type { SelectOption } from '@renderer/routes/types'
 import { useLiviStore } from '@renderer/store/store'
@@ -9,8 +9,8 @@ import { useTranslation } from 'react-i18next'
 import { ColorPickerControl } from './colorPicker/ColorPickerControl'
 import { extractBtMac, withGhostOption } from './ghostOption'
 import NumberSpinner from './numberSpinner/numberSpinner'
+import { SelectOptionRow } from './selectOptionRow'
 import { getCachedOptions, resolveOptions } from './selectOptionsCache'
-import { StackItem } from './stackItem'
 
 type Props<T> = {
   node: SettingsNode<Config>
@@ -270,30 +270,18 @@ function DynamicSelect({
 
   // Flat list instead of a dropdown: one tap selects, selected row gets a dot marker, then close.
   return (
-    <Box sx={{ width: '100%' }}>
-      {renderedOptions.map((o) => {
-        const selected = o.value === selectedValue
-        return (
-          <StackItem
-            key={String(o.value)}
-            onClick={() => {
-              handlePick(o.value)
-              onDone?.()
-            }}
-          >
-            <Typography>{labelFor(o)}</Typography>
-            <Box
-              sx={{
-                flex: 'none',
-                width: 'clamp(8px, 1.6svh, 12px)',
-                height: 'clamp(8px, 1.6svh, 12px)',
-                borderRadius: '50%',
-                bgcolor: selected ? 'primary.main' : 'transparent'
-              }}
-            />
-          </StackItem>
-        )
-      })}
-    </Box>
+    <>
+      {renderedOptions.map((o) => (
+        <SelectOptionRow
+          key={String(o.value)}
+          label={labelFor(o)}
+          selected={o.value === selectedValue}
+          onClick={() => {
+            handlePick(o.value)
+            onDone?.()
+          }}
+        />
+      ))}
+    </>
   )
 }

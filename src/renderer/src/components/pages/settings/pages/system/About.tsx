@@ -94,7 +94,7 @@ export const About = () => {
   }
 
   return (
-    <div style={{ width: '100%', boxSizing: 'border-box' }}>
+    <>
       {rows.map((r) => (
         <SettingsValueRow
           key={r.label}
@@ -116,6 +116,6 @@ export const About = () => {
           }
         />
       ))}
-    </div>
+    </>
   )
 }

@@ -15,7 +15,7 @@ export const Devices = () => {
   }
 
   return (
-    <div style={{ width: '100%', boxSizing: 'border-box' }}>
+    <>
       {devices.length === 0 ? (
         <Typography sx={{ padding: 'clamp(10px, 1.9svh, 16px)', color: 'text.secondary' }}>
           No paired devices
@@ -33,6 +33,6 @@ export const Devices = () => {
           />
         )
       })}
-    </div>
+    </>
   )
 }

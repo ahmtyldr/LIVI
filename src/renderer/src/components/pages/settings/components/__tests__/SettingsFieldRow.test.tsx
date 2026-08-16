@@ -15,8 +15,8 @@ vi.mock('../../pages/devices', () => ({
   Devices: () => <div data-testid="devices-tiles" />
 }))
 vi.mock('../stackItem', () => ({
-  StackItem: ({ children, onClick }: any) => (
-    <button data-testid="stack-item" onClick={onClick}>
+  StackItem: ({ children, onClick, disabled }: any) => (
+    <button data-testid="stack-item" onClick={disabled ? undefined : onClick}>
       {children}
     </button>
   )

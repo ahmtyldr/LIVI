@@ -65,18 +65,49 @@ export const SettingsLayout = ({
     const vh = vp.h / 100
 
     const pl = clampPx(12, 1.5 * vw, 28)
-    const pr = clampPx(12, 3.5 * vw, 28)
+    const pr = pl
     const pt = clampPx(8, 2.2 * vh, 18)
     const pb = clampPx(10, 2.2 * vh, 18)
 
     const headerH = clampPx(32, 5.5 * vh, 44)
+    const headerMb = 12
+    const rowH = Math.round(clampPx(36, 18.7 * vh, 52))
+    // icon slot, placeholder and divider insets derive from these.
+    const rowPad = Math.round(clampPx(10, 1.9 * vh, 16))
+    const rowGap = Math.round(clampPx(12, 2.6 * vh, 48))
+    const rowIcon = Math.round(clampPx(20, 3.6 * vh, 26))
+    // Divider: from the text edge to the chevron's right edge.
+    const rowInset = rowPad + rowIcon + rowGap + rowPad
+    const rowInsetR = rowPad
     const slotLeftW = clampPx(36, 6 * vw, 56)
     const slotRightW = clampPx(36, 8 * vw, 100)
     const iconPx = clampPx(18, 3.2 * vh, 28)
     const titlePx = clampPx(16, 3.6 * vh, 34)
     const applyPx = clampPx(13, 1.8 * vh, 16)
+    // Fill the visible area below the header so flex-1 pages (sliders, calibration) can center.
+    // Floored so a rounding overhang never creates a 1px scroll on non-scrolling pages.
+    const contentMinH = Math.max(0, Math.floor(vp.h - pt - pb - headerH - headerMb))
 
-    return { pl, pr, pt, pb, headerH, slotLeftW, slotRightW, iconPx, titlePx, applyPx }
+    return {
+      pl,
+      pr,
+      pt,
+      pb,
+      headerH,
+      headerMb,
+      contentMinH,
+      rowH,
+      rowPad,
+      rowGap,
+      rowIcon,
+      rowInset,
+      rowInsetR,
+      slotLeftW,
+      slotRightW,
+      iconPx,
+      titlePx,
+      applyPx
+    }
   }, [vp.h, vp.w])
 
   return (
@@ -92,16 +123,22 @@ export const SettingsLayout = ({
         pl: `${px.pl}px`,
         pr: `${px.pr}px`,
         pt: `${px.pt}px`,
-        pb: `${px.pb}px`
+        pb: `${px.pb}px`,
+        '--livi-row-h': `${px.rowH}px`,
+        '--livi-row-pad': `${px.rowPad}px`,
+        '--livi-row-gap': `${px.rowGap}px`,
+        '--livi-row-icon': `${px.rowIcon}px`,
+        '--livi-row-inset': `${px.rowInset}px`,
+        '--livi-row-inset-r': `${px.rowInsetR}px`
       }}
     >
       <Box
+        data-scrolled-wrapper
         sx={{
           flex: '1 1 auto',
           minHeight: 0,
           overflowY: 'auto',
           overflowX: 'hidden',
-          scrollbarGutter: 'stable',
           WebkitOverflowScrolling: 'touch',
           touchAction: 'pan-y'
         }}
@@ -116,7 +153,7 @@ export const SettingsLayout = ({
             px: '0.5rem',
             boxSizing: 'border-box',
             flex: '0 0 auto',
-            mb: '0.75rem'
+            mb: `${px.headerMb}px`
           }}
         >
           <Box
@@ -224,7 +261,28 @@ export const SettingsLayout = ({
           </Box>
         </Box>
 
-        <Stack spacing={0} sx={{ padding: '0 0.5rem' }}>
+        <Stack
+          spacing={0}
+          sx={{
+            minHeight: `${px.contentMinH}px`,
+            padding: '0 0.5rem 2px',
+            // Rows are direct children; sibling logic finds the group ends even
+            // when non-row content precedes or follows the rows.
+            '& > [data-nav-row]': {
+              borderTopLeftRadius: 10,
+              borderTopRightRadius: 10
+            },
+            '& > [data-nav-row] ~ [data-nav-row]': {
+              borderTopLeftRadius: 0,
+              borderTopRightRadius: 0
+            },
+            '& > [data-nav-row]:not(:has(~ [data-nav-row]))': {
+              borderBottomLeftRadius: 10,
+              borderBottomRightRadius: 10,
+              '&::after': { backgroundColor: 'transparent' }
+            }
+          }}
+        >
           {children}
         </Stack>
       </Box>

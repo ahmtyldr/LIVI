@@ -1,10 +1,11 @@
-import { MenuItem, Select, Typography } from '@mui/material'
 import { UsbEvent } from '@renderer/components/pages/media/types'
 import type { SettingsCustomPageProps } from '@settings/type'
 import type { Config } from '@shared/types'
 import { useStatusStore } from '@store/store'
 import { updateCameras as detectCameras } from '@utils/cameraDetection'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router'
+import { SelectOptionRow } from '../../components/selectOptionRow'
 
 function coerceSelectValue<T extends string | number>(
   value: T | null | undefined,
@@ -14,13 +15,14 @@ function coerceSelectValue<T extends string | number>(
 }
 
 export const Camera: React.FC<SettingsCustomPageProps<Config, string>> = ({ state, onChange }) => {
+  const navigate = useNavigate()
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([])
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   const setCameraFound = useStatusStore((s) => s.setCameraFound)
 
   const safeCameraPersist = useCallback(
     async (cfgOrId: string | { cameraId?: string } | null | undefined) => {
-      if (state.cameraId && state.cameraId !== '') return
+      if (state?.cameraId && state.cameraId !== '') return
       const cameraId = typeof cfgOrId === 'string' ? cfgOrId : cfgOrId?.cameraId
 
       if (cameraId && cameraId !== '') onChange(cameraId)
@@ -37,7 +39,7 @@ export const Camera: React.FC<SettingsCustomPageProps<Config, string>> = ({ stat
         detectCameras(setCameraFound, safeCameraPersist, state).then(setCameras)
       }
     }
-    const unsubscribe = window.projection.usb.listenForEvents(usbHandler)
+    const unsubscribe = window.projection?.usb?.listenForEvents(usbHandler)
     return unsubscribe
   }, [safeCameraPersist, setCameraFound, state])
 
@@ -52,43 +54,25 @@ export const Camera: React.FC<SettingsCustomPageProps<Config, string>> = ({ stat
     () => cameraOptions.map((c) => c.deviceId),
     [cameraOptions]
   )
-  const cameraValue = coerceSelectValue(state.cameraId ?? '', cameraIds)
+  const cameraValue = coerceSelectValue(state?.cameraId ?? '', cameraIds)
 
   return (
     <>
-      <div style={{ marginTop: 16 }}>
-        <Select
-          size="small"
-          variant="outlined"
-          value={cameraValue}
-          sx={{
-            minWidth: 200,
-            width: '100%',
-
-            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-              borderColor: 'primary.main',
-              borderWidth: '1px'
-            },
-
-            '& .MuiSelect-select': {
-              display: 'flex',
-              alignItems: 'center',
-              minHeight: 0
-            }
-          }}
-          onChange={(e) => onChange(e.target.value)}
-        >
-          {cameraOptions.map((o) => (
-            <MenuItem key={o.deviceId || 'none'} value={o.deviceId}>
-              {o.label}
-            </MenuItem>
-          ))}
-        </Select>
-
-        <Typography color="text.secondary" sx={{ mb: 2 }}>
-          Source
-        </Typography>
-      </div>
+      {cameraOptions.map((o) => (
+        <SelectOptionRow
+          key={o.deviceId || 'none'}
+          label={o.label}
+          selected={o.deviceId !== '' && o.deviceId === cameraValue}
+          onClick={
+            o.deviceId
+              ? () => {
+                  onChange(o.deviceId)
+                  navigate(-1)
+                }
+              : undefined
+          }
+        />
+      ))}
     </>
   )
 }

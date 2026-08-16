@@ -168,14 +168,24 @@ const ICONS: Record<string, SvgIconComponent> = {
 
 export const SettingsRowIcon = ({ name }: { name?: string }) => {
   const Icon = name ? ICONS[name] : undefined
-  if (!Icon) return null
+  // Icon-less rows keep the icon slot so text and dividers align across all menus
+  if (!Icon)
+    return (
+      <span
+        style={{
+          flex: 'none',
+          width: 'var(--livi-row-icon, 24px)',
+          marginLeft: 'var(--livi-row-pad, 12px)'
+        }}
+      />
+    )
   return (
     <Icon
       sx={{
         flex: 'none',
-        fontSize: 'clamp(20px, 3.6svh, 26px)',
+        fontSize: 'var(--livi-row-icon, 24px)',
         color: 'text.secondary',
-        marginLeft: 'clamp(10px, 1.9svh, 16px)'
+        marginLeft: 'var(--livi-row-pad, 12px)'
       }}
     />
   )

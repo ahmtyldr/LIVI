@@ -28,8 +28,11 @@ export function CalibrationSlider({
   onChange,
   onCommit
 }: Props) {
-  const [draft, setDraft] = useState(value)
-  useEffect(() => setDraft(value), [value])
+  const decimals = (String(step).split('.')[1] ?? '').length
+  const snap = (v: number) => Number((Math.round((v - min) / step) * step + min).toFixed(decimals))
+
+  const [draft, setDraft] = useState(() => snap(value))
+  useEffect(() => setDraft(snap(value)), [value])
 
   const reset = () => {
     setDraft(defaultValue)
@@ -46,10 +49,11 @@ export function CalibrationSlider({
           step={step}
           value={draft}
           onChange={(_, v) => {
-            setDraft(v as number)
-            onChange?.(v as number)
+            const next = snap(v as number)
+            setDraft(next)
+            onChange?.(next)
           }}
-          onChangeCommitted={(_, v) => onCommit(v as number)}
+          onChangeCommitted={(_, v) => onCommit(snap(v as number))}
           sx={{ flex: 1, minWidth: 0, ...(swatch ? { color: swatch } : {}) }}
         />
         {icon && (

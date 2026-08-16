@@ -60,25 +60,26 @@ export function SettingsPage() {
       ? (label: string) => handleFieldChange(labelPath, label)
       : undefined
 
+    const fieldPage = (
+      <SettingsFieldPage
+        node={node}
+        value={getValueByPath(state, node.path)}
+        onChange={(v) => handleFieldChange(node.path, v)}
+        savedLabel={savedLabel}
+        onLabelChange={onLabelChange}
+        onDone={() => navigate(-1)}
+      />
+    )
+
     return (
       <SettingsLayout title={title} showRestart={showRestart} onRestart={handleRestart}>
-        <Box
-          sx={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: node.type === 'slider' ? 'center' : 'flex-start'
-          }}
-        >
-          <SettingsFieldPage
-            node={node}
-            value={getValueByPath(state, node.path)}
-            onChange={(v) => handleFieldChange(node.path, v)}
-            savedLabel={savedLabel}
-            onLabelChange={onLabelChange}
-            onDone={() => navigate(-1)}
-          />
-        </Box>
+        {node.type === 'slider' ? (
+          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            {fieldPage}
+          </Box>
+        ) : (
+          fieldPage
+        )}
       </SettingsLayout>
     )
   }

@@ -1,5 +1,8 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { MemoryRouter } from 'react-router'
 import { Camera } from '../Camera'
+
+const renderCamera = (ui: React.ReactElement) => render(<MemoryRouter>{ui}</MemoryRouter>)
 
 const unsubscribeUsb = vi.fn()
 const listenForEvents = vi.fn(() => unsubscribeUsb)
@@ -15,7 +18,8 @@ vi.mock('@utils/cameraDetection', () => ({
 }))
 
 vi.mock('@store/store', () => ({
-  useStatusStore: (selector: (s: any) => unknown) => selector({ setCameraFound })
+  useStatusStore: (selector: (s: any) => unknown) => selector({ setCameraFound }),
+  useLiviStore: (selector: (s: any) => unknown) => selector({ audioDevicesRevision: 0 })
 }))
 
 describe('Settings Camera page', () => {
@@ -34,13 +38,16 @@ describe('Settings Camera page', () => {
 
   test('loads camera options and subscribes to usb events', async () => {
     const onChange = vi.fn()
-    const { unmount } = render(<Camera state={{ cameraId: '' } as any} onChange={onChange} />)
+    const { unmount } = renderCamera(<Camera state={{ cameraId: '' } as any} onChange={onChange} />)
 
     await waitFor(() => {
       expect(detectCameras).toHaveBeenCalled()
     })
 
-    expect(screen.getByText('Source')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText('Front cam')).toBeInTheDocument()
+      expect(screen.getByText('Rear cam')).toBeInTheDocument()
+    })
     expect(listenForEvents).toHaveBeenCalled()
     unmount()
     expect(unsubscribeUsb).toHaveBeenCalled()
@@ -49,7 +56,7 @@ describe('Settings Camera page', () => {
   test('safeCameraPersist skips onChange when camera is already configured', async () => {
     // lines 26-27: if (state.cameraId && state.cameraId !== '') return early
     const onChange = vi.fn()
-    render(<Camera state={{ cameraId: 'cam-1' } as any} onChange={onChange} />)
+    renderCamera(<Camera state={{ cameraId: 'cam-1' } as any} onChange={onChange} />)
 
     await waitFor(() => expect(detectCameras).toHaveBeenCalled())
 
@@ -62,7 +69,7 @@ describe('Settings Camera page', () => {
   test('safeCameraPersist calls onChange when camera is not yet set', async () => {
     // lines 28-29: cameraId && onChange(cameraId)
     const onChange = vi.fn()
-    render(<Camera state={{ cameraId: '' } as any} onChange={onChange} />)
+    renderCamera(<Camera state={{ cameraId: '' } as any} onChange={onChange} />)
 
     await waitFor(() => expect(detectCameras).toHaveBeenCalled())
 
@@ -74,7 +81,7 @@ describe('Settings Camera page', () => {
   test('safeCameraPersist accepts object with cameraId property', async () => {
     // line 27: cfgOrId?.cameraId branch
     const onChange = vi.fn()
-    render(<Camera state={{ cameraId: '' } as any} onChange={onChange} />)
+    renderCamera(<Camera state={{ cameraId: '' } as any} onChange={onChange} />)
 
     await waitFor(() => expect(detectCameras).toHaveBeenCalled())
 
@@ -85,7 +92,7 @@ describe('Settings Camera page', () => {
 
   test('USB attach event triggers camera re-detection', async () => {
     // lines 38-40: usbHandler fires detectCameras again on attach
-    render(<Camera state={{ cameraId: '' } as any} onChange={vi.fn()} />)
+    renderCamera(<Camera state={{ cameraId: '' } as any} onChange={vi.fn()} />)
 
     await waitFor(() => expect(listenForEvents).toHaveBeenCalled())
 
@@ -98,7 +105,7 @@ describe('Settings Camera page', () => {
 
   test('USB event with irrelevant type does not re-detect cameras', async () => {
     // line 39: type not in list → no detectCameras call
-    render(<Camera state={{ cameraId: '' } as any} onChange={vi.fn()} />)
+    renderCamera(<Camera state={{ cameraId: '' } as any} onChange={vi.fn()} />)
 
     await waitFor(() => expect(listenForEvents).toHaveBeenCalled())
 
@@ -112,11 +119,9 @@ describe('Settings Camera page', () => {
   test('camera label falls back to "Camera" when label is empty', async () => {
     // line 50: c.label || 'Camera'
     detectCameras.mockResolvedValueOnce([{ deviceId: 'cam-x', label: '' }])
-    // set camera to cam-x so the Select shows the selected label
-    render(<Camera state={{ cameraId: 'cam-x' } as any} onChange={vi.fn()} />)
+    renderCamera(<Camera state={{ cameraId: 'cam-x' } as any} onChange={vi.fn()} />)
 
     await waitFor(() => {
-      // MUI Select renders the selected option's label in the DOM
       expect(screen.getByText('Camera')).toBeInTheDocument()
     })
   })
@@ -124,34 +129,29 @@ describe('Settings Camera page', () => {
   test('shows "No camera" option label when no cameras detected', async () => {
     // cameras.length === 0 → cameraOptions = [{deviceId:'', label:'No camera'}]
     detectCameras.mockResolvedValueOnce([])
-    render(<Camera state={{ cameraId: '' } as any} onChange={vi.fn()} />)
+    renderCamera(<Camera state={{ cameraId: '' } as any} onChange={vi.fn()} />)
 
     await waitFor(() => expect(detectCameras).toHaveBeenCalled())
 
-    // Open the Select to make MUI render the options into the DOM
-    fireEvent.mouseDown(screen.getByRole('combobox'))
     await waitFor(() => {
-      expect(screen.getByRole('option', { name: 'No camera' })).toBeInTheDocument()
+      expect(screen.getByText('No camera')).toBeInTheDocument()
     })
   })
 
   test('selecting a camera option forwards the value to onChange', async () => {
     const onChange = vi.fn()
-    render(<Camera state={{ cameraId: '' } as any} onChange={onChange} />)
+    renderCamera(<Camera state={{ cameraId: '' } as any} onChange={onChange} />)
 
     await waitFor(() => expect(detectCameras).toHaveBeenCalled())
 
-    fireEvent.mouseDown(screen.getByRole('combobox'))
-    await waitFor(() =>
-      expect(screen.getByRole('option', { name: 'Rear cam' })).toBeInTheDocument()
-    )
-    fireEvent.click(screen.getByRole('option', { name: 'Rear cam' }))
+    await waitFor(() => expect(screen.getByText('Rear cam')).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: 'Rear cam' }))
 
     expect(onChange).toHaveBeenCalledWith('cam-2')
   })
 
   test('USB event with a missing payload falls back to an empty object', async () => {
-    render(<Camera state={{ cameraId: '' } as any} onChange={vi.fn()} />)
+    renderCamera(<Camera state={{ cameraId: '' } as any} onChange={vi.fn()} />)
 
     await waitFor(() => expect(listenForEvents).toHaveBeenCalled())
 
@@ -164,13 +164,11 @@ describe('Settings Camera page', () => {
 
   test('camera without a deviceId falls back to an empty option id', async () => {
     detectCameras.mockResolvedValueOnce([{ deviceId: undefined, label: 'Ghost cam' }])
-    render(<Camera state={{} as any} onChange={vi.fn()} />)
+    renderCamera(<Camera state={{} as any} onChange={vi.fn()} />)
 
     await waitFor(() => expect(detectCameras).toHaveBeenCalled())
 
-    fireEvent.mouseDown(screen.getByRole('combobox'))
-    await waitFor(() =>
-      expect(screen.getByRole('option', { name: 'Ghost cam' })).toBeInTheDocument()
-    )
+    await waitFor(() => expect(screen.getByText('Ghost cam')).toBeInTheDocument())
+    expect(screen.queryByRole('button', { name: 'Ghost cam' })).toBeNull()
   })
 })

@@ -169,67 +169,65 @@ export const SettingsDeviceRow = ({ device: d, onSelect, onForget }: Props) => {
   const accent = active ? theme.palette.secondary.main : theme.palette.text.secondary
 
   return (
-    <div style={offline ? { opacity: 0.45 } : undefined}>
-      <StackItem onClick={onSelect}>
-        <span
-          style={{
-            flex: 'none',
-            display: 'inline-flex',
-            color: accent,
-            marginLeft: 'clamp(10px, 1.9svh, 16px)'
-          }}
-        >
-          <ProtocolIcon p={d.protocol} size="clamp(20px, 3.6svh, 26px)" />
-        </span>
-        <Typography
-          sx={{ minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
-        >
-          {d.name || d.model || d.id}
-        </Typography>
+    <StackItem onClick={onSelect} ownIcon dimmed={offline}>
+      <span
+        style={{
+          flex: 'none',
+          display: 'inline-flex',
+          color: accent,
+          marginLeft: 'var(--livi-row-pad, 12px)'
+        }}
+      >
+        <ProtocolIcon p={d.protocol} size="var(--livi-row-icon, 24px)" />
+      </span>
+      <Typography
+        sx={{ minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+      >
+        {d.name || d.model || d.id}
+      </Typography>
 
-        <span
-          style={{
+      <span
+        style={{
+          flex: 'none',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 'clamp(10px, 1.9svh, 16px)',
+          color: theme.palette.text.secondary
+        }}
+      >
+        <span style={{ width: 26, display: 'inline-flex', justifyContent: 'center' }}>
+          <SourceBadge d={d} size={18} />
+        </span>
+        <span style={{ width: 52, display: 'inline-flex', justifyContent: 'center' }}>
+          {typeof d.batteryLevel === 'number' ? (
+            <BatteryIcon level={d.batteryLevel} charging={d.batteryCharging} />
+          ) : null}
+        </span>
+        <span style={{ width: 26, display: 'inline-flex', justifyContent: 'center' }}>
+          {typeof d.signalStrength === 'number' ? <SignalBars level={d.signalStrength} /> : null}
+        </span>
+        <span style={{ width: 20, display: 'inline-flex', justifyContent: 'center' }}>
+          <StatusDot status={d.status} />
+        </span>
+        <IconButton
+          aria-label="Delete device"
+          className="nav-focus-primary"
+          onClick={(e) => {
+            e.stopPropagation()
+            onForget()
+          }}
+          onKeyDown={(e) => e.stopPropagation()}
+          sx={{
             flex: 'none',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 'clamp(10px, 1.9svh, 16px)',
+            width: 'clamp(30px, 4.8svh, 40px)',
+            height: 'clamp(30px, 4.8svh, 40px)',
+            p: 0,
             color: theme.palette.text.secondary
           }}
         >
-          <span style={{ width: 26, display: 'inline-flex', justifyContent: 'center' }}>
-            <SourceBadge d={d} size={18} />
-          </span>
-          <span style={{ width: 52, display: 'inline-flex', justifyContent: 'center' }}>
-            {typeof d.batteryLevel === 'number' ? (
-              <BatteryIcon level={d.batteryLevel} charging={d.batteryCharging} />
-            ) : null}
-          </span>
-          <span style={{ width: 26, display: 'inline-flex', justifyContent: 'center' }}>
-            {typeof d.signalStrength === 'number' ? <SignalBars level={d.signalStrength} /> : null}
-          </span>
-          <span style={{ width: 20, display: 'inline-flex', justifyContent: 'center' }}>
-            <StatusDot status={d.status} />
-          </span>
-          <IconButton
-            aria-label="Delete device"
-            className="nav-focus-primary"
-            onClick={(e) => {
-              e.stopPropagation()
-              onForget()
-            }}
-            onKeyDown={(e) => e.stopPropagation()}
-            sx={{
-              flex: 'none',
-              width: 'clamp(30px, 4.8svh, 40px)',
-              height: 'clamp(30px, 4.8svh, 40px)',
-              p: 0,
-              color: theme.palette.text.secondary
-            }}
-          >
-            <CloseIcon sx={{ fontSize: 'clamp(18px, 3.2svh, 22px)' }} />
-          </IconButton>
-        </span>
-      </StackItem>
-    </div>
+          <CloseIcon sx={{ fontSize: 'clamp(18px, 3.2svh, 22px)' }} />
+        </IconButton>
+      </span>
+    </StackItem>
   )
 }

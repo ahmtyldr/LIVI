@@ -302,7 +302,7 @@ describe('useFocus', () => {
     first.focus()
 
     expect(result.current.moveFocusLinear(1)).toBe(true)
-    expect(scrollIntoViewSpy).toHaveBeenCalledWith({ block: 'nearest' })
+    expect(scrollIntoViewSpy).toHaveBeenCalledWith({ block: 'nearest', behavior: 'smooth' })
     expect(document.activeElement).toBe(second)
   })
 

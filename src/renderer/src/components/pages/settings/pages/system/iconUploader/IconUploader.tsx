@@ -145,7 +145,7 @@ export function IconUploader(props: SettingsCustomPageProps<Config, unknown>) {
   if (!settings) return null
 
   return (
-    <div style={{ width: '100%', boxSizing: 'border-box' }}>
+    <>
       <SettingsButtonRow
         label={t('settings.importPng')}
         buttonLabel={t('settings.import')}
@@ -223,6 +223,6 @@ export function IconUploader(props: SettingsCustomPageProps<Config, unknown>) {
         style={{ display: 'none' }}
         onChange={onFileChange}
       />
-    </div>
+    </>
   )
 }

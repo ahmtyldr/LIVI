@@ -52,18 +52,17 @@ export const SettingsFieldRow = <T, K>({
     // A disabled node keeps its row (the value stays visible) but loses the navigation.
     const rowDisabled = 'disabled' in node && node.disabled === true
     return (
-      <div style={rowDisabled ? { opacity: 0.45, pointerEvents: 'none' } : undefined}>
-        <StackItem
-          withForwardIcon
-          onClick={rowDisabled ? undefined : onClick}
-          node={node}
-          value={getValueByPath(state, node.path)}
-          savedLabel={savedLabel}
-          showValue={node.displayValue}
-        >
-          <Typography>{label}</Typography>
-        </StackItem>
-      </div>
+      <StackItem
+        withForwardIcon
+        onClick={onClick}
+        disabled={rowDisabled}
+        node={node}
+        value={getValueByPath(state, node.path)}
+        savedLabel={savedLabel}
+        showValue={node.displayValue}
+      >
+        <Typography>{label}</Typography>
+      </StackItem>
     )
   }
 
