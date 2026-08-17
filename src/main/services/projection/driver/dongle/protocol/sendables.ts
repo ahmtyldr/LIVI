@@ -14,7 +14,6 @@ import {
   SendCommand,
   SendDisconnectPhone,
   SendForgetBluetoothAddr,
-  SendGnssData,
   SendMultiTouch,
   SendTouch
 } from '@projection/messages/sendable'
@@ -57,6 +56,24 @@ export abstract class DongleSendableWithPayload extends DongleSendable {
     const byteLength = Buffer.byteLength(data)
     const header = MessageHeader.asBuffer(this.type, byteLength)
     return Buffer.concat([header, data])
+  }
+}
+
+// HU GPS relayed to the phone as NMEA sentences.
+export class SendGnssData extends DongleSendableWithPayload {
+  type = MessageType.GnssData
+  readonly nmeaText: string
+
+  constructor(nmeaText: string) {
+    super()
+    this.nmeaText = String(nmeaText ?? '')
+      .replace(/\r?\n/g, '\r\n')
+      .trim()
+  }
+
+  getPayload(): Buffer {
+    const withLineEnd = this.nmeaText.length > 0 ? this.nmeaText + '\r\n' : ''
+    return Buffer.from(withLineEnd, 'ascii')
   }
 }
 
@@ -472,11 +489,6 @@ export function encodeSendable(msg: SendableMessage): Buffer {
   if (msg instanceof SendBluetoothPairedList) {
     const withNul = msg.listText.endsWith('\0') ? msg.listText : msg.listText + '\0'
     return withHeader(MessageType.BluetoothPairedList, Buffer.from(withNul, 'utf8'))
-  }
-
-  if (msg instanceof SendGnssData) {
-    const withLineEnd = msg.nmeaText.length > 0 ? msg.nmeaText + '\r\n' : ''
-    return withHeader(MessageType.GnssData, Buffer.from(withLineEnd, 'ascii'))
   }
 
   if (msg instanceof SendAutoConnectByBtAddress) {

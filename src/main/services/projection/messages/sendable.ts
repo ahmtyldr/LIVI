@@ -31,17 +31,6 @@ export class SendBluetoothPairedList extends SendableMessage {
   }
 }
 
-export class SendGnssData extends SendableMessage {
-  readonly nmeaText: string
-
-  constructor(nmeaText: string) {
-    super()
-    this.nmeaText = String(nmeaText ?? '')
-      .replace(/\r?\n/g, '\r\n')
-      .trim()
-  }
-}
-
 export class SendTouch extends SendableMessage {
   x: number
   y: number

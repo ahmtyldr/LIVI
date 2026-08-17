@@ -5,6 +5,7 @@ import {
 } from '@main/services/projection/driver/dongle/dongleDriver'
 import {
   SendFile,
+  SendGnssData,
   SendOpen,
   SendSafeArea,
   SendString
@@ -34,8 +35,7 @@ import {
   SendBluetoothPairedList,
   SendCloseDongle,
   SendCommand,
-  SendDisconnectPhone,
-  SendGnssData
+  SendDisconnectPhone
 } from '@main/services/projection/messages/sendable'
 import { CARLINKIT_PIDS, CARLINKIT_VID } from '@main/services/usb/constants'
 import { CommandMapping, MicType, PhoneWorkMode } from '@shared/types'

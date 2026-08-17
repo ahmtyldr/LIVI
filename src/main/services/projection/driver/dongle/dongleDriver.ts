@@ -24,8 +24,7 @@ import {
   SendBluetoothPairedList,
   SendCloseDongle,
   SendCommand,
-  SendDisconnectPhone,
-  SendGnssData
+  SendDisconnectPhone
 } from '@projection/messages/sendable'
 import { asDomUSBDevice } from '@projection/services/utils/asDomUSBDevice'
 import type { Config } from '@shared/types'
@@ -45,6 +44,7 @@ import {
   SendBoolean,
   SendBoxSettings,
   SendFile,
+  SendGnssData,
   SendIconConfig,
   SendNumber,
   SendOpen,

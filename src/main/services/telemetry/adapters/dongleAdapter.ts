@@ -4,7 +4,7 @@
  * The dongle is a fixed-firmware bridge box, not a vehicle bus — only two
  * vehicle-side data points are ever shipped to it:
  *
- *   • GPS / GNSS         → SendGnssData(nmeaText)
+ *   • GPS / GNSS         → sendGnssData(nmeaText)
  *   • nightMode boolean  → SendBoolean(NIGHT_MODE)
  *
  * Everything else from `TelemetryPayload` is HU-side and routed elsewhere.

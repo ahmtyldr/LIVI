@@ -9,7 +9,6 @@ import {
   SendCommand,
   SendDisconnectPhone,
   SendForgetBluetoothAddr,
-  SendGnssData,
   SendMultiTouch,
   SendTouch
 } from '@projection/messages/sendable'
@@ -23,6 +22,7 @@ import {
   SendBoolean,
   SendBoxSettings,
   SendFile,
+  SendGnssData,
   SendIconConfig,
   SendLiviWeb,
   SendLogoType,
