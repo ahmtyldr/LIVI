@@ -425,6 +425,13 @@ export class DongleDriver extends EventEmitter {
     this._videoFlowing = false
   }
 
+  private _clearPairTimer(): void {
+    if (this._pairTimer) {
+      clearTimeout(this._pairTimer)
+      this._pairTimer = null
+    }
+  }
+
   disconnectPhone = async (): Promise<boolean> => {
     let ok = false
     try {
@@ -721,6 +728,7 @@ export class DongleDriver extends EventEmitter {
   }
 
   private async onPlugged(msg: Plugged) {
+    this._clearPairTimer()
     this._lastPluggedPhoneType = msg.phoneType
     const frameInterval = this._cfg?.phoneConfig?.[msg.phoneType]?.frameInterval
     if (frameInterval && frameInterval > 0 && !this._frameTimer) {
@@ -875,10 +883,7 @@ export class DongleDriver extends EventEmitter {
       this._closing = true
       this._clearFramePoke()
 
-      if (this._pairTimer) {
-        clearTimeout(this._pairTimer)
-        this._pairTimer = null
-      }
+      this._clearPairTimer()
 
       if (this._wifiConnectTimer) {
         clearTimeout(this._wifiConnectTimer)

@@ -252,6 +252,21 @@ describe('DongleDriver core behavior', () => {
     })
   })
 
+  test('onPlugged cancels the pending wifiPair fallback', async () => {
+    const d = new DongleDriver() as any
+    d.send = vi.fn(async () => undefined)
+    d.reconcileModes = vi.fn(async () => undefined)
+    d._pairTimer = setTimeout(() => {
+      void d.send(new SendCommand('wifiPair'))
+    }, 15000)
+
+    await d.onPlugged({ phoneType: PhoneType.CarPlay })
+
+    expect(d._pairTimer).toBeNull()
+    await vi.advanceTimersByTimeAsync(15000)
+    expect(d.send).not.toHaveBeenCalled()
+  })
+
   test('reconcileModes applies desired phone mode when plugged type implies change', async () => {
     const d = new DongleDriver() as any
     d._lastPluggedPhoneType = PhoneType.AndroidAuto
