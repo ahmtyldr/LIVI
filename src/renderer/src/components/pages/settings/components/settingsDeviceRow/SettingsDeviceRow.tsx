@@ -27,7 +27,7 @@ const SourceBadge = ({ d, size }: { d: DeviceView; size: number }) => {
 }
 
 const batteryColor = (pct: number): string =>
-  pct < 10 ? '#ff3b30' : pct < 20 ? '#ffcc00' : '#248a3d'
+  pct < 10 ? '#ff3b30' : pct < 20 ? '#ffcc00' : '#34c759'
 
 const BatteryIcon = ({ level, charging }: { level: number; charging?: boolean }) => {
   const theme = useTheme()
@@ -66,36 +66,38 @@ const BatteryIcon = ({ level, charging }: { level: number; charging?: boolean })
           fill={batteryColor(pct)}
           opacity={0.9}
         />
+        {/* Digits as svg text: geometric centering that scales with UI zoom exactly like the
+            battery (an HTML text box drifts with the zoomed font metrics). Right-anchored
+            tabular digits, the ones digit never moves. */}
+        <text
+          x={39}
+          y={12}
+          textAnchor="end"
+          dominantBaseline="central"
+          fontSize={10.5}
+          fontWeight={700}
+          fill={theme.palette.text.primary}
+          stroke={theme.palette.background.paper}
+          strokeWidth={2}
+          paintOrder="stroke"
+          style={{ fontVariantNumeric: 'tabular-nums' }}
+        >
+          {pct}
+        </text>
       </svg>
-      <span
-        style={{
-          position: 'relative',
-          width: 46,
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 1,
-          fontSize: 10.5,
-          fontWeight: 700,
-          lineHeight: 1,
-          transform: 'translateY(2px)',
-          color: theme.palette.text.primary,
-          // Crisp outline instead of a soft glow — the digits must survive the coloured fill on small panels.
-          textShadow: `0 1px 1px ${theme.palette.background.paper}, 1px 0 1px ${theme.palette.background.paper}, 0 -1px 1px ${theme.palette.background.paper}, -1px 0 1px ${theme.palette.background.paper}`
-        }}
-      >
-        {charging ? (
-          <BoltIcon
-            sx={{
-              fontSize: 12,
-              color: theme.palette.text.primary,
-              // The bolt glyph sits low in its viewBox — pull it back up against the digits.
-              transform: 'translateY(-1px)'
-            }}
-          />
-        ) : null}
-        {pct}
-      </span>
+      {charging ? (
+        <BoltIcon
+          sx={{
+            // Anchored left of the fixed digit block: charging never shifts the SoC.
+            position: 'absolute',
+            left: 2,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            fontSize: 12,
+            color: theme.palette.text.primary
+          }}
+        />
+      ) : null}
     </span>
   )
 }
