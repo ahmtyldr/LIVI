@@ -148,6 +148,38 @@ describe('StackItem', () => {
     expect(onClick).not.toHaveBeenCalled()
   })
 
+  test('a disabled row dims, drops the button role and swallows clicks and keys', () => {
+    const onClick = vi.fn()
+    render(
+      <StackItem onClick={onClick} disabled>
+        <span>Blocked</span>
+      </StackItem>
+    )
+
+    expect(screen.queryByRole('button')).toBeNull()
+    const el = screen.getByText('Blocked').parentElement as HTMLElement
+    fireEvent.click(el)
+    fireEvent.keyDown(el, { key: 'Enter' })
+    expect(onClick).not.toHaveBeenCalled()
+    expect(el.style.opacity).toBe('0.45')
+    expect(el.style.pointerEvents).toBe('none')
+  })
+
+  test('a dimmed row keeps its interaction but lowers opacity', () => {
+    const onClick = vi.fn()
+    render(
+      <StackItem onClick={onClick} dimmed>
+        <span>Offline</span>
+      </StackItem>
+    )
+
+    const el = screen.getByRole('button')
+    fireEvent.click(el)
+    expect(onClick).toHaveBeenCalledTimes(1)
+    expect(el.style.opacity).toBe('0.45')
+    expect(el.style.pointerEvents).not.toBe('none')
+  })
+
   test('does not get button role or tab focus without onClick', () => {
     const { container } = render(
       <StackItem>

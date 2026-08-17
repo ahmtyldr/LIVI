@@ -438,6 +438,120 @@ describe('useFocus', () => {
     expect(document.activeElement).toBe(second)
   })
 
+  test('moveFocusLinear uses smooth scrolling when the wrapper supports scrollTo', () => {
+    const onSetAppContext = vi.fn()
+    const contentRoot = document.createElement('div')
+    contentRoot.id = 'content-root'
+
+    const scrolledWrapper = document.createElement('div')
+    scrolledWrapper.setAttribute('data-scrolled-wrapper', 'true')
+    scrolledWrapper.scrollTop = 100
+    const scrollTo = vi.fn()
+    ;(scrolledWrapper as any).scrollTo = scrollTo
+    contentRoot.appendChild(scrolledWrapper)
+
+    const first = document.createElement('button')
+    const second = document.createElement('button')
+    scrolledWrapper.appendChild(first)
+    scrolledWrapper.appendChild(second)
+
+    document.body.appendChild(contentRoot)
+
+    Object.defineProperty(first, 'getBoundingClientRect', {
+      value: () => ({
+        top: 20,
+        bottom: 40,
+        left: 0,
+        right: 0,
+        width: 10,
+        height: 20,
+        x: 0,
+        y: 0,
+        toJSON: () => ({})
+      })
+    })
+
+    Object.defineProperty(second, 'getBoundingClientRect', {
+      value: () => ({
+        top: -30,
+        bottom: -10,
+        left: 0,
+        right: 0,
+        width: 10,
+        height: 20,
+        x: 0,
+        y: 0,
+        toJSON: () => ({})
+      })
+    })
+
+    Object.defineProperty(scrolledWrapper, 'getBoundingClientRect', {
+      value: () => ({
+        top: 0,
+        bottom: 80,
+        left: 0,
+        right: 0,
+        width: 100,
+        height: 80,
+        x: 0,
+        y: 0,
+        toJSON: () => ({})
+      })
+    })
+
+    const { result } = renderHook(() => useFocus(), {
+      wrapper: wrapperWithContext({
+        isTouchDevice: false,
+        contentEl: { current: contentRoot } as any,
+        keyboardNavigation: { focusedElId: 'x' },
+        onSetAppContext
+      })
+    })
+
+    first.focus()
+
+    expect(result.current.moveFocusLinear(1)).toBe(true)
+    expect(scrollTo).toHaveBeenCalledWith({ top: 70, behavior: 'smooth' })
+    expect(scrolledWrapper.scrollTop).toBe(100)
+  })
+
+  test('moveFocusLinear bounces at the end of the list and swallows the key', () => {
+    vi.useFakeTimers()
+    try {
+      const contentRoot = document.createElement('div')
+      contentRoot.id = 'content-root'
+
+      const scrolledWrapper = document.createElement('div')
+      scrolledWrapper.setAttribute('data-scrolled-wrapper', 'true')
+      contentRoot.appendChild(scrolledWrapper)
+
+      const only = document.createElement('button')
+      scrolledWrapper.appendChild(only)
+      document.body.appendChild(contentRoot)
+
+      const { result } = renderHook(() => useFocus(), {
+        wrapper: wrapperWithContext({
+          isTouchDevice: false,
+          contentEl: { current: contentRoot } as any,
+          keyboardNavigation: { focusedElId: 'x' }
+        })
+      })
+
+      only.focus()
+
+      expect(result.current.moveFocusLinear(1)).toBe(true)
+      expect(scrolledWrapper.classList.contains('livi-bounce-down')).toBe(true)
+
+      vi.advanceTimersByTime(250)
+      expect(scrolledWrapper.classList.contains('livi-bounce-down')).toBe(false)
+
+      // Up at the top keeps the leave-the-list fallthrough
+      expect(result.current.moveFocusLinear(-1)).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   test('returns empty results when no root is provided', () => {
     const { result } = renderHook(() => useFocus(), {
       wrapper: wrapperWithContext({ isTouchDevice: false })

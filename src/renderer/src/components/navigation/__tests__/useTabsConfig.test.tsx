@@ -11,6 +11,7 @@ let mockState = {
   cameraFound: true,
   telemetryOnMain: false,
   settingsMissing: false,
+  mainMedia: true,
   secondaryTelemetry: false,
   secondaryMedia: false,
   secondaryCamera: false,
@@ -47,7 +48,11 @@ vi.mock('@store/store', () => ({
               : { main: true, dash: mockState.secondaryCamera, aux: mockState.secondaryCamera },
             media: mockState.secondaryAbsentKeys
               ? { main: true }
-              : { main: true, dash: mockState.secondaryMedia, aux: mockState.secondaryMedia },
+              : {
+                  main: mockState.mainMedia,
+                  dash: mockState.secondaryMedia,
+                  aux: mockState.secondaryMedia
+                },
             dashboards: {
               dash1: {
                 main: mockState.telemetryOnMain,
@@ -73,6 +78,7 @@ describe('useTabsConfig', () => {
       cameraFound: true,
       telemetryOnMain: false,
       settingsMissing: false,
+      mainMedia: true,
       secondaryTelemetry: false,
       secondaryMedia: false,
       secondaryCamera: false
@@ -94,6 +100,12 @@ describe('useTabsConfig', () => {
       '/camera',
       '/settings'
     ])
+  })
+
+  test('hides the media tab when media is not routed to main', () => {
+    mockState.mainMedia = false
+    const { result } = renderHook(() => useTabsConfig(false))
+    expect(result.current.map((t) => t.path)).toEqual(['/', '/camera', '/settings'])
   })
 
   test('hides camera tab when camera is not found', () => {

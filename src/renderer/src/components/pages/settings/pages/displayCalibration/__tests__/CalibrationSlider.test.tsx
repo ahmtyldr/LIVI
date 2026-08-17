@@ -68,6 +68,44 @@ describe('CalibrationSlider', () => {
     expect(onChange).toHaveBeenCalledWith(1.4)
   })
 
+  test('snaps accumulated float drift onto the step grid', () => {
+    const onChange = vi.fn()
+    render(
+      <CalibrationSlider
+        label="gain"
+        value={1}
+        min={0}
+        max={2}
+        step={0.01}
+        defaultValue={1}
+        onChange={onChange}
+        onCommit={vi.fn()}
+      />
+    )
+    const input = screen.getByRole('slider') as HTMLInputElement
+    fireEvent.change(input, { target: { value: '1.1800000000000002' } })
+    expect(onChange).toHaveBeenCalledWith(1.18)
+  })
+
+  test('an integer step snaps to whole numbers', () => {
+    const onChange = vi.fn()
+    render(
+      <CalibrationSlider
+        label="level"
+        value={5}
+        min={0}
+        max={10}
+        step={1}
+        defaultValue={5}
+        onChange={onChange}
+        onCommit={vi.fn()}
+      />
+    )
+    const input = screen.getByRole('slider') as HTMLInputElement
+    fireEvent.change(input, { target: { value: '6' } })
+    expect(onChange).toHaveBeenCalledWith(6)
+  })
+
   test('renders an optional swatch colour and icon', () => {
     render(
       <CalibrationSlider
