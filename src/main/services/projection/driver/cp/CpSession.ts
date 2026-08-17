@@ -418,6 +418,8 @@ export class CpSession extends EventEmitter implements IPhoneDriver {
         if (this._micActive) this._stack?.writeMic(chunk)
       })
     }
+    // Capture from the configured input.
+    this._mic.setDevice(this._getConfig().audioInputDevice || undefined)
     console.log(`[CpSession] mic uplink → starting capture (${sampleRate}Hz ${channels}ch)`)
     this._mic.start(5, { frequency: sampleRate, channels })
   }

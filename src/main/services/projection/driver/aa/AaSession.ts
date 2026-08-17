@@ -394,8 +394,13 @@ export class AaSession extends EventEmitter implements IPhoneDriver {
         this._aa?.sendMicPcm(chunk)
       })
     }
-    console.log(`[AaSession] ${reason} → starting mic capture`)
-    this._mic.start(5) // decodeType 5 = 16 kHz mono s16le
+    // Capture from the configured input, in the format the phone negotiated at setup.
+    this._mic.setDevice(this._getConfig().audioInputDevice || undefined)
+    const fmt = this._aa?.micFormat() ?? { sampleRate: 16000, channels: 1 }
+    console.log(
+      `[AaSession] ${reason} → starting mic capture (${fmt.sampleRate}Hz ${fmt.channels}ch)`
+    )
+    this._mic.start(5, { frequency: fmt.sampleRate, channels: fmt.channels })
   }
 
   private _stopMicCapture(reason: string): void {

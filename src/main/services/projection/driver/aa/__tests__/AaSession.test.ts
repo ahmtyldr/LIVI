@@ -10,6 +10,7 @@ class MockAAStack extends EventEmitter {
   applyDisplayConfig = vi.fn()
   requestVideoFocus = vi.fn()
   requestMainKeyframe = vi.fn()
+  micFormat = vi.fn(() => ({ sampleRate: 16000, channels: 1 }))
   requestClusterKeyframe = vi.fn()
   forceClusterKeyframe = vi.fn()
   requestShutdown = vi.fn(async () => undefined)
@@ -45,6 +46,7 @@ class MockUsbAoapBridge extends EventEmitter {
 class MockMicrophone extends EventEmitter {
   start = vi.fn()
   stop = vi.fn()
+  setDevice = vi.fn()
 }
 
 class MockSocket extends EventEmitter {

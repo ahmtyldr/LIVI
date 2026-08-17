@@ -43,7 +43,15 @@ vi.mock('../stack/index', async () => {
 
 vi.mock('@main/services/audio', () => ({
   Microphone: vi.fn().mockImplementation(function () {
-    return new EventEmitter()
+    const m = new EventEmitter() as EventEmitter & {
+      setDevice?: unknown
+      start?: unknown
+      stop?: unknown
+    }
+    m.setDevice = vi.fn()
+    m.start = vi.fn()
+    m.stop = vi.fn()
+    return m
   })
 }))
 

@@ -256,6 +256,11 @@ export class AAStack extends EventEmitter {
     this._activeSession?.requestMainKeyframe()
   }
 
+  /** The mic capture format the phone negotiated, 16 kHz mono until setup arrives. */
+  micFormat(): { sampleRate: number; channels: number } {
+    return this._activeSession?.micFormat() ?? { sampleRate: 16000, channels: 1 }
+  }
+
   requestClusterKeyframe(): void {
     this._activeSession?.requestClusterKeyframe()
   }

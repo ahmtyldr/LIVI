@@ -55,6 +55,7 @@ const { StackMock, stackInstances, MicMock, micInstances, panelMock, wifiMock, b
       private readonly _l: Record<string, ((...a: unknown[]) => void)[]> = {}
       start = vi.fn()
       stop = vi.fn()
+      setDevice = vi.fn()
       constructor() {
         micInstances.push(this as unknown as Record<string, unknown>)
       }

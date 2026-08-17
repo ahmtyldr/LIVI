@@ -108,7 +108,8 @@ export class ProjectionAudio {
     private readonly getConfig: () => Config,
     private readonly sendProjectionEvent: SendProjectionEvent,
     private readonly sendChunked: SendChunked,
-    private readonly sendMicPcm: SendMicPcm
+    private readonly sendMicPcm: SendMicPcm,
+    private readonly micUplinkWanted: () => boolean = () => true
   ) {}
 
   public setVisualizerEnabled(enabled: boolean, sourceId = -1) {
@@ -613,6 +614,8 @@ export class ProjectionAudio {
           this._mic?.stop()
           return
         }
+
+        if (!this.micUplinkWanted()) return
 
         if (!this._mic) {
           this._mic = new Microphone()

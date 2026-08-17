@@ -1137,7 +1137,8 @@ export class ProjectionService {
       },
       (pcm, decodeType) => {
         this.driver.sendPhoneAudio?.(pcm, decodeType)
-      }
+      },
+      () => this.driver instanceof DongleDriver
     )
 
     registerProjectionIpc(this.buildIpcHost())

@@ -949,6 +949,11 @@ export class Session extends EventEmitter {
     if (DEBUG) console.log('[Session] main video focus request (PROJECTED) sent')
   }
 
+  /** The mic capture format the phone negotiated at channel setup. */
+  micFormat(): { sampleRate: number; channels: number } {
+    return this._mic.format
+  }
+
   requestMainKeyframe(): void {
     if (this._state !== State.RUNNING) return
     this._sendEncrypted(

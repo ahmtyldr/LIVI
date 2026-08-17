@@ -77,6 +77,11 @@ export class MicChannel extends EventEmitter {
     console.log(`[MicChannel] setup codec=${codec} ${this._sampleRate}Hz ${this._channelCount}ch`)
   }
 
+  /** The capture format the phone negotiated at channel setup. */
+  get format(): { sampleRate: number; channels: number } {
+    return { sampleRate: this._sampleRate, channels: this._channelCount }
+  }
+
   /**
    * Push a PCM chunk to the phone. Wraps in AV_MEDIA_INDICATION with the
    * timestamp prefix the phone-side decoder expects.
