@@ -1,7 +1,12 @@
 import type { Config } from '@shared/types'
 
-export const DEBUG = process.env.DEBUG === '1'
+// Live binding: importers see runtime changes. The DEBUG env var always wins as a floor.
+export let DEBUG = process.env.DEBUG === '1'
 export const TRACE = process.env.TRACE === '1'
+
+export function setDebugLogging(enabled: boolean): void {
+  DEBUG = enabled || process.env.DEBUG === '1'
+}
 
 export const MIN_WIDTH = 300
 export const MIN_HEIGHT = 200

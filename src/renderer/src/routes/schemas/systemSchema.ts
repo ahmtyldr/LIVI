@@ -32,6 +32,23 @@ export const systemSchema: SettingsNode<Config> = {
     },
     {
       type: 'route',
+      label: 'Logs',
+      labelKey: 'settings.logs',
+      icon: 'logs',
+      route: 'logs',
+      path: '',
+      children: [
+        {
+          type: 'checkbox',
+          label: 'Debug',
+          labelKey: 'settings.debugLogging',
+          icon: 'debugLogging',
+          path: 'debugLogging'
+        }
+      ]
+    },
+    {
+      type: 'route',
       label: 'Software Update',
       labelKey: 'settings.softwareUpdate',
       icon: 'softwareUpdate',

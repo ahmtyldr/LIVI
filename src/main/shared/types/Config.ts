@@ -94,6 +94,10 @@ export type WindowBounds = {
 }
 
 export type Config = {
+  // Logging
+  debugLogging: boolean
+
+  // Wireless protocols
   wirelessAaEnabled: boolean
   wirelessCpEnabled: boolean
 

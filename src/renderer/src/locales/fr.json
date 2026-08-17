@@ -184,6 +184,8 @@
     "about": "A Propos",
     "usbDongle": "USB Dongle",
     "softwareUpdate": "Mise à Jour Logiciel",
+    "logs": "Journaux",
+    "debugLogging": "Débogage",
     "restartSystem": "Redémarrage",
     "powerOff": "Arrêt",
     "name": "Nom",

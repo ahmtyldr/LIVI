@@ -7,6 +7,7 @@ import { setupLifecycle } from '@main/app/lifecycle'
 
 installMainProcessErrorHandlers()
 
+import { setDebugLogging } from '@main/constants'
 import { registerIpc } from '@main/ipc'
 import { configEvents, saveSettings } from '@main/ipc/utils'
 import { registerAppProtocol } from '@main/protocol/appProtocol'
@@ -70,6 +71,7 @@ app.whenReady().then(async () => {
     suppressNextFsSync: false,
     wmExitedKiosk: false
   }
+  setDebugLogging(runtimeState.config.debugLogging === true)
 
   runtimeState.telemetrySocket = telemetrySocket
 

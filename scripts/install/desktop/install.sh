@@ -85,12 +85,12 @@ echo "→ Creating autostart entry"
 AUTOSTART_DIR="$USER_HOME/.config/autostart"
 mkdir -p "$AUTOSTART_DIR"
 
-AUTOSTART_LOG="$APPIMAGE_DIR/LIVI.log"
+# No shell log redirect: the app writes its own rotating logs to userData/log/.
 cat > "$AUTOSTART_DIR/LIVI.desktop" <<EOF
 [Desktop Entry]
 Type=Application
 Name=LIVI
-Exec=sh -c '"$APPIMAGE_PATH" >"$AUTOSTART_LOG" 2>&1'
+Exec=$APPIMAGE_PATH
 Icon=${ICON_DEST:-livi}
 Terminal=false
 X-GNOME-Autostart-enabled=true

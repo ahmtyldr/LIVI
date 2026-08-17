@@ -1,5 +1,6 @@
 import type { SvgIconComponent } from '@mui/icons-material'
 import AndroidOutlinedIcon from '@mui/icons-material/AndroidOutlined'
+import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined'
 import AspectRatioOutlinedIcon from '@mui/icons-material/AspectRatioOutlined'
 import AutorenewOutlinedIcon from '@mui/icons-material/AutorenewOutlined'
 import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined'
@@ -7,6 +8,7 @@ import BluetoothOutlinedIcon from '@mui/icons-material/BluetoothOutlined'
 import BoltOutlinedIcon from '@mui/icons-material/BoltOutlined'
 import BorderStyleOutlinedIcon from '@mui/icons-material/BorderStyleOutlined'
 import BrightnessAutoOutlinedIcon from '@mui/icons-material/BrightnessAutoOutlined'
+import BugReportOutlinedIcon from '@mui/icons-material/BugReportOutlined'
 import CableOutlinedIcon from '@mui/icons-material/CableOutlined'
 import CallOutlinedIcon from '@mui/icons-material/CallOutlined'
 import CameraAltOutlinedIcon from '@mui/icons-material/CameraAltOutlined'
@@ -162,6 +164,8 @@ const ICONS: Record<string, SvgIconComponent> = {
 
   about: InfoOutlinedIcon,
   softwareUpdate: SystemUpdateAltOutlinedIcon,
+  logs: ArticleOutlinedIcon,
+  debugLogging: BugReportOutlinedIcon,
   restart: RestartAltOutlinedIcon,
   poweroff: PowerSettingsNewOutlinedIcon
 }

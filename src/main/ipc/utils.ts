@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process'
 import os from 'node:os'
 import { CONFIG_PATH } from '@main/config/paths'
+import { setDebugLogging } from '@main/constants'
 import { runtimeStateProps, UpdateEventPayload } from '@main/types'
 import { applyNullDeletes, pushSettingsToRenderer, sizesEqual } from '@main/utils'
 import { getMainWindow } from '@main/window/createWindow'
@@ -74,6 +75,8 @@ export function saveSettings(runtimeState: runtimeStateProps, next: Partial<Conf
 
   const prev = runtimeState.config
   runtimeState.config = merged
+
+  setDebugLogging(merged.debugLogging === true)
 
   configEvents.emit('changed', merged, prev)
 
