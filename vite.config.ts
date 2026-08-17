@@ -71,7 +71,6 @@ function copyAaResourcesPlugin(): Plugin {
 }
 
 const mainAlias = {
-  '@projection/web': resolve(__dirname, 'src/renderer/src/components/web/CarplayWeb.ts'),
   '@projection/messages': resolve(__dirname, 'src/main/services/projection/messages'),
   '@projection': resolve(__dirname, 'src/main/services/projection'),
   '@main': path.resolve(__dirname, 'src/main'),
