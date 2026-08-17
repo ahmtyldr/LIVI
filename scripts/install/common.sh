@@ -116,16 +116,17 @@ livi_pick_channel() {
 # livi_fetch_appimage <dest> [source]
 # source is an optional local path or http(s) URL, otherwise the picked channel.
 livi_fetch_appimage() {
-  local dest="$1" src="${2:-}" arch url
+  local dest="$1" src="${2:-}" arch url tmp
   mkdir -p "$(dirname "$dest")"
+  tmp="$dest.download"
 
   if [ -n "$src" ]; then
     if [[ "$src" =~ ^https?:// ]]; then
       echo "→ Downloading AppImage from $src"
-      curl -fL "$src" --output "$dest" || { echo "Error: download failed" >&2; return 1; }
+      curl -fL "$src" --output "$tmp" || { rm -f "$tmp"; echo "Error: download failed" >&2; return 1; }
     elif [ -f "$src" ]; then
       echo "→ Using local AppImage at $src"
-      cp "$src" "$dest"
+      cp "$src" "$tmp"
     else
       echo "Error: AppImage source not found: $src" >&2
       return 1
@@ -142,9 +143,10 @@ livi_fetch_appimage() {
       return 1
     fi
     echo "   Download URL: $url"
-    curl -fL "$url" --output "$dest" || { echo "Error: download failed" >&2; return 1; }
+    curl -fL "$url" --output "$tmp" || { rm -f "$tmp"; echo "Error: download failed" >&2; return 1; }
   fi
 
+  mv -f "$tmp" "$dest"
   chmod +x "$dest"
 }
 
