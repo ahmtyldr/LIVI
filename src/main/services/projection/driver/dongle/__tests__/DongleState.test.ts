@@ -80,6 +80,37 @@ describe('DongleState DevList reconcile', () => {
     ])
   })
 
+  test('reconcileWithPairedRaw adds fresh pairings and drops forgotten MACs', () => {
+    const { state } = make()
+    state.handleBoxInfo(
+      box({
+        DevList: [
+          { id: 'AA:BB:CC:DD:EE:01', name: 'OldPhone' },
+          { id: 'AA:BB:CC:DD:EE:02', name: 'Forgotten' }
+        ]
+      })
+    )
+
+    const raw = 'AA:BB:CC:DD:EE:01OldPhone\nAA:BB:CC:DD:EE:03NewPhone\n'
+    expect(state.reconcileWithPairedRaw(raw)).toBe(true)
+    expect(state.getDongleDevList()).toEqual([
+      { id: 'AA:BB:CC:DD:EE:01', name: 'OldPhone', source: 'dongle' },
+      { id: 'AA:BB:CC:DD:EE:03', name: 'NewPhone', source: 'dongle' }
+    ])
+
+    // Same list again: nothing changes.
+    expect(state.reconcileWithPairedRaw(raw)).toBe(false)
+  })
+
+  test('removeFromDevList drops the forgotten MAC and reports change', () => {
+    const { state } = make()
+    state.handleBoxInfo(box({ DevList: [{ id: 'AA:BB:CC:DD:EE:01', name: 'Phone' }] }))
+
+    expect(state.removeFromDevList('aa:bb:cc:dd:ee:01')).toBe(true)
+    expect(state.getDongleDevList()).toEqual([])
+    expect(state.removeFromDevList('aa:bb:cc:dd:ee:01')).toBe(false)
+  })
+
   test('picks up the connected MAC from btMacAddr', () => {
     const { state } = make()
     state.handleBoxInfo(box({ btMacAddr: '  AA:BB:CC  ' }))

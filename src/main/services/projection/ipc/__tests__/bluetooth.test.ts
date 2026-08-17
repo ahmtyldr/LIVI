@@ -25,6 +25,7 @@ type BtHost = Pick<
   | 'refreshBtPaired'
   | 'getBoxInfo'
   | 'setPendingStartupConnectTarget'
+  | 'noteDonglePairForgotten'
 >
 
 function fakeHost(over: Partial<BtHost> = {}): Mocked<BtHost> {
@@ -38,6 +39,7 @@ function fakeHost(over: Partial<BtHost> = {}): Mocked<BtHost> {
     refreshBtPaired: vi.fn(),
     getBoxInfo: vi.fn(() => undefined),
     setPendingStartupConnectTarget: vi.fn(),
+    noteDonglePairForgotten: vi.fn(),
     ...over
   } as Mocked<BtHost>
 }

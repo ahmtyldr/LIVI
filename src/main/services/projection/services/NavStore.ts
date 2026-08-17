@@ -78,6 +78,11 @@ export class NavStore {
   }
 
   hydrate(session: ProjectionSession): void {
+    const parked = this.pending.get(session.driver)
+    if (parked) {
+      if (!session.nav) session.nav = parked
+      this.pending.delete(session.driver)
+    }
     try {
       this.write(session.nav ?? DEFAULT_NAVIGATION_DATA_RESPONSE.payload)
     } catch (e) {

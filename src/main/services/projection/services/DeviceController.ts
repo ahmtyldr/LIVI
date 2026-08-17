@@ -1,3 +1,4 @@
+import { SendDisconnectPhone } from '@projection/messages/sendable'
 import type { DevListEntry } from '@shared/types'
 import type { BluezDeviceClient } from '../bt/BluezDeviceClient'
 import type { DeviceRegistry, DeviceView } from './DeviceRegistry'
@@ -47,6 +48,22 @@ export class DeviceController {
   forgetDevice(id: string): { ok: boolean } {
     const e = this.deps.deviceRegistry.forget(id)
     if (!e) return { ok: false }
+
+    // A forgotten device with a running session gets the goodbye
+    const s = this.deps.sessions().byDevice({
+      btMac: e.btMac,
+      wifiMac: e.wifiMac,
+      usbUdid: e.usbUdid,
+      instanceId: e.instanceId,
+      ip: e.currentIp
+    })
+    if (s) {
+      console.log(`[DeviceController] forget ${id} ends session #${s.index}`)
+      void (s.driver.disconnectPhone?.() ?? s.driver.send(new SendDisconnectPhone())).catch((err) =>
+        console.warn(`[DeviceController] forget ${id} goodbye failed: ${(err as Error).message}`)
+      )
+    }
+
     const mac = e.btMac
     if (mac) {
       void this.deps.bluez

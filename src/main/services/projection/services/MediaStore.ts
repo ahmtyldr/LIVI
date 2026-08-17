@@ -106,6 +106,11 @@ export class MediaStore {
   }
 
   hydrate(session: ProjectionSession): void {
+    const parked = this.pending.get(session.driver)
+    if (parked) {
+      if (!session.media) session.media = parked
+      this.pending.delete(session.driver)
+    }
     const payload: PersistedMediaPayload = session.media ?? DEFAULT_MEDIA_DATA_RESPONSE.payload
     try {
       this.write(payload)

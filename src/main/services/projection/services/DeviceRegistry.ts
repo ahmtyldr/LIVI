@@ -334,7 +334,11 @@ export class DeviceRegistry {
   forget(id: string): DeviceEntry | undefined {
     const nid = normMac(id)
     const idx = this.entries.findIndex(
-      (e) => normMac(e.btMac) === nid || e.usbUdid === id || normMac(e.wifiMac) === nid
+      (e) =>
+        normMac(e.btMac) === nid ||
+        e.usbUdid === id ||
+        normMac(e.wifiMac) === nid ||
+        e.instanceId === id
     )
     if (idx < 0) return undefined
     const [removed] = this.entries.splice(idx, 1)

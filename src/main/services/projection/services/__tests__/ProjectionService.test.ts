@@ -50,6 +50,9 @@ vi.mock('../../messages', async () => {
     BluetoothPairedList: class {
       constructor(public data?: unknown) {}
     },
+    BluetoothPeerConnected: class {
+      constructor(public address?: string) {}
+    },
     VideoData: class {},
     AudioData: class {},
     DuckAudio: class {},

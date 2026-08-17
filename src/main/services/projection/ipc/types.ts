@@ -63,6 +63,7 @@ export interface ProjectionIpcHost {
   sendBluetoothPairedList(text: string): Promise<boolean>
   connectBt(mac: string): Promise<BtActionResponse>
   refreshBtPaired(): void
+  noteDonglePairForgotten(btMac: string): void
   getBoxInfo(): unknown
   setPendingStartupConnectTarget(t: PendingStartupConnectTarget | null): void
 

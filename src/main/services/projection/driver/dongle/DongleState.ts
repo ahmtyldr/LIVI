@@ -6,6 +6,11 @@ function isRecord(v: unknown): v is Record<string, unknown> {
   return v !== null && typeof v === 'object' && !Array.isArray(v)
 }
 
+// Dongle firmware reports MACs with either ':' or '-' separators.
+function normPeerMac(v: string): string {
+  return v.trim().replace(/-/g, ':').toUpperCase()
+}
+
 function asObject(input: unknown): Record<string, unknown> | null {
   if (!input) return null
 
@@ -85,7 +90,7 @@ export class DongleState {
     }
     const rawBtMac = (msg.settings as { btMacAddr?: unknown }).btMacAddr
     if (typeof rawBtMac === 'string' && rawBtMac.trim()) {
-      this.dongleConnectedMac = rawBtMac.trim()
+      this.dongleConnectedMac = normPeerMac(rawBtMac)
     }
     this.boxInfo = mergePreferExisting(this.boxInfo, msg.settings)
     this.emitDongleInfoIfChanged()
@@ -101,8 +106,69 @@ export class DongleState {
     return this.dongleDevList
   }
 
+  // Optimistic removal after a ForgetBluetoothAddr ack.
+  removeFromDevList(btMac: string): boolean {
+    const up = btMac.trim().toUpperCase()
+    const next = this.dongleDevList.filter(
+      (d) =>
+        String(d.id ?? '')
+          .trim()
+          .toUpperCase() !== up
+    )
+    if (next.length === this.dongleDevList.length) return false
+    this.dongleDevList = next
+    return true
+  }
+
+  // The dongle pushes its paired list after pair/forget, fold it into the DevList.
+  reconcileWithPairedRaw(raw: string): boolean {
+    const macs = new Map<string, string>()
+    for (const line of String(raw ?? '').split('\n')) {
+      const trimmed = line.replace(/\r$/, '').replace(/\0+$/g, '')
+      if (trimmed.length < 17) continue
+      const mac = trimmed.slice(0, 17).toUpperCase()
+      if (!mac.includes(':')) continue
+      macs.set(mac, trimmed.slice(17).trim())
+    }
+
+    let changed = false
+    const kept = this.dongleDevList.filter((d) => {
+      const id = String(d.id ?? '')
+        .trim()
+        .toUpperCase()
+      if (!id.includes(':')) return true
+      const keep = macs.has(id)
+      if (!keep) changed = true
+      return keep
+    })
+
+    const known = new Set(
+      kept.map((d) =>
+        String(d.id ?? '')
+          .trim()
+          .toUpperCase()
+      )
+    )
+    for (const [mac, name] of macs) {
+      if (known.has(mac)) continue
+      kept.push({ id: mac, name: name || undefined, source: 'dongle' })
+      changed = true
+    }
+
+    if (changed) this.dongleDevList = kept
+    return changed
+  }
+
   getConnectedMac(): string {
     return this.dongleConnectedMac
+  }
+
+  // BluetoothPeerConnected updates the connected phone without waiting for a BoxInfo.
+  setConnectedMac(mac: string): boolean {
+    const next = normPeerMac(mac)
+    if (!next || next === this.dongleConnectedMac) return false
+    this.dongleConnectedMac = next
+    return true
   }
 
   getFwVersion(): string | undefined {

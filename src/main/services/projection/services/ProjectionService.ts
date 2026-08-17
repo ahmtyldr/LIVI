@@ -34,6 +34,7 @@ import { type ProjectionIpcHost, registerProjectionIpc } from '../ipc'
 import {
   AudioData,
   BluetoothPairedList,
+  BluetoothPeerConnected,
   BoxInfo,
   BoxUpdateProgress,
   BoxUpdateState,
@@ -617,6 +618,11 @@ export class ProjectionService {
 
   private handleBluetoothPairedList(msg: BluetoothPairedList): void {
     this.btPaired.setDonglePairedRaw(msg.data)
+    if (this.dongleState.reconcileWithPairedRaw(msg.data)) this.deviceController.emitDevices()
+  }
+
+  private handleBtPeerConnected(msg: BluetoothPeerConnected): void {
+    if (this.dongleState.setConnectedMac(msg.address)) this.deviceController.emitDevices()
   }
 
   private handleBoxUpdateProgress(msg: BoxUpdateProgress): void {
@@ -825,6 +831,7 @@ export class ProjectionService {
     if (!this.webContents) return
 
     if (msg instanceof BluetoothPairedList) return this.handleBluetoothPairedList(msg)
+    if (msg instanceof BluetoothPeerConnected) return this.handleBtPeerConnected(msg)
 
     if (msg instanceof Plugged) return this.handlePlugged(msg)
     if (msg instanceof BoxUpdateProgress) return this.handleBoxUpdateProgress(msg)
@@ -1167,6 +1174,18 @@ export class ProjectionService {
       connectBt: (mac) => this.connectPairedDevice(mac),
       refreshBtPaired: () => {
         this.refreshBtPairedList().catch(() => {})
+      },
+      noteDonglePairForgotten: (btMac) => {
+        if (this.dongleState.removeFromDevList(btMac)) this.deviceController.emitDevices()
+        // Forgetting the connected phone ends its session right away — the dongle's own
+        // Unplugged only arrives after an internal timeout and would leave the UI stuck
+        // on the last frame.
+        const up = btMac.trim().toUpperCase()
+        const connected = this.dongleState.getConnectedMac().trim().toUpperCase()
+        if (up && connected === up) {
+          console.log(`[ProjectionService] forget ${btMac} hits the connected phone, disconnecting`)
+          void this.disconnectPhone().finally(() => this.onDonglePhoneDisconnected())
+        }
       },
       getBoxInfo: () => this.dongleState.getBoxInfo(),
       setPendingStartupConnectTarget: (t) => {

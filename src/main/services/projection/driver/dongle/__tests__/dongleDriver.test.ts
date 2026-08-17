@@ -252,6 +252,18 @@ describe('DongleDriver core behavior', () => {
     })
   })
 
+  test('close resets the link so the next first frame re-emits phone-connected', async () => {
+    const d = new DongleDriver() as any
+    d._linkUp = true
+    d._lastPluggedPhoneType = PhoneType.CarPlay
+    d._started = true
+
+    await d.close()
+
+    expect(d._linkUp).toBe(false)
+    expect(d._lastPluggedPhoneType).toBeNull()
+  })
+
   test('onPlugged cancels the pending wifiPair fallback', async () => {
     const d = new DongleDriver() as any
     d.send = vi.fn(async () => undefined)
@@ -2520,6 +2532,24 @@ describe('DongleDriver.bringUp', () => {
     ;(usb.getDevices as unknown as ReturnType<typeof vi.fn>).mockClear()
     await d.bringUp({} as any)
     expect(usb.getDevices).not.toHaveBeenCalled()
+  })
+
+  test('concurrent bring-ups share one in-flight run instead of doubling start()', async () => {
+    const d = new DongleDriver() as any
+    const device = {
+      vendorId: CARLINKIT_VID,
+      productId: CARLINKIT_PIDS[0],
+      open: vi.fn(async () => {})
+    }
+    ;(usb.getDevices as unknown as ReturnType<typeof vi.fn>).mockResolvedValue([device] as never)
+    d.initialise = vi.fn(async () => undefined)
+    d.start = vi.fn(async () => undefined)
+    d.clearPendingStartupConnectTarget = vi.fn()
+
+    await Promise.all([d.bringUp({} as any), d.bringUp({} as any)])
+
+    expect(d.start).toHaveBeenCalledTimes(1)
+    expect(device.open).toHaveBeenCalledTimes(1)
   })
 
   test('returns early when no Carlinkit dongle is present', async () => {

@@ -419,6 +419,14 @@ describe('DeviceRegistry', () => {
       expect(reg.forget('11:22:33:44:55:66')?.name).toBe('Wifi')
       expect(reg.list()).toEqual([])
     })
+
+    test('forget also matches the instanceId fallback that deviceId() hands out', async () => {
+      const { reg } = await mkLoaded([{ instanceId: 'inst-1', name: 'Wired' }])
+
+      expect(reg.deviceId(reg.list()[0])).toBe('inst-1')
+      expect(reg.forget('inst-1')?.name).toBe('Wired')
+      expect(reg.list()).toEqual([])
+    })
   })
 
   describe('change notification', () => {

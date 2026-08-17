@@ -100,6 +100,7 @@ export class DongleDriver extends EventEmitter {
   private _postOpenConfigSent = false
 
   private _wifiConnectTimer: ReturnType<typeof setTimeout> | null = null
+  private _bringUpInFlight: Promise<void> | null = null
   private _pendingStartupConnectTarget: PendingStartupConnectTarget | null = null
   private _modeSwitchInFlight: Promise<void> = Promise.resolve()
   private _lastModeSwitchAt = 0
@@ -307,7 +308,17 @@ export class DongleDriver extends EventEmitter {
     return this._device !== null
   }
 
-  bringUp = async (
+  // Duplicate USB attach events fire within milliseconds. A second bring-up while the
+  // first is still awaiting would double start() and leak an uncancellable pair timer.
+  bringUp = (cfg: Config, pendingTarget?: PendingStartupConnectTarget | null): Promise<void> => {
+    if (this._bringUpInFlight) return this._bringUpInFlight
+    this._bringUpInFlight = this.doBringUp(cfg, pendingTarget).finally(() => {
+      this._bringUpInFlight = null
+    })
+    return this._bringUpInFlight
+  }
+
+  private doBringUp = async (
     cfg: Config,
     pendingTarget?: PendingStartupConnectTarget | null
   ): Promise<void> => {
@@ -320,6 +331,7 @@ export class DongleDriver extends EventEmitter {
       if (pendingTarget) this.setPendingStartupConnectTarget(pendingTarget)
       else this.clearPendingStartupConnectTarget()
       await this.start(cfg)
+      this._clearPairTimer()
       this._pairTimer = setTimeout(() => {
         void this.send(new SendCommand('wifiPair'))
       }, 15000)
@@ -963,6 +975,10 @@ export class DongleDriver extends EventEmitter {
         this._started = false
         this._readerActive = false
         this.errorCount = 0
+
+        this._linkUp = false
+        this._lastPluggedPhoneType = null
+        this._pendingModeHintFromBoxInfo = null
 
         this._dongleFwVersion = undefined
         this._boxInfo = undefined

@@ -14,6 +14,7 @@ type Deps = Pick<
   | 'refreshBtPaired'
   | 'getBoxInfo'
   | 'setPendingStartupConnectTarget'
+  | 'noteDonglePairForgotten'
 >
 
 export function registerBluetoothIpc(host: Deps): void {
@@ -59,6 +60,7 @@ export function registerBluetoothIpc(host: Deps): void {
     if (!btMac) return { ok: false }
 
     const ok = await host.sendToDongle(new SendForgetBluetoothAddr(btMac))
+    if (ok) host.noteDonglePairForgotten(btMac)
     return { ok: Boolean(ok) }
   })
 }
