@@ -137,6 +137,28 @@ describe('CpManager session-at-identification', () => {
     expect(sessionsFor(mgr, 'bb:bb')).toHaveLength(1)
   })
 
+  it('drops an untagged event when several sessions exist instead of guessing', () => {
+    const { mgr } = makeManager()
+    mgr._onHelperEvent({ type: 'nowplaying', phoneId: 'aa:aa', title: 'A' })
+    mgr._onHelperEvent({ type: 'nowplaying', phoneId: 'bb:bb', title: 'B' })
+    const ingests = [...mgr._sessions].map((s) => vi.spyOn(s, 'ingestHelperEvent'))
+
+    mgr._onHelperEvent({ type: 'power', level: 40, charging: true })
+
+    for (const spy of ingests) expect(spy).not.toHaveBeenCalled()
+  })
+
+  it('routes an untagged event to the sole session', () => {
+    const { mgr } = makeManager()
+    mgr._onHelperEvent({ type: 'nowplaying', phoneId: 'aa:aa', title: 'A' })
+    const [only] = [...mgr._sessions]
+    const spy = vi.spyOn(only, 'ingestHelperEvent')
+
+    mgr._onHelperEvent({ type: 'power', level: 40 })
+
+    expect(spy).toHaveBeenCalledTimes(1)
+  })
+
   it('adopts a carkit usbUdid onto the session born from the same phoneId', () => {
     const { mgr } = makeManager()
     const phoneId = '0c:6a:c4:4e:f3:2a'

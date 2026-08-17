@@ -311,13 +311,16 @@ export class CpManager {
       // A phoneId-tagged event whose phone has no session yet BIRTHS one, so its metadata has
       // a target from event #1; the AirPlay transport adopts that session at pair-verify
       // (ProjectionService reassigns the driver, drops the placeholder). An untagged event
-      // falls back to the live/sole session, unless a phoneId contradicts it.
+      // falls back to the live/sole session, unless a phoneId contradicts it — and only while
+      // a single phone is around.
       const fallback = this._metadataTarget()
       const contradicts =
         Boolean(phoneId) &&
         Boolean(fallback?.getBtMac()) &&
         fallback!.getBtMac().toLowerCase() !== phoneId.toLowerCase()
-      if (fallback && !contradicts) target = fallback
+      const unattributable = !phoneId && !cid && this._sessions.size > 1
+      if (unattributable) target = undefined
+      else if (fallback && !contradicts) target = fallback
       else if (phoneId) target = this._createMetaSession(phoneId)
     }
     if (target) target.ingestHelperEvent(ev)
