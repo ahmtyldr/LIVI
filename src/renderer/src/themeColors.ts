@@ -10,13 +10,13 @@ export const themeColors = {
   textSecondaryDark: '#bbbbbb',
 
   // Highlight (primary) colors
-  primaryColorLight: '#006B6B',
-  primaryColorDark: '#006B6B',
+  primaryColorLight: '#008585',
+  primaryColorDark: '#00adad',
 
   highlightFocusedFieldLight: '#cccccc',
   highlightFocusedFieldDark: '#bbbbbb',
-  highlightColorLight: '#004f4f',
-  highlightColorDark: '#004f4f',
+  highlightColorLight: '#007575',
+  highlightColorDark: '#009494',
   successMain: '#30fb37',
 
   // Alpha variants for hover states
