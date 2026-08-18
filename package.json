@@ -72,7 +72,7 @@
     "@node-usb/usb-linux-x64-gnu": "3.0.1"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.8",
+    "@biomejs/biome": "^2.5.9",
     "@esbuild-plugins/node-globals-polyfill": "^0.2.3",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.2",
@@ -83,8 +83,8 @@
     "@types/react-dom": "^19.2.4",
     "@types/w3c-web-usb": "^1.0.14",
     "@vitejs/plugin-react": "^6.0.5",
-    "@vitest/coverage-v8": "^4.1.10",
-    "electron": "^43.4.0",
+    "@vitest/coverage-v8": "^4.1.11",
+    "electron": "^43.4.1",
     "electron-builder": "^26.15.3",
     "esbuild": "^0.28.2",
     "globals": "^17.11.0",
@@ -102,6 +102,6 @@
     "vite": "^8.2.1",
     "vite-plugin-electron": "^1.1.1",
     "vite-plugin-electron-renderer": "^1.0.0",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   }
 }
