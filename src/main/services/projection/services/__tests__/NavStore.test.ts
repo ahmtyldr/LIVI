@@ -150,6 +150,36 @@ describe('NavStore', () => {
     expect(emit).toHaveBeenCalledWith({ type: 'navigation-reset', reason: 'session-switch' })
   })
 
+  test('hydrate folds a parked payload into a fresh session and consumes it', () => {
+    const emit = vi.fn()
+    const store = new NavStore({ emit, getLanguage: () => 'en' })
+    const driver = {} as IPhoneDriver
+    store.handle(driver, null, mkMsg({ navi: { P: 1 } }))
+
+    const session = mkSession()
+    ;(session as unknown as { driver: IPhoneDriver }).driver = driver
+    store.hydrate(session)
+    expect(session.nav?.navi).toMatchObject({ P: 1 })
+
+    const later = mkSession()
+    ;(later as unknown as { driver: IPhoneDriver }).driver = driver
+    store.hydrate(later)
+    expect(later.nav).toBeNull()
+  })
+
+  test('hydrate keeps existing session nav over a parked snapshot', () => {
+    const emit = vi.fn()
+    const store = new NavStore({ emit, getLanguage: () => 'en' })
+    const driver = {} as IPhoneDriver
+    store.handle(driver, null, mkMsg({ navi: { parked: 1 } }))
+
+    const own = { metaType: 201, navi: { own: 1 }, rawUtf8: '', error: false }
+    const session = mkSession(own)
+    ;(session as unknown as { driver: IPhoneDriver }).driver = driver
+    store.hydrate(session)
+    expect(session.nav).toEqual(own)
+  })
+
   test('hydrate falls back to the default payload when the session has no nav', () => {
     const emit = vi.fn()
     const store = new NavStore({ emit, getLanguage: () => 'en' })

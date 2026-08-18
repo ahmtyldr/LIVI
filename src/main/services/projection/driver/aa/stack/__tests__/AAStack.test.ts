@@ -18,6 +18,7 @@ class MockSession extends EventEmitter {
   sendGpsLocationData = vi.fn()
   sendVehicleEnergyModel = vi.fn()
   sendMicPcm = vi.fn()
+  micFormat = vi.fn(() => ({ sampleRate: 24000, channels: 2 }))
   requestVideoFocus = vi.fn()
   requestMainKeyframe = vi.fn()
   requestClusterKeyframe = vi.fn()
@@ -197,6 +198,19 @@ describe('AAStack — event forwarding', () => {
     stack.on('error', onError)
     server.emit('error', new Error('eaddrinuse'))
     expect(onError).toHaveBeenCalled()
+  })
+})
+
+describe('AAStack — mic format', () => {
+  test('falls back to 16 kHz mono without an active session', () => {
+    const stack = new AAStack(baseCfg())
+    expect(stack.micFormat()).toEqual({ sampleRate: 16000, channels: 1 })
+  })
+
+  test('reports the active session format', () => {
+    const { stack, session } = setup()
+    expect(stack.micFormat()).toEqual({ sampleRate: 24000, channels: 2 })
+    expect(session.micFormat).toHaveBeenCalled()
   })
 })
 

@@ -196,3 +196,11 @@ describe('MicChannel response payloads', () => {
     debug.mockRestore()
   })
 })
+
+describe('MicChannel — negotiated format', () => {
+  test('format exposes 16 kHz mono until a setup arrives', () => {
+    const { send } = freshSend()
+    const ch = new MicChannel(MIC, send)
+    expect(ch.format).toEqual({ sampleRate: 16000, channels: 1 })
+  })
+})

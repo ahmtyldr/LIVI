@@ -285,6 +285,33 @@ describe('MediaStore', () => {
     expect(emit.mock.calls[1][0].payload.payload.base64Image).toBeUndefined()
   })
 
+  test('hydrate folds a parked payload into a fresh session and consumes it', () => {
+    const { store } = mkStore()
+    const driver = {} as IPhoneDriver
+    store.handle(driver, null, mkMsg({ type: MediaType.Data, media: { A: 1 } }), false)
+
+    const session = mkSession()
+    ;(session as unknown as { driver: IPhoneDriver }).driver = driver
+    store.hydrate(session)
+    expect(session.media?.media).toMatchObject({ A: 1 })
+
+    const later = mkSession()
+    ;(later as unknown as { driver: IPhoneDriver }).driver = driver
+    store.hydrate(later)
+    expect(later.media).toBeNull()
+  })
+
+  test('hydrate keeps existing session media over a parked snapshot', () => {
+    const { store } = mkStore()
+    const driver = {} as IPhoneDriver
+    store.handle(driver, null, mkMsg({ type: MediaType.Data, media: { parked: 1 } }), false)
+
+    const session = mkSession({ type: MediaType.Data, media: { own: 1 } })
+    ;(session as unknown as { driver: IPhoneDriver }).driver = driver
+    store.hydrate(session)
+    expect(session.media?.media).toEqual({ own: 1 })
+  })
+
   test('hydrate falls back to the default payload and swallows write errors', () => {
     const { store, emit } = mkStore()
     writeSpy.mockImplementationOnce(() => {

@@ -935,3 +935,13 @@ describe('requestShutdown drain', () => {
     vi.useRealTimers()
   })
 })
+
+describe('Session.micFormat', () => {
+  test('reports the mic channel format', () => {
+    const { session } = makeSession()
+    ;(session as unknown as { _mic: { format: unknown } })._mic = {
+      format: { sampleRate: 24000, channels: 2 }
+    }
+    expect(session.micFormat()).toEqual({ sampleRate: 24000, channels: 2 })
+  })
+})

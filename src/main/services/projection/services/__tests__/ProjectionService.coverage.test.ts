@@ -2,6 +2,7 @@ import type { Mock } from 'vitest'
 import {
   AudioData,
   BluetoothPairedList,
+  BluetoothPeerConnected,
   BoxInfo,
   BoxUpdateProgress,
   BoxUpdateState,
@@ -320,6 +321,7 @@ describe('ProjectionService message dispatch', () => {
     const svc = makeSvc()
     svc.webContents = { send: vi.fn() }
     svc.handleBluetoothPairedList = vi.fn()
+    svc.handleBtPeerConnected = vi.fn()
     svc.handlePlugged = vi.fn()
     svc.handleBoxUpdateProgress = vi.fn()
     svc.handleBoxUpdateState = vi.fn()
@@ -328,6 +330,7 @@ describe('ProjectionService message dispatch', () => {
     svc.handleCommand = vi.fn()
 
     svc.onDriverMessage(new BluetoothPairedList())
+    svc.onDriverMessage(new BluetoothPeerConnected('aa:bb'))
     svc.onDriverMessage(new Plugged(5))
     svc.onDriverMessage(new BoxUpdateProgress(1))
     svc.onDriverMessage(new BoxUpdateState())
@@ -336,6 +339,7 @@ describe('ProjectionService message dispatch', () => {
     svc.onDriverMessage(new Command(1))
 
     expect(svc.handleBluetoothPairedList).toHaveBeenCalled()
+    expect(svc.handleBtPeerConnected).toHaveBeenCalled()
     expect(svc.handlePlugged).toHaveBeenCalled()
     expect(svc.handleBoxUpdateProgress).toHaveBeenCalled()
     expect(svc.handleBoxUpdateState).toHaveBeenCalled()
@@ -349,6 +353,62 @@ describe('ProjectionService message dispatch', () => {
     svc.btPaired.setDonglePairedRaw = vi.fn()
     svc.handleBluetoothPairedList(new BluetoothPairedList('raw'))
     expect(svc.btPaired.setDonglePairedRaw).toHaveBeenCalledWith('raw')
+  })
+
+  test('handleBtPeerConnected stores the peer MAC and emits devices once', () => {
+    const svc = makeSvc()
+    svc.deviceController.emitDevices = vi.fn()
+    svc.handleBtPeerConnected(new BluetoothPeerConnected('aa-bb-cc-dd-ee-ff'))
+    expect(svc.dongleState.getConnectedMac()).toBe('AA:BB:CC:DD:EE:FF')
+    expect(svc.deviceController.emitDevices).toHaveBeenCalledTimes(1)
+    svc.handleBtPeerConnected(new BluetoothPeerConnected('AA:BB:CC:DD:EE:FF'))
+    expect(svc.deviceController.emitDevices).toHaveBeenCalledTimes(1)
+  })
+
+  test('ipc host noteDonglePairForgotten removes the row and ends a hit session', async () => {
+    const svc = makeSvc()
+    const host = svc.buildIpcHost()
+    svc.deviceController.emitDevices = vi.fn()
+    svc.dongleState.removeFromDevList = vi.fn(() => true)
+    svc.dongleState.getConnectedMac = vi.fn(() => 'AA:BB:CC:DD:EE:FF')
+    svc.disconnectPhone = vi.fn(async () => undefined)
+    svc.onDonglePhoneDisconnected = vi.fn()
+
+    host.noteDonglePairForgotten('aa:bb:cc:dd:ee:ff')
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(svc.dongleState.removeFromDevList).toHaveBeenCalledWith('aa:bb:cc:dd:ee:ff')
+    expect(svc.deviceController.emitDevices).toHaveBeenCalled()
+    expect(svc.disconnectPhone).toHaveBeenCalled()
+    expect(svc.onDonglePhoneDisconnected).toHaveBeenCalled()
+  })
+
+  test('ipc host noteDonglePairForgotten leaves an unrelated connection running', () => {
+    const svc = makeSvc()
+    const host = svc.buildIpcHost()
+    svc.deviceController.emitDevices = vi.fn()
+    svc.dongleState.removeFromDevList = vi.fn(() => false)
+    svc.dongleState.getConnectedMac = vi.fn(() => 'FF:FF:FF:FF:FF:FF')
+    svc.disconnectPhone = vi.fn(async () => undefined)
+
+    host.noteDonglePairForgotten('aa:bb:cc:dd:ee:ff')
+
+    expect(svc.deviceController.emitDevices).not.toHaveBeenCalled()
+    expect(svc.disconnectPhone).not.toHaveBeenCalled()
+  })
+
+  test('the audio mic uplink gate only opens for the dongle driver', async () => {
+    const svc = makeSvc()
+    const { ProjectionAudio: PA } = await import('../ProjectionAudio')
+    const gate = (PA as unknown as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[4] as
+      | (() => boolean)
+      | undefined
+    expect(gate).toBeTypeOf('function')
+    // The dongle driver is the startup default, so the gate opens right away
+    expect(gate!()).toBe(true)
+    svc.drivers.getActive = vi.fn(() => ({}))
+    expect(gate!()).toBe(false)
   })
 
   test('handleBoxUpdateProgress emits an upload:progress event', () => {

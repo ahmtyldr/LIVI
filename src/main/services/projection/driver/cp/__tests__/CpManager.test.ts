@@ -505,6 +505,12 @@ describe('CpManager helper event routing', () => {
     expect(sessionsFor(mgr, 'bb:bb')).toHaveLength(1)
   })
 
+  it('ignores an untagged event when no session exists at all', () => {
+    const { mgr } = makeManager()
+    expect(() => mgr._onHelperEvent({ type: 'nowplaying', title: 'orphan' })).not.toThrow()
+    expect(mgr._sessions.size).toBe(0)
+  })
+
   it('routes an untagged event to the sole session when none is live', () => {
     const { mgr } = makeManager()
     mgr._onHelperEvent({ type: 'nowplaying', phoneId: 'aa:aa', title: 'A' })

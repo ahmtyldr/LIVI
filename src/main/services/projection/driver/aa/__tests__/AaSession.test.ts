@@ -497,6 +497,18 @@ describe('AaSession — vehicle-data passthrough', () => {
 })
 
 describe('AaSession — microphone lifecycle', () => {
+  test('mic capture falls back to 16 kHz mono when the stack reports no format', () => {
+    const d = makeSession()
+    const aa = lastAaStack.instance!
+    aa.micFormat.mockReturnValue(undefined as never)
+    const internal = d as unknown as {
+      _startMicCapture: (r: string) => void
+      _mic: MockMicrophone | null
+    }
+    internal._startMicCapture('mic-start')
+    expect(internal._mic!.start).toHaveBeenCalledWith(5, { frequency: 16000, channels: 1 })
+  })
+
   test('voice-session START twice only starts mic once', () => {
     const d = makeSession()
     const internal = d as unknown as {

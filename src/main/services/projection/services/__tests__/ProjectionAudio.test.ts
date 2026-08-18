@@ -627,6 +627,25 @@ describe('ProjectionAudio state controls', () => {
     expect(a._mic.start).not.toHaveBeenCalled()
   })
 
+  test('handleAudioData AudioVoiceAssistantStart skips the mic when the uplink is unwanted', async () => {
+    const { Microphone } = await import('@main/services/audio')
+    ;(Microphone as ReturnType<typeof vi.fn>).mockClear()
+
+    const a = new ProjectionAudio(
+      () => ({ micType: 0, disableAudioOutput: false }) as any,
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      () => false
+    ) as any
+    a._mic = null
+
+    a.handleAudioData({ command: 4, decodeType: 1 })
+
+    expect(Microphone).not.toHaveBeenCalled()
+    expect(a._mic).toBeNull()
+  })
+
   test('handleAudioData AudioVoiceAssistantStart with micType=0 creates mic and starts it with decodeType', async () => {
     const { Microphone } = await import('@main/services/audio')
 

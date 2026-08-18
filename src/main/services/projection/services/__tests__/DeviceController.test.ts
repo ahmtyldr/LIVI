@@ -132,6 +132,35 @@ describe('DeviceController', () => {
       expect(warnSpy).not.toHaveBeenCalled()
     })
 
+    test('sends the goodbye to a running session of the forgotten device', () => {
+      const { ctl, deps, sessionsApi } = mkCtl()
+      deps.deviceRegistry.forget.mockReturnValue(mkEntry({ btMac: 'aa:bb:cc:dd:ee:ff' }))
+      const disconnectPhone = vi.fn(() => Promise.resolve())
+      ;(sessionsApi.byDevice as ReturnType<typeof vi.fn>).mockReturnValue({
+        index: 3,
+        driver: { disconnectPhone }
+      })
+
+      expect(ctl.forgetDevice('aa:bb:cc:dd:ee:ff')).toEqual({ ok: true })
+      expect(disconnectPhone).toHaveBeenCalled()
+    })
+
+    test('falls back to SendDisconnectPhone and logs a failing goodbye', async () => {
+      const { ctl, deps, sessionsApi } = mkCtl()
+      deps.deviceRegistry.forget.mockReturnValue(mkEntry({ btMac: 'aa:bb:cc:dd:ee:ff' }))
+      const send = vi.fn(() => Promise.reject(new Error('gone')))
+      ;(sessionsApi.byDevice as ReturnType<typeof vi.fn>).mockReturnValue({
+        index: 4,
+        driver: { send }
+      })
+
+      expect(ctl.forgetDevice('aa:bb:cc:dd:ee:ff')).toEqual({ ok: true })
+      await flush()
+
+      expect(send).toHaveBeenCalled()
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('goodbye failed: gone'))
+    })
+
     test('logs when the unpair itself fails', async () => {
       const { ctl, deps } = mkCtl()
       deps.deviceRegistry.forget.mockReturnValue(mkEntry({ btMac: 'aa:bb:cc:dd:ee:ff' }))

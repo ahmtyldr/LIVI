@@ -168,6 +168,18 @@ describe('hostOutput', () => {
       mockedExec.mockReturnValue('HDMI-A-1 "Panel"\n  Modes:\n    800x480 px, 60.000000 Hz\n')
       expect(hostOutputCurrent()).toBeNull()
     })
+
+    test('skips current-marked lines that carry no mode', () => {
+      mockedExec.mockReturnValue('HDMI-A-1 "Panel"\n  current settings apply\n')
+      expect(hostOutputCurrent()).toBeNull()
+    })
+
+    test('falls back to 60 Hz when the refresh reads as zero', () => {
+      mockedExec.mockReturnValue(
+        'HDMI-A-1 "Panel"\n  Modes:\n    800x480 px, 0.000000 Hz (current)\n'
+      )
+      expect(hostOutputCurrent()).toEqual({ mode: '800x480', hz: 60 })
+    })
   })
 
   describe('applyKioskDisplayMode', () => {
@@ -244,6 +256,25 @@ describe('hostOutput', () => {
         expect.objectContaining({ timeout: 5000 })
       )
       expect(logSpy).toHaveBeenCalledWith('[hostOutput] cmdline video pin → HDMI-A-1:800x480@60')
+    })
+
+    test('stays put when the panel lists no modes at all', () => {
+      mockedExec
+        .mockReturnValueOnce(WLR_4K)
+        .mockReturnValueOnce('HDMI-A-1 "Big TV (HDMI-A-1)"\n  Modes:\n')
+      applyKioskDisplayMode('')
+      const modesets = mockedExec.mock.calls.filter(([, args]) => args.includes('--mode'))
+      expect(modesets).toEqual([])
+    })
+
+    test('skips the pin when the host output cannot be reached', () => {
+      mockedExists.mockReturnValue(true)
+      mockedExec.mockImplementation(() => {
+        throw new Error('no display')
+      })
+      applyKioskDisplayMode('800x480')
+      const sudoCalls = mockedExec.mock.calls.filter(([cmd]) => cmd === 'sudo')
+      expect(sudoCalls).toEqual([])
     })
 
     test('does not touch the cmdline without the helper', () => {

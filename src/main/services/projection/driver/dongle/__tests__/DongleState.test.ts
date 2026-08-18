@@ -243,3 +243,67 @@ describe('DongleState clears', () => {
     expect((state.getBoxInfo() as { btMacAddr: string }).btMacAddr).toBe('AA:BB')
   })
 })
+
+describe('DongleState.setConnectedMac', () => {
+  test('normalizes dashes and stores a new peer MAC', () => {
+    const { state } = make()
+    expect(state.setConnectedMac('aa-bb-cc-dd-ee-ff')).toBe(true)
+    expect(state.getConnectedMac()).toBe('AA:BB:CC:DD:EE:FF')
+  })
+
+  test('ignores empty input and repeats of the connected MAC', () => {
+    const { state } = make()
+    expect(state.setConnectedMac('   ')).toBe(false)
+    state.setConnectedMac('AA:BB:CC:DD:EE:FF')
+    expect(state.setConnectedMac('aa:bb:cc:dd:ee:ff')).toBe(false)
+    expect(state.getConnectedMac()).toBe('AA:BB:CC:DD:EE:FF')
+  })
+})
+
+describe('DongleState devlist edge branches', () => {
+  test('reconcile keeps non-MAC and id-less rows, skips unparsable raw lines', () => {
+    const { state } = make()
+    state.handleBoxInfo(
+      box({
+        DevList: [
+          { id: 'AA:BB:CC:DD:EE:01', name: 'Old' },
+          { id: 'USB-SERIAL-12345' },
+          { name: 'no id at all' }
+        ]
+      })
+    )
+    const raw = [
+      'short',
+      'seventeen-chars!!',
+      'AA:BB:CC:DD:EE:02 My Phone',
+      'AA:BB:CC:DD:EE:03'
+    ].join('\n')
+
+    expect(state.reconcileWithPairedRaw(raw)).toBe(true)
+
+    const list = state.getDongleDevList()
+    const ids = list.map((d) => d.id)
+    expect(ids).toContain('USB-SERIAL-12345')
+    expect(ids).not.toContain('AA:BB:CC:DD:EE:01')
+    expect(ids).toContain('AA:BB:CC:DD:EE:02')
+    expect(ids).toContain('AA:BB:CC:DD:EE:03')
+    expect(list.find((d) => d.id === 'AA:BB:CC:DD:EE:02')?.name).toBe('My Phone')
+    expect(list.find((d) => d.id === 'AA:BB:CC:DD:EE:03')?.name).toBeUndefined()
+  })
+
+  test('removeFromDevList tolerates rows without an id', () => {
+    const { state } = make()
+    state.handleBoxInfo(box({ DevList: [{ name: 'ghost' }, { id: 'AA:BB:CC:DD:EE:99' }] }))
+    expect(state.removeFromDevList('AA:BB:CC:DD:EE:99')).toBe(true)
+    expect(state.getDongleDevList()).toHaveLength(1)
+  })
+})
+
+describe('DongleState reconcile with nullish raw', () => {
+  test('treats a missing paired list as empty and drops nothing non-MAC', () => {
+    const { state } = make()
+    state.handleBoxInfo(box({ DevList: [{ id: 'USB-SERIAL-12345' }] }))
+    expect(state.reconcileWithPairedRaw(undefined as never)).toBe(false)
+    expect(state.getDongleDevList()).toHaveLength(1)
+  })
+})

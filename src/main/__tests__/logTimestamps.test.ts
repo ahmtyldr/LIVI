@@ -2,7 +2,27 @@ type ConsoleMethod = 'log' | 'info' | 'warn' | 'error' | 'debug'
 
 const METHODS: ConsoleMethod[] = ['log', 'info', 'warn', 'error', 'debug']
 
+const fsMock = vi.hoisted(() => ({
+  mkdirSync: vi.fn(),
+  rmSync: vi.fn(),
+  renameSync: vi.fn(),
+  createWriteStream: vi.fn()
+}))
+vi.mock('node:fs', () => ({ default: fsMock }))
+
+function fakeStream(): { write: ReturnType<typeof vi.fn>; end: ReturnType<typeof vi.fn> } {
+  return { write: vi.fn(), end: vi.fn() }
+}
+
 describe('logTimestamps', () => {
+  beforeEach(() => {
+    fsMock.mkdirSync.mockReset()
+    fsMock.rmSync.mockReset()
+    fsMock.renameSync.mockReset()
+    fsMock.createWriteStream.mockReset()
+    fsMock.createWriteStream.mockImplementation(() => fakeStream())
+  })
+
   test('prefixes every console method with a wall-clock timestamp', async () => {
     vi.resetModules()
     const original = new Map(METHODS.map((m) => [m, console[m]]))
@@ -30,5 +50,86 @@ describe('logTimestamps', () => {
         if (fn) console[m] = fn
       }
     }
+  })
+
+  test('rotates the session logs and starts a fresh file over the size cap', async () => {
+    vi.resetModules()
+    const streams: ReturnType<typeof fakeStream>[] = []
+    fsMock.createWriteStream.mockImplementation(() => {
+      const s = fakeStream()
+      streams.push(s)
+      return s
+    })
+    // One slot is empty, so the rename catch path runs alongside the successful ones
+    fsMock.renameSync.mockImplementation((from: unknown) => {
+      if (String(from).includes('LIVI.3.log')) throw new Error('slot empty')
+    })
+    const original = console.log
+    console.log = vi.fn()
+    try {
+      await import('../logTimestamps')
+      console.log('x'.repeat(9 * 1024 * 1024))
+      console.log('first line of the fresh file')
+    } finally {
+      console.log = original
+    }
+    expect(streams).toHaveLength(2)
+    expect(streams[0].end).toHaveBeenCalled()
+    expect(streams[1].write).toHaveBeenCalledWith(expect.stringContaining('fresh file'))
+    expect(fsMock.rmSync).toHaveBeenCalled()
+  })
+
+  test('skips the sink quietly when no stream can be opened', async () => {
+    vi.resetModules()
+    fsMock.createWriteStream.mockReturnValue(null)
+    const original = console.log
+    const spy = vi.fn()
+    console.log = spy
+    try {
+      await import('../logTimestamps')
+      console.log('one')
+      console.log('two')
+    } finally {
+      console.log = original
+    }
+    // Not dead: every line retries the open, the console keeps printing
+    expect(fsMock.createWriteStream).toHaveBeenCalledTimes(2)
+    expect(spy).toHaveBeenCalledTimes(2)
+  })
+
+  test('skips the write when the post-rotation stream cannot be opened', async () => {
+    vi.resetModules()
+    const first = fakeStream()
+    fsMock.createWriteStream.mockReturnValueOnce(first).mockReturnValueOnce(null)
+    const original = console.log
+    console.log = vi.fn()
+    try {
+      await import('../logTimestamps')
+      console.log('x'.repeat(9 * 1024 * 1024))
+      console.log('lost line')
+    } finally {
+      console.log = original
+    }
+    expect(first.end).toHaveBeenCalled()
+    expect(first.write).toHaveBeenCalledTimes(1)
+  })
+
+  test('stays console-only after the log sink fails once', async () => {
+    vi.resetModules()
+    fsMock.createWriteStream.mockImplementation(() => {
+      throw new Error('no disk')
+    })
+    const original = console.log
+    const spy = vi.fn()
+    console.log = spy
+    try {
+      await import('../logTimestamps')
+      console.log('one')
+      console.log('two')
+    } finally {
+      console.log = original
+    }
+    expect(fsMock.createWriteStream).toHaveBeenCalledTimes(1)
+    expect(spy).toHaveBeenCalledTimes(2)
   })
 })
