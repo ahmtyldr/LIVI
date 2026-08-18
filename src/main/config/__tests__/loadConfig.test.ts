@@ -123,6 +123,38 @@ describe('loadConfig', () => {
     expect(result.clusterHeight).toBe(234)
   })
 
+  test('a panel above 720p scales into 1280x720 keeping its aspect', () => {
+    ;(existsSync as Mock).mockReturnValue(false)
+    sysfsPanelGeometryMock.mockReturnValueOnce({
+      widthMm: 940,
+      heightMm: 529,
+      widthPx: 3840,
+      heightPx: 2160
+    })
+
+    const result = loadConfig() as Record<string, unknown>
+
+    expect(result.projectionWidth).toBe(1280)
+    expect(result.projectionHeight).toBe(720)
+    expect(result.clusterWidth).toBe(1280)
+    expect(result.clusterHeight).toBe(720)
+  })
+
+  test('a 16:10 panel above 720p scales to even dimensions inside the box', () => {
+    ;(existsSync as Mock).mockReturnValue(false)
+    sysfsPanelGeometryMock.mockReturnValueOnce({
+      widthMm: 520,
+      heightMm: 325,
+      widthPx: 1920,
+      heightPx: 1200
+    })
+
+    const result = loadConfig() as Record<string, unknown>
+
+    expect(result.projectionWidth).toBe(1152)
+    expect(result.projectionHeight).toBe(720)
+  })
+
   test('a configured projection size skips the panel EDID lookup', () => {
     ;(existsSync as Mock).mockReturnValue(true)
     ;(readFileSync as Mock).mockReturnValue(JSON.stringify({ projectionWidth: 1280 }))

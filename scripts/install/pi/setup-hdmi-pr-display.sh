@@ -12,13 +12,14 @@ export PATH="$PATH:/usr/sbin:/sbin"
 # Only the vc4 module is rebuilt.
 #
 # Usage:
-#   bash setup-hdmi-pr-display.sh --edid panel.edid [--connector HDMI-A-1]
+#   bash setup-hdmi-pr-display.sh --edid panel.edid [--connector HDMI-A-2]
+#     (default connector: the single connected one, else HDMI-A-1)
 #   bash setup-hdmi-pr-display.sh --edid panel.edid --no-build   # EDID + cmdline only
 #   bash setup-hdmi-pr-display.sh                                 # module patch only
 #   bash setup-hdmi-pr-display.sh --kernel <version>              # build for another kernel
 # ============================================================================
 
-CONNECTOR="HDMI-A-1"
+CONNECTOR=""   # --connector overrides; otherwise the single connected one, else HDMI-A-1
 EDID_SRC=""
 DO_BUILD=1
 KVER="$(uname -r)"   # --kernel builds for another installed kernel (postinst hook)
@@ -31,7 +32,7 @@ CMDLINE="/boot/firmware/cmdline.txt"
 MARKER="LIVI HDMI-PR"
 
 usage() {
-  sed -n '4,24p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '4,20p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 while [[ $# -gt 0 ]]; do
@@ -44,6 +45,25 @@ while [[ $# -gt 0 ]]; do
     *) echo "unknown argument: $1" >&2; usage; exit 1 ;;
   esac
 done
+
+# A panel without a hotplug line shows "disconnected" even when wired,
+# so detection only replaces the default when it is unambiguous.
+if [[ -z "$CONNECTOR" ]]; then
+  mapfile -t conns < <(for d in /sys/class/drm/card*-*; do
+    [[ -f "$d/status" && "$(cat "$d/status" 2>/dev/null)" == "connected" ]] \
+      && basename "$d" | sed 's/^card[0-9]*-//'
+  done | sort -u)
+  if [[ ${#conns[@]} -eq 1 ]]; then
+    CONNECTOR="${conns[0]}"
+    echo "→ Using connected connector ${CONNECTOR}"
+  else
+    CONNECTOR="HDMI-A-1"
+    if [[ ${#conns[@]} -gt 1 ]]; then
+      echo "→ Multiple connected connectors (${conns[*]}), defaulting to ${CONNECTOR}." >&2
+      echo "  Use --connector to pick another one." >&2
+    fi
+  fi
+fi
 
 require_pi() {
   if ! grep -qi "raspberry pi" /proc/device-tree/model 2>/dev/null; then
@@ -426,9 +446,23 @@ EOF
   sudo chmod +x /etc/kernel/postinst.d/livi-vc4
 }
 
+# Mode of the EDID's first DTD as "WxH@Hz", the mode the panel actually runs.
+edid_video_mode() {
+  local -a b
+  read -r -a b <<< "$(od -An -tu1 -v -j 54 -N 8 "$EDID_SRC" | tr '\n' ' ')"
+  local clk=$(( (b[1] << 8 | b[0]) * 10000 ))
+  local hact=$(( (b[4] & 0xF0) << 4 | b[2] ))
+  local hbl=$((  (b[4] & 0x0F) << 8 | b[3] ))
+  local vact=$(( (b[7] & 0xF0) << 4 | b[5] ))
+  local vbl=$((  (b[7] & 0x0F) << 8 | b[6] ))
+  local total=$(( (hact + hbl) * (vact + vbl) ))
+  (( clk == 0 || total == 0 || hact == 0 || vact == 0 )) && return 1
+  printf '%sx%s@%s' "$hact" "$vact" "$(( (clk + total / 2) / total ))"
+}
+
 # Force the panel EDID and reference it from cmdline.txt.
 install_edid() {
-  local size token
+  local size token mode line stripped
   [[ -f "$EDID_SRC" ]] || { echo "EDID file not found: $EDID_SRC" >&2; exit 1; }
   size="$(wc -c < "$EDID_SRC")"
   if [[ "$size" != "128" && "$size" != "256" ]]; then
@@ -448,6 +482,17 @@ install_edid() {
     echo "→ Appending '${token}' to ${CMDLINE}"
     sudo cp -p "$CMDLINE" "${CMDLINE}.livi-bak"
     sudo sed -i "1 s|\$| ${token}|" "$CMDLINE"
+  fi
+
+  # Console and splash must come up in the panel's mode, not a guessed default.
+  if mode="$(edid_video_mode)"; then
+    echo "→ Pinning video=${CONNECTOR}:${mode} in ${CMDLINE}"
+    line="$(tr -d '\n' < "$CMDLINE")"
+    stripped="$(sed -E 's/[[:space:]]*video=[^[:space:]]+//g' <<< "$line")"
+    stripped="${stripped} video=${CONNECTOR}:${mode}"
+    [ "$stripped" = "$line" ] || echo "$stripped" | sudo tee "$CMDLINE" >/dev/null
+  else
+    echo "→ EDID has no parsable DTD, not pinning a video mode"
   fi
 
   # Early KMS (boot splash) runs from the initramfs

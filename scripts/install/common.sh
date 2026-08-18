@@ -176,6 +176,55 @@ livi_install_touch_filter() {
   sudo install -m 0755 -o root -g root "$script" "$LIVI_TOUCH_FILTER_FILE"
 }
 
+# Root helper + sudoers rule so the app can pin its display mode in the kernel cmdline
+livi_install_video_mode_helper() {
+  local helper="/usr/local/lib/livi/livi-video-mode.sh"
+  local rule="/etc/sudoers.d/99-LIVI-video"
+  echo "→ Installing $helper"
+  sudo mkdir -p "$(dirname "$helper")"
+  sudo tee "$helper" >/dev/null <<'EOF'
+#!/bin/bash
+# Managed by LIVI. Pins video=<CONNECTOR:WxH@Hz> in the kernel cmdline; "clear" removes it.
+set -euo pipefail
+CMDLINE="/boot/firmware/cmdline.txt"
+arg="${1:-}"
+case "$arg" in
+  clear) new="" ;;
+  *)
+    [[ "$arg" =~ ^[A-Za-z0-9-]+:[0-9]+x[0-9]+@[0-9]+D?$ ]] || {
+      echo "usage: livi-video-mode.sh <CONNECTOR:WxH@Hz>|clear" >&2
+      exit 2
+    }
+    new="video=$arg"
+    ;;
+esac
+line="$(tr -d '\n' < "$CMDLINE")"
+stripped="$(sed -E 's/[[:space:]]*video=[^[:space:]]+//g' <<< "$line")"
+out="$stripped${new:+ $new}"
+[ "$out" = "$line" ] || echo "$out" > "$CMDLINE"
+EOF
+  sudo chmod 0755 "$helper"
+  sudo chown root:root "$helper"
+
+  echo "→ Writing $rule"
+  local staged
+  staged="$(mktemp)"
+  cat > "$staged" <<EOF
+# Installed by LIVI — lets $USER pin the display mode in the kernel cmdline.
+# Remove this file to revoke.
+$USER ALL=(root) NOPASSWD: $helper *
+EOF
+  sudo install -m 0440 -o root -g root "$staged" "$rule.livi-tmp"
+  rm -f "$staged"
+  if sudo visudo -c -f "$rule.livi-tmp" >/dev/null; then
+    sudo mv "$rule.livi-tmp" "$rule"
+  else
+    sudo rm -f "$rule.livi-tmp"
+    echo "Error: the video-mode sudoers rule failed validation and was not installed" >&2
+    return 1
+  fi
+}
+
 # livi_fetch_resource <appimage> <path inside resources> <path in the repository>
 # Prints the path to the extracted file. Same order as livi_fetch_template: the
 # AppImage on disk first, the repository only for releases that predate the file.

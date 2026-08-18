@@ -35,13 +35,18 @@ export function loadConfig(): Config {
   if (fileConfig.projectionWidth === undefined && fileConfig.projectionHeight === undefined) {
     const panel = sysfsPanelGeometry()
     if (panel) {
-      console.log(`[config] projection defaults from the panel: ${panel.widthPx}x${panel.heightPx}`)
+      // Panels above 720p scale into 1280x720 keeping their aspect: every phone
+      // handles that, anything larger is a deliberate settings choice.
+      const scale = Math.min(1280 / panel.widthPx, 720 / panel.heightPx, 1)
+      const w = 2 * Math.round((panel.widthPx * scale) / 2)
+      const h = 2 * Math.round((panel.heightPx * scale) / 2)
+      console.log(`[config] projection defaults from the panel: ${w}x${h}`)
       defaults = {
         ...defaults,
-        projectionWidth: panel.widthPx,
-        projectionHeight: panel.heightPx,
-        clusterWidth: panel.widthPx,
-        clusterHeight: panel.heightPx
+        projectionWidth: w,
+        projectionHeight: h,
+        clusterWidth: w,
+        clusterHeight: h
       }
     }
   }

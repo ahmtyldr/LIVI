@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process'
+import { existsSync } from 'node:fs'
 
 /**
  * The panel belongs to the host compositor (Cage in the kiosk), not to ours. Our own
@@ -42,6 +43,18 @@ export function listHostOutputModes(): string[] {
   })
 }
 
+/** Mode and refresh the panel is currently in, or null when it cannot be read. */
+export function hostOutputCurrent(): { mode: string; hz: number } | null {
+  const listed = run([])
+  if (!listed) return null
+  for (const line of listed.split('\n')) {
+    if (!line.includes('current')) continue
+    const m = line.trim().match(/^(\d+x\d+) px, ([\d.]+) Hz/)
+    if (m) return { mode: m[1], hz: Math.round(Number(m[2])) || 60 }
+  }
+  return null
+}
+
 /**
  * Put the panel into the given mode, given as "WIDTHxHEIGHT". An empty mode leaves the
  * display at whatever it came up in. Applying a mode the output does not list leaves the
@@ -67,4 +80,45 @@ export function applyHostOutputMode(mode: string): void {
     return
   }
   console.log(`[hostOutput] ${name} → ${mode}`)
+}
+
+const fitsHd = (mode: string): boolean => {
+  const [w, h] = mode.split('x').map(Number)
+  return w <= 1280 && h <= 720
+}
+
+/** Every phone handles 720p projection, so an unconfigured panel snaps down to the
+ *  largest offered mode fitting 1280x720 — or the smallest offered one when nothing fits. */
+function resolveKioskMode(configured: string, current: { mode: string } | null): string {
+  if (/^\d+x\d+$/.test(configured)) return configured
+  if (!current || fitsHd(current.mode)) return ''
+  const modes = listHostOutputModes()
+  return modes.find(fitsHd) ?? modes.at(-1) ?? ''
+}
+
+const VIDEO_MODE_HELPER = '/usr/local/lib/livi/livi-video-mode.sh'
+
+/** Pin the panel's mode in the kernel cmdline so console and boot splash come up in it.
+ *  The helper ships with the headless installer; without it this is a no-op. */
+function persistVideoMode(): void {
+  if (!existsSync(VIDEO_MODE_HELPER)) return
+  const name = hostOutputName()
+  const current = hostOutputCurrent()
+  if (!name || !current) return
+  const pin = `${name}:${current.mode}@${current.hz}`
+  try {
+    execFileSync('sudo', ['-n', VIDEO_MODE_HELPER, pin], { stdio: 'ignore', timeout: 5000 })
+    console.log(`[hostOutput] cmdline video pin → ${pin}`)
+  } catch (e) {
+    console.warn(`[hostOutput] could not pin ${pin} in the cmdline:`, (e as Error).message)
+  }
+}
+
+/** Kiosk startup: apply the configured mode or the FHD preference when none is set
+ *  then pin whatever the panel actually runs in into the kernel cmdline. */
+export function applyKioskDisplayMode(configured: string): void {
+  const current = hostOutputCurrent()
+  const mode = resolveKioskMode(configured, current)
+  if (mode && mode !== current?.mode) applyHostOutputMode(mode)
+  persistVideoMode()
 }

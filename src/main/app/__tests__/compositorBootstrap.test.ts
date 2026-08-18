@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
-import { applyHostOutputMode } from '@main/app/hostOutput'
+import { applyKioskDisplayMode } from '@main/app/hostOutput'
 import { loadConfig } from '@main/config/loadConfig'
 import type { Mock } from 'vitest'
 import { bootstrapCompositor } from '../compositorBootstrap'
@@ -11,12 +11,12 @@ vi.mock('node:fs', () => {
   return { ...__m, default: __m }
 })
 vi.mock('@main/config/loadConfig', () => ({ loadConfig: vi.fn(() => ({})) }))
-vi.mock('@main/app/hostOutput', () => ({ applyHostOutputMode: vi.fn() }))
+vi.mock('@main/app/hostOutput', () => ({ applyKioskDisplayMode: vi.fn() }))
 
 const mockedSpawn = spawn as Mock
 const mockedExistsSync = existsSync as Mock
 const mockedLoadConfig = loadConfig as Mock
-const mockedApplyMode = applyHostOutputMode as Mock
+const mockedApplyMode = applyKioskDisplayMode as Mock
 
 describe('bootstrapCompositor', () => {
   const originalPlatform = process.platform

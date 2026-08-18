@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { COMPOSITOR_TITLEBAR_H } from '@main/app/compositorLayout'
-import { applyHostOutputMode } from '@main/app/hostOutput'
+import { applyKioskDisplayMode } from '@main/app/hostOutput'
 import { loadConfig } from '@main/config/loadConfig'
 
 // Linux windowed (GNOME/labwc): host the UI plus the GStreamer video plane in
@@ -36,7 +36,7 @@ export function bootstrapCompositor(): boolean {
     const oh = Math.round(Number(cfg.mainScreenHeight))
     const wantKiosk = cfg.kiosk?.main === true || process.env.LIVI_KIOSK === '1'
     if (ow > 0 && oh > 0) outputSize = `${ow}x${oh + (wantKiosk ? 0 : COMPOSITOR_TITLEBAR_H)}`
-    if (wantKiosk) applyHostOutputMode(cfg.displayMode)
+    if (wantKiosk) applyKioskDisplayMode(cfg.displayMode)
   } catch {
     // fall back to the compositor's built-in default
   }
