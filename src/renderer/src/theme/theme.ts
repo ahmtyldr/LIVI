@@ -1,7 +1,7 @@
 import { alpha, createTheme } from '@mui/material/styles'
 import { CSSObject } from '@mui/system'
-import { SliderValueThumb } from './components/SliderValueThumb'
-import { THEME, UI } from './constants'
+import { SliderValueThumb } from '../components/common/SliderValueThumb'
+import { THEME, UI } from '../constants'
 import { themeColors } from './themeColors'
 
 const sliderPill = {

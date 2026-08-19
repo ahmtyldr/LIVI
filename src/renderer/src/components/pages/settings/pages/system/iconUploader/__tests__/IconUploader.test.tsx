@@ -23,7 +23,10 @@ vi.mock('@store/store', () => ({
 }))
 
 describe('IconUploader', () => {
+  let warnSpy: ReturnType<typeof vi.spyOn>
+
   beforeEach(async () => {
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     saveSettings.mockClear()
     requestRestart.mockClear()
     ;(window as any).projection = {
@@ -36,6 +39,10 @@ describe('IconUploader', () => {
         dongleIcon256: 'x256'
       })
     }
+  })
+
+  afterEach(() => {
+    warnSpy.mockRestore()
   })
 
   test('imports png and saves resized icon fields', async () => {
@@ -92,10 +99,9 @@ describe('IconUploader', () => {
         })
       )
     })
-    expect(screen.getByText('Icons reset to defaults.')).toBeInTheDocument()
   })
 
-  test('reset shows error message when resetDongleIcons API not available', async () => {
+  test('reset warns when the resetDongleIcons API is not available', async () => {
     delete (window as any).app
     render(
       <IconUploader
@@ -107,8 +113,9 @@ describe('IconUploader', () => {
     )
     fireEvent.click(screen.getByText('settings.reset'))
     await waitFor(() => {
-      expect(screen.getByText('Reset API not available.')).toBeInTheDocument()
+      expect(warnSpy).toHaveBeenCalledWith('[IconUploader] reset API not available')
     })
+    expect(saveSettings).not.toHaveBeenCalled()
   })
 
   test('getResetDongleIconsFn returns null when app is not a record', async () => {
@@ -123,11 +130,12 @@ describe('IconUploader', () => {
     )
     fireEvent.click(screen.getByText('settings.reset'))
     await waitFor(() => {
-      expect(screen.getByText('Reset API not available.')).toBeInTheDocument()
+      expect(warnSpy).toHaveBeenCalledWith('[IconUploader] reset API not available')
     })
+    expect(saveSettings).not.toHaveBeenCalled()
   })
 
-  test('import failure shows error message', async () => {
+  test('import failure warns and saves nothing', async () => {
     const { loadImageFromFile } = await import('../utils')
     loadImageFromFile.mockRejectedValueOnce(new Error('bad file'))
     const { container } = render(
@@ -143,11 +151,12 @@ describe('IconUploader', () => {
       target: { files: [new File(['x'], 'bad.png', { type: 'image/png' })] }
     })
     await waitFor(() => {
-      expect(screen.getByText('Icon import failed.')).toBeInTheDocument()
+      expect(warnSpy).toHaveBeenCalledWith('[IconUploader] import failed', expect.any(Error))
     })
+    expect(saveSettings).not.toHaveBeenCalled()
   })
 
-  test('upload failure shows error message', async () => {
+  test('upload failure warns and skips the restart request', async () => {
     ;(window as any).projection.usb.uploadIcons = vi.fn().mockRejectedValue(new Error('usb fail'))
     render(
       <IconUploader
@@ -159,8 +168,9 @@ describe('IconUploader', () => {
     )
     fireEvent.click(screen.getByText('settings.upload'))
     await waitFor(() => {
-      expect(screen.getByText('Icon upload failed.')).toBeInTheDocument()
+      expect(warnSpy).toHaveBeenCalledWith('[IconUploader] upload failed', expect.any(Error))
     })
+    expect(requestRestart).not.toHaveBeenCalled()
   })
 
   test('shows icon preview when dongleIcon180 is set', async () => {
@@ -235,7 +245,7 @@ describe('IconUploader', () => {
     expect(clickSpy).toHaveBeenCalled()
   })
 
-  test('reset failure shows an error message', async () => {
+  test('reset failure warns and saves nothing', async () => {
     ;(window as any).app.resetDongleIcons = vi.fn().mockRejectedValue(new Error('reset boom'))
     render(
       <IconUploader
@@ -247,8 +257,9 @@ describe('IconUploader', () => {
     )
     fireEvent.click(screen.getByText('settings.reset'))
     await waitFor(() => {
-      expect(screen.getByText('Resetting icons failed.')).toBeInTheDocument()
+      expect(warnSpy).toHaveBeenCalledWith('[IconUploader] reset failed', expect.any(Error))
     })
+    expect(saveSettings).not.toHaveBeenCalled()
   })
 
   test('no file selected leaves settings untouched', async () => {
@@ -280,7 +291,7 @@ describe('IconUploader', () => {
     expect(clickSpy).not.toHaveBeenCalled()
   })
 
-  test('reset shows error when resetDongleIcons is not a function', async () => {
+  test('reset warns when resetDongleIcons is not a function', async () => {
     ;(window as any).app = { somethingElse: 1 }
     render(
       <IconUploader
@@ -292,8 +303,9 @@ describe('IconUploader', () => {
     )
     fireEvent.click(screen.getByText('settings.reset'))
     await waitFor(() => {
-      expect(screen.getByText('Reset API not available.')).toBeInTheDocument()
+      expect(warnSpy).toHaveBeenCalledWith('[IconUploader] reset API not available')
     })
+    expect(saveSettings).not.toHaveBeenCalled()
   })
 
   test('reset keeps existing icons when the API returns no fields', async () => {

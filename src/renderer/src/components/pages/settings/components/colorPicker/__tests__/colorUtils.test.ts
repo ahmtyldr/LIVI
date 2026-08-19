@@ -1,4 +1,4 @@
-import { themeColors } from '@renderer/themeColors'
+import { themeColors } from '@renderer/theme/themeColors'
 import { defaultColorForPath, hexToHsl, hslToHex } from '../colorUtils'
 
 describe('defaultColorForPath', () => {

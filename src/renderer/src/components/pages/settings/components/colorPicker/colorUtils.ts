@@ -1,4 +1,4 @@
-import { themeColors } from '@renderer/themeColors'
+import { themeColors } from '@renderer/theme/themeColors'
 
 export type Hsl = { h: number; s: number; l: number }
 

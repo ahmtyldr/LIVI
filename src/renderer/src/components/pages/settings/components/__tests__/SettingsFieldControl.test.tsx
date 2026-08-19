@@ -1,4 +1,4 @@
-import { themeColors } from '@renderer/themeColors'
+import { themeColors } from '@renderer/theme/themeColors'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { SettingsFieldControl } from '../SettingsFieldControl'
 

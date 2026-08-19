@@ -37,7 +37,6 @@ export function IconUploader(props: SettingsCustomPageProps<Config, unknown>) {
   const [isImporting, setIsImporting] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
-  const [message, setMessage] = useState<string>('')
 
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
@@ -67,7 +66,6 @@ export function IconUploader(props: SettingsCustomPageProps<Config, unknown>) {
 
       try {
         setIsImporting(true)
-        setMessage('')
 
         const img = await loadImageFromFile(file)
         const b120 = resizeImageToBase64Png(img, 120)
@@ -82,10 +80,8 @@ export function IconUploader(props: SettingsCustomPageProps<Config, unknown>) {
         }
 
         saveSettings(updated)
-        setMessage('Icon imported. You can upload it to your dongle now.')
       } catch (err) {
         console.warn('[IconUploader] import failed', err)
-        setMessage('Icon import failed.')
       } finally {
         setIsImporting(false)
       }
@@ -96,16 +92,12 @@ export function IconUploader(props: SettingsCustomPageProps<Config, unknown>) {
   const uploadToDongle = useCallback(async () => {
     try {
       setIsUploading(true)
-      setMessage('')
 
       await window.projection.usb.uploadIcons()
 
       requestRestart?.()
-
-      setMessage('Icon upload done.')
     } catch (err) {
       console.warn('[IconUploader] upload failed', err)
-      setMessage('Icon upload failed.')
     } finally {
       setIsUploading(false)
     }
@@ -116,11 +108,10 @@ export function IconUploader(props: SettingsCustomPageProps<Config, unknown>) {
 
     try {
       setIsResetting(true)
-      setMessage('')
 
       const fn = getResetDongleIconsFn(window)
       if (!fn) {
-        setMessage('Reset API not available.')
+        console.warn('[IconUploader] reset API not available')
         return
       }
 
@@ -133,10 +124,8 @@ export function IconUploader(props: SettingsCustomPageProps<Config, unknown>) {
       }
 
       saveSettings(updated)
-      setMessage('Icons reset to defaults.')
     } catch (err) {
       console.warn('[IconUploader] reset failed', err)
-      setMessage('Resetting icons failed.')
     } finally {
       setIsResetting(false)
     }
@@ -169,12 +158,6 @@ export function IconUploader(props: SettingsCustomPageProps<Config, unknown>) {
         disabled={!isDongleConnected}
         loading={isUploading}
       />
-
-      {message && (
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5, px: 2 }}>
-          {message}
-        </Typography>
-      )}
 
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
         <Box

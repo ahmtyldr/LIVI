@@ -76,7 +76,7 @@ vi.mock('../store/store', () => ({
     })
 }))
 
-vi.mock('../theme', () => ({
+vi.mock('../theme/theme', () => ({
   darkTheme: { palette: { mode: 'dark', source: 'darkTheme' } },
   lightTheme: { palette: { mode: 'light', source: 'lightTheme' } },
   buildRuntimeTheme: (...args: unknown[]) => buildRuntimeThemeMock(...args),
