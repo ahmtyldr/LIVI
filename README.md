@@ -158,6 +158,12 @@ mirrored to `gpsData.json` for external tools.
 
 On a Raspberry Pi 5, `/dev/ttyAMA0` on GPIO 14/15 (PIN 8/10) does not exist until `dtoverlay=uart0` is set in `config.txt`.
 
+<p align="center">
+  <img src="docs/images/gps/gps_hw.png" alt="GPS module info" width="42%" align="top" />
+  &emsp;
+  <img src="docs/images/gps/gps_info.png" alt="GPS data info" width="42%" align="top" />
+</p>
+
 
 ## Multi-Display
 
