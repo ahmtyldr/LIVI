@@ -324,6 +324,44 @@ describe('UsbAoapBridge — loopback server + pump', () => {
     expect(sock.destroy).toHaveBeenCalled()
   })
 
+  test('USB IN disconnect error also ends the bridge, so owners can rebuild', async () => {
+    const { dev, connect } = newBridge()
+    const bridge = new UsbAoapBridge(dev as unknown as Device)
+    bridge.on('error', () => {})
+    const closed = vi.fn()
+    bridge.on('closed', closed)
+    await bridge.start()
+    const sock = new MockLoopbackSocket()
+    dev.transferIn.mockImplementationOnce(async () => {
+      throw new Error('LIBUSB_ERROR_NO_DEVICE: device gone')
+    })
+    connect()(sock as never)
+    await flush()
+    // stop() is deferred so it does not await the pump it is called from
+    await new Promise((r) => setTimeout(r, 5))
+    await flush()
+    expect(closed).toHaveBeenCalled()
+  })
+
+  test('a throwing stop after a disconnect is swallowed', async () => {
+    const { dev, connect } = newBridge()
+    const bridge = new UsbAoapBridge(dev as unknown as Device)
+    bridge.on('error', () => {})
+    await bridge.start()
+    bridge.stop = vi.fn(async () => {
+      throw new Error('release failed')
+    })
+    const sock = new MockLoopbackSocket()
+    dev.transferIn.mockImplementationOnce(async () => {
+      throw new Error('LIBUSB_ERROR_NO_DEVICE: device gone')
+    })
+    connect()(sock as never)
+    await flush()
+    await new Promise((r) => setTimeout(r, 5))
+    await expect(flush()).resolves.toBeUndefined()
+    expect(bridge.stop).toHaveBeenCalled()
+  })
+
   test('socket close pauses the pump and clears _client', async () => {
     const { dev, connect } = newBridge()
     const bridge = new UsbAoapBridge(dev as unknown as Device)

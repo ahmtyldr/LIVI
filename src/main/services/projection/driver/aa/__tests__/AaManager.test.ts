@@ -207,6 +207,29 @@ describe('AaManager — wired bring-up', () => {
     await mgr.bringUpWired(fakeDevice('cycle'))
     expect(UsbAoapBridge as unknown as Mock).toHaveBeenCalledTimes(2)
   })
+
+  test('a bridge closing without a session on it frees the device key', async () => {
+    const { mgr } = newManager()
+    await mgr.bringUpWired(fakeDevice('gone'))
+    // No session was ever spawned, so nothing else would release the key
+    lastBridge.instance!.emit('closed')
+    await mgr.bringUpWired(fakeDevice('gone'))
+    expect(UsbAoapBridge as unknown as Mock).toHaveBeenCalledTimes(2)
+  })
+
+  test('a stale bridge closing does not evict the bridge that replaced it', async () => {
+    const { mgr } = newManager()
+    await mgr.bringUpWired(fakeDevice('replace'))
+    const stale = lastBridge.instance!
+    stale.emit('closed')
+    await mgr.bringUpWired(fakeDevice('replace'))
+    const fresh = lastBridge.instance!
+
+    stale.emit('closed')
+    await mgr.bringUpWired(fakeDevice('replace'))
+    expect(UsbAoapBridge as unknown as Mock).toHaveBeenCalledTimes(2)
+    expect(fresh).not.toBe(stale)
+  })
 })
 
 describe('AaManager — additional coverage', () => {

@@ -352,6 +352,7 @@ export class UsbAoapBridge extends EventEmitter {
           } catch {
             /* ignore */
           }
+          setTimeout(() => void this.stop().catch(() => {}), 0).unref?.()
           return
         }
         // Timeout / cancel: re-issue the read (lossless for bulk).

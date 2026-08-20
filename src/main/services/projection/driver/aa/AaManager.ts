@@ -171,6 +171,7 @@ export class AaManager {
     })
     bridge.on('closed', () => {
       console.log('[AaManager] wired bridge closed')
+      if (this._wiredBridges.get(key) === bridge) this._wiredBridges.delete(key)
     })
     bridge.once('ready', ({ host, port }: { host: string; port: number }) => {
       if (this._wiredBridges.get(key) !== bridge) return
