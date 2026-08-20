@@ -27,6 +27,7 @@ import { attachBlinkerSound } from './adapters/blinkerSoundAdapter'
 import { attachCpAdapter } from './adapters/cpAdapter'
 import { attachDongleAdapter } from './adapters/dongleAdapter'
 import { attachLiviDashAdapter } from './adapters/liviDashAdapter'
+import { attachGnss } from './gnss/attachGnss'
 import { attachGpsPersist } from './gpsPersist'
 import type { TelemetryStore } from './TelemetryStore'
 import { attachVolumePersist } from './volumePersist'
@@ -69,12 +70,15 @@ export function setupTelemetry({
     initialVolume: initialConfig?.huVolume
   })
 
+  const gnss = attachGnss({ store, initialConfig })
+
   let lastAppearanceMode: string | undefined = initialConfig?.appearanceMode
   const onConfigChanged = (merged: Config): void => {
     if (merged.appearanceMode !== lastAppearanceMode) {
       lastAppearanceMode = merged.appearanceMode
       applyAppearanceMode(store, merged.appearanceMode)
     }
+    gnss.applyConfig(merged)
   }
   configEvents.on('changed', onConfigChanged)
 
@@ -139,6 +143,7 @@ export function setupTelemetry({
       configEvents.off('changed', onConfigChanged)
       gpsPersist.off()
       volumePersist.off()
+      gnss.dispose()
       offDash()
       offAa?.()
       offDongle?.()

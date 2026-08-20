@@ -7,6 +7,8 @@ import {
   MIN_WIDTH
 } from '../../components/pages/settings/constants'
 import { Camera } from '../../components/pages/settings/pages/camera'
+import { GpsHwInfo } from '../../components/pages/settings/pages/general/gps/GpsHwInfo'
+import { GpsInfo } from '../../components/pages/settings/pages/general/gps/GpsInfo'
 import { USBDongle } from '../../components/pages/settings/pages/system/usbDongle/USBDongle'
 import { SelectOption, SettingsNode } from '../types'
 
@@ -975,6 +977,87 @@ export const generalSchema: SettingsNode<Config> = {
             title: 'Power Pin',
             labelTitle: 'settings.mfiPowerGpio'
           }
+        }
+      ]
+    },
+    {
+      type: 'route',
+      label: 'GPS',
+      labelKey: 'settings.gps',
+      icon: 'gps',
+      route: 'gps',
+      path: '',
+      children: [
+        {
+          type: 'checkbox',
+          label: 'Enable',
+          labelKey: 'settings.gpsEnabled',
+          icon: 'gpsEnabled',
+          path: 'gpsEnabled'
+        },
+        {
+          type: 'string',
+          label: 'Device',
+          labelKey: 'settings.gpsDevice',
+          icon: 'gpsDevice',
+          path: 'gpsDevice',
+          page: {
+            title: 'Device',
+            labelTitle: 'settings.gpsDevice'
+          }
+        },
+        {
+          type: 'select',
+          label: 'Baud Rate',
+          labelKey: 'settings.gpsBaudRate',
+          icon: 'gpsBaudRate',
+          path: 'gpsBaudRate',
+          options: [
+            { label: '4800', value: 4800 },
+            { label: '9600', value: 9600 },
+            { label: '19200', value: 19200 },
+            { label: '38400', value: 38400 },
+            { label: '57600', value: 57600 },
+            { label: '115200', value: 115200 }
+          ],
+          page: {
+            title: 'Baud Rate',
+            labelTitle: 'settings.gpsBaudRate'
+          }
+        },
+        {
+          type: 'route',
+          label: 'GPS Data',
+          labelKey: 'settings.gpsInfo',
+          icon: 'gpsInfo',
+          route: 'info',
+          path: '',
+          children: [
+            {
+              type: 'custom',
+              label: 'GPS Data',
+              labelKey: 'settings.gpsInfo',
+              path: 'carName',
+              component: GpsInfo
+            }
+          ]
+        },
+        {
+          type: 'route',
+          label: 'HW Info',
+          labelKey: 'settings.gpsHwInfo',
+          icon: 'gpsHwInfo',
+          route: 'hwinfo',
+          path: '',
+          children: [
+            {
+              type: 'custom',
+              label: 'HW Info',
+              labelKey: 'settings.gpsHwInfo',
+              path: 'carName',
+              component: GpsHwInfo
+            }
+          ]
         }
       ]
     },

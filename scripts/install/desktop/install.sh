@@ -76,6 +76,31 @@ livi_ask_hdmi_pr
 livi_fetch_appimage "$APPIMAGE_PATH" "$APPIMAGE_SRC"
 echo "   Download complete: $APPIMAGE_PATH"
 
+# Everything privileged is granted here, while the installer already holds sudo.
+# The app keeps its pkexec dialogs as a fallback and skips them once these exist.
+LIVI_EXTRACT_DIR="$(mktemp -d)"
+trap "rm -rf '$LIVI_EXTRACT_DIR'" EXIT
+
+echo "→ Extracting rule templates from the AppImage"
+UDEV_TEMPLATE="$(livi_fetch_template "$APPIMAGE_PATH" "$LIVI_UDEV_TEMPLATE")" || {
+  echo "Error: cannot obtain $LIVI_UDEV_TEMPLATE" >&2
+  exit 1
+}
+SUDOERS_TEMPLATE="$(livi_fetch_template "$APPIMAGE_PATH" "$LIVI_SUDOERS_TEMPLATE")" || {
+  echo "Error: cannot obtain $LIVI_SUDOERS_TEMPLATE" >&2
+  exit 1
+}
+TOUCH_FILTER="$(livi_fetch_template "$APPIMAGE_PATH" "$LIVI_TOUCH_FILTER_TEMPLATE")" || {
+  echo "Error: cannot obtain $LIVI_TOUCH_FILTER_TEMPLATE" >&2
+  exit 1
+}
+
+livi_install_touch_filter "$TOUCH_FILTER"
+livi_write_udev_rule "$UDEV_TEMPLATE"
+livi_write_sudoers "$SUDOERS_TEMPLATE"
+livi_install_gvfs_guard
+livi_install_time_helper
+
 livi_set_wifi_pmf_optional
 livi_apply_mfi
 livi_apply_splash

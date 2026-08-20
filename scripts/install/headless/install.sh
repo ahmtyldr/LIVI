@@ -95,6 +95,7 @@ livi_install_touch_filter "$TOUCH_FILTER"
 livi_write_udev_rule "$UDEV_TEMPLATE"
 livi_write_sudoers "$SUDOERS_TEMPLATE"
 livi_install_video_mode_helper
+livi_install_time_helper
 livi_disable_wifi_powersave
 livi_set_wifi_pmf_optional
 livi_apply_mfi

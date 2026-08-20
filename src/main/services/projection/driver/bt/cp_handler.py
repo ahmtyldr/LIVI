@@ -1066,15 +1066,27 @@ class CpHandler:
         except Exception as e:
             self._log("carkit start failed:", repr(e))
 
-    # One of possibly several time sources (GPS clock later); steps only on
-    # real drift, once per connection.
-    TIME_STEP_THRESHOLD_S = 10
+    # One of several time sources. GPS wins when it holds the claim.
+    # The phone reports whole seconds, so this cannot usefully go below the resulting quantisation.
+    TIME_STEP_THRESHOLD_S = 2
+    GPS_CLOCK_CLAIM = "/tmp/livi-gps-clock"
+    GPS_CLOCK_CLAIM_MAX_AGE_S = 120
+
+    def _gps_owns_clock(self):
+        try:
+            age = time.time() - os.path.getmtime(self.GPS_CLOCK_CLAIM)
+        except OSError:
+            return False
+        return age <= self.GPS_CLOCK_CLAIM_MAX_AGE_S
 
     def _handle_device_time(self, peer, incoming):
         secs = getattr(incoming, "seconds_since_reference_date", None)
         if secs is None or getattr(peer, "time_synced", False):
             return
         peer.time_synced = True
+        if self._gps_owns_clock():
+            self._log("device time: GPS holds the clock, leaving it alone")
+            return
         offset = secs - time.time()
         if abs(offset) <= self.TIME_STEP_THRESHOLD_S:
             self._log("device time: offset %.1fs, keeping the system clock" % offset)

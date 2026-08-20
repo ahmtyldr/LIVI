@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import type { GnssInfo } from './Gnss'
 //
 // ╔══════════════════════════════════════════════════════════════════════════╗
 // ║  LIVI Telemetry API  —  USER → LIVI                                      ║
@@ -77,6 +78,7 @@
 //    gps.lat / lng / alt / heading   ✓     ✓          ✓          ✓
 //    gps.speedMs / accuracyM         ✓     ✓          ✓          ·
 //    can { id, data, bus }           ✓     ·          ·          ·
+//    gnss (receiver state)           ✓     ·          ·          ·
 //
 //  `TODO` = intended, not yet wired. `·` = not sent
 //
@@ -241,6 +243,9 @@ export type TelemetryPayload = {
 
   /** GPS / GNSS fix data. See `GpsPayload`. */
   gps?: GpsPayload
+
+  /** Connected receiver's own state — satellites, DOP, firmware. Replaced wholesale. */
+  gnss?: GnssInfo
 
   // ── Raw CAN frame passthrough ──────────────────────────────────────────
 

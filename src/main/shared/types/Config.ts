@@ -110,12 +110,20 @@ export type Config = {
   wifiChannel: number
   country: string
 
-  /** AirPlay protocol version we advertise */
+  // AirPlay protocol version we advertise
   carPlaySourceVersion: string
 
   // CarPlay MFi coprocessor: i2c bus, power-enable GPIO (-1 = no power pin)
   carPlayMfiI2cBus: number
   carPlayMfiPowerGpio: number
+
+  // Serial GNSS receiver
+  gpsEnabled: boolean
+  gpsDevice: string
+  gpsBaudRate: number
+  /** Last zone derived from a fix. Applied at startup so the clock reads right
+   *  before the receiver has a position again. */
+  timezone: string
 
   // Main stream
   projectionWidth: number

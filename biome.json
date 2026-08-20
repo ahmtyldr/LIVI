@@ -14,6 +14,7 @@
       "vitest.setup.ts",
       "vitest.main.setup.ts",
       "!src/renderer/out/**",
+      "!src/main/services/time/vendor/**",
       "!coverage/**",
       "!dist/**",
       "!out/**",

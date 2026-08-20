@@ -176,13 +176,38 @@ livi_install_touch_filter() {
   sudo install -m 0755 -o root -g root "$script" "$LIVI_TOUCH_FILTER_FILE"
 }
 
-# Root helper + sudoers rule so the app can pin its display mode in the kernel cmdline
-livi_install_video_mode_helper() {
-  local helper="/usr/local/lib/livi/livi-video-mode.sh"
-  local rule="/etc/sudoers.d/99-LIVI-video"
+# livi_install_root_helper <helper> <sudoers-file> <description>
+# Script body comes from stdin. Grants the user passwordless sudo for that helper.
+livi_install_root_helper() {
+  local helper="$1" rule="$2" desc="$3" staged
   echo "→ Installing $helper"
   sudo mkdir -p "$(dirname "$helper")"
-  sudo tee "$helper" >/dev/null <<'EOF'
+  sudo tee "$helper" >/dev/null
+  sudo chmod 0755 "$helper"
+  sudo chown root:root "$helper"
+
+  echo "→ Writing $rule"
+  staged="$(mktemp)"
+  cat > "$staged" <<SUDOEOF
+# Installed by LIVI — $desc
+# Remove this file to revoke.
+$USER ALL=(root) NOPASSWD: $helper *
+SUDOEOF
+  sudo install -m 0440 -o root -g root "$staged" "$rule.livi-tmp"
+  rm -f "$staged"
+  if sudo visudo -c -f "$rule.livi-tmp" >/dev/null; then
+    sudo mv "$rule.livi-tmp" "$rule"
+  else
+    sudo rm -f "$rule.livi-tmp"
+    echo "Error: the sudoers rule for $helper failed validation and was not installed" >&2
+    return 1
+  fi
+}
+
+# Root helper + sudoers rule so the app can pin its display mode in the kernel cmdline
+livi_install_video_mode_helper() {
+  livi_install_root_helper /usr/local/lib/livi/livi-video-mode.sh /etc/sudoers.d/99-LIVI-video \
+    "lets $USER pin the display mode in the kernel cmdline." <<'EOF'
 #!/bin/bash
 # Managed by LIVI. Pins video=<CONNECTOR:WxH@Hz> in the kernel cmdline; "clear" removes it.
 set -euo pipefail
@@ -203,26 +228,51 @@ stripped="$(sed -E 's/[[:space:]]*video=[^[:space:]]+//g' <<< "$line")"
 out="$stripped${new:+ $new}"
 [ "$out" = "$line" ] || echo "$out" > "$CMDLINE"
 EOF
-  sudo chmod 0755 "$helper"
-  sudo chown root:root "$helper"
+}
 
-  echo "→ Writing $rule"
-  local staged
-  staged="$(mktemp)"
-  cat > "$staged" <<EOF
-# Installed by LIVI — lets $USER pin the display mode in the kernel cmdline.
-# Remove this file to revoke.
-$USER ALL=(root) NOPASSWD: $helper *
+# Lets LIVI hide plugged phones from the desktop file manager while it runs.
+livi_install_gvfs_guard() {
+  livi_install_root_helper /usr/local/lib/livi/gvfs-phone-guard.sh /etc/sudoers.d/99-LIVI-gvfs \
+    "lets $USER toggle the phone gvfs volume monitors." <<'EOF'
+#!/bin/bash
+# Managed by LIVI. Hides or restores the phone gvfs volume monitors.
+set -u
+D=/usr/share/gvfs/remote-volume-monitors
+action="${1:-}"
+for m in afc gphoto2 mtp; do
+  case "$action" in
+    disable) [ -f "$D/$m.monitor" ] && mv "$D/$m.monitor" "$D/$m.livi-off" ;;
+    restore) [ -f "$D/$m.livi-off" ] && mv "$D/$m.livi-off" "$D/$m.monitor" ;;
+    *) echo "usage: gvfs-phone-guard.sh disable|restore" >&2 ; exit 2 ;;
+  esac
+done
+[ "$action" = disable ] && pkill -f "gvfs-afc-volume|gvfs-gphoto2|gvfs-mtp-volume|gvfsd-afc" 2>/dev/null
+exit 0
 EOF
-  sudo install -m 0440 -o root -g root "$staged" "$rule.livi-tmp"
-  rm -f "$staged"
-  if sudo visudo -c -f "$rule.livi-tmp" >/dev/null; then
-    sudo mv "$rule.livi-tmp" "$rule"
-  else
-    sudo rm -f "$rule.livi-tmp"
-    echo "Error: the video-mode sudoers rule failed validation and was not installed" >&2
-    return 1
-  fi
+}
+
+# Sets the system clock and timezone.
+livi_install_time_helper() {
+  livi_install_root_helper /usr/local/lib/livi/livi-set-time.sh /etc/sudoers.d/99-LIVI-time \
+    "lets $USER set the system clock and timezone." <<'EOF'
+#!/bin/bash
+# Managed by LIVI. Sets the system clock from a unix timestamp, or the timezone.
+set -euo pipefail
+case "${1:-}" in
+  tz)
+    zone="${2:-}"
+    [[ "$zone" =~ ^[A-Za-z0-9_+/-]{1,64}$ ]] || { echo "usage: livi-set-time.sh tz <zone>" >&2; exit 2; }
+    [ -f "/usr/share/zoneinfo/$zone" ] || { echo "unknown timezone: $zone" >&2; exit 3; }
+    timedatectl set-timezone "$zone"
+    ;;
+  *)
+    arg="${1:-}"
+    [[ "$arg" =~ ^[0-9]{10,11}$ ]] || { echo "usage: livi-set-time.sh <unix-seconds>|tz <zone>" >&2; exit 2; }
+    date -u -s "@$arg" >/dev/null
+    command -v fake-hwclock >/dev/null 2>&1 && fake-hwclock save || true
+    ;;
+esac
+EOF
 }
 
 # livi_fetch_resource <appimage> <path inside resources> <path in the repository>

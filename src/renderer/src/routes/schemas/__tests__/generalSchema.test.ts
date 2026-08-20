@@ -9,7 +9,7 @@ describe('generalSchema', () => {
     expect(schema.label).toBe('General')
     expect(schema.labelKey).toBe('settings.general')
     expect(schema.path).toBe('')
-    expect(schema.children).toHaveLength(11)
+    expect(schema.children).toHaveLength(12)
   })
 
   test('connections route contains names, wifi and auto connect', () => {
@@ -95,8 +95,27 @@ describe('generalSchema', () => {
     expect(powerPin.valueTransform?.format?.(21)).toBe('21')
   })
 
+  test('gps route sits between mfi and the usb dongle', () => {
+    const gps = schema.children[10]
+    expect(gps).toEqual(
+      expect.objectContaining({ type: 'route', route: 'gps', labelKey: 'settings.gps' })
+    )
+    expect(gps.children.map((c: { path: string }) => c.path)).toEqual([
+      'gpsEnabled',
+      'gpsDevice',
+      'gpsBaudRate',
+      '',
+      ''
+    ])
+    expect(gps.children[3]).toEqual(expect.objectContaining({ type: 'route', route: 'info' }))
+    expect(gps.children[4]).toEqual(expect.objectContaining({ type: 'route', route: 'hwinfo' }))
+    for (const page of [gps.children[3], gps.children[4]]) {
+      expect(page.children[0]).toEqual(expect.objectContaining({ type: 'custom' }))
+    }
+  })
+
   test('usb dongle route lives at the bottom with a single custom entry', () => {
-    const usbDongle = schema.children[10]
+    const usbDongle = schema.children[11]
     expect(usbDongle).toEqual(
       expect.objectContaining({
         type: 'route',

@@ -1,7 +1,5 @@
 import { AudioCommand } from '@shared/types/ProjectionEnums'
-import { app } from 'electron'
-import fs from 'fs'
-import path from 'path'
+import { DebouncedJsonFile } from './DebouncedJsonFile'
 
 export type LiviStatus = {
   projection: {
@@ -53,15 +51,18 @@ function deepMerge<T extends object>(base: T, patch: DeepPartial<T>): T {
 
 export class StatusFileWriter {
   private state: LiviStatus = INITIAL
-  private flushTimer: NodeJS.Timeout | null = null
-  private readonly debounceMs: number
+  private readonly sink: DebouncedJsonFile
 
-  constructor(
-    private readonly file: string = path.join(app.getPath('userData'), 'statusData.json'),
-    opts: { debounceMs?: number; writeInitial?: boolean } = {}
-  ) {
-    this.debounceMs = opts.debounceMs ?? 50
-    if (opts.writeInitial !== false) this.flushNow()
+  constructor(file?: string, opts: { debounceMs?: number; writeInitial?: boolean } = {}) {
+    this.sink = new DebouncedJsonFile(
+      () => ({
+        version: STATUS_VERSION,
+        timestamp: new Date().toISOString(),
+        payload: this.state
+      }),
+      { file, name: 'statusData.json', tag: 'StatusFileWriter', debounceMs: opts.debounceMs ?? 50 }
+    )
+    if (opts.writeInitial !== false) this.sink.flushNow()
   }
 
   setProjection(
@@ -140,38 +141,11 @@ export class StatusFileWriter {
   }
 
   flush(): void {
-    if (this.flushTimer) {
-      clearTimeout(this.flushTimer)
-      this.flushTimer = null
-    }
-    this.flushNow()
+    this.sink.flushNow()
   }
 
   private patch(p: DeepPartial<LiviStatus>): void {
     this.state = deepMerge(this.state, p)
-    this.scheduleFlush()
-  }
-
-  private scheduleFlush(): void {
-    if (this.flushTimer) return
-    this.flushTimer = setTimeout(() => {
-      this.flushTimer = null
-      this.flushNow()
-    }, this.debounceMs)
-  }
-
-  private flushNow(): void {
-    const out = {
-      version: STATUS_VERSION,
-      timestamp: new Date().toISOString(),
-      payload: this.state
-    }
-    const tmp = this.file + '.tmp'
-    try {
-      fs.writeFileSync(tmp, JSON.stringify(out, null, 2), 'utf8')
-      fs.renameSync(tmp, this.file)
-    } catch (e) {
-      console.warn('[StatusFileWriter] write failed (ignored)', e)
-    }
+    this.sink.schedule()
   }
 }

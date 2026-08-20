@@ -15,7 +15,13 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'text-summary', 'html', 'lcov', 'json-summary'],
-      exclude: [...coverageConfigDefaults.exclude, 'native/**', '**/*.d.ts', '**/*.md']
+      exclude: [
+        ...coverageConfigDefaults.exclude,
+        'native/**',
+        '**/*.d.ts',
+        '**/*.md',
+        'src/main/services/time/vendor/**'
+      ]
     },
     projects: [
       {

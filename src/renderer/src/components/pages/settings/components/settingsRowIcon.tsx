@@ -23,6 +23,7 @@ import EastOutlinedIcon from '@mui/icons-material/EastOutlined'
 import EqualizerOutlinedIcon from '@mui/icons-material/EqualizerOutlined'
 import FlipOutlinedIcon from '@mui/icons-material/FlipOutlined'
 import FullscreenOutlinedIcon from '@mui/icons-material/FullscreenOutlined'
+import GpsFixedOutlinedIcon from '@mui/icons-material/GpsFixedOutlined'
 import GrainOutlinedIcon from '@mui/icons-material/GrainOutlined'
 import GraphicEqOutlinedIcon from '@mui/icons-material/GraphicEqOutlined'
 import GridViewOutlinedIcon from '@mui/icons-material/GridViewOutlined'
@@ -51,6 +52,7 @@ import RecordVoiceOverOutlinedIcon from '@mui/icons-material/RecordVoiceOverOutl
 import RestartAltOutlinedIcon from '@mui/icons-material/RestartAltOutlined'
 import RotateRightOutlinedIcon from '@mui/icons-material/RotateRightOutlined'
 import RouterOutlinedIcon from '@mui/icons-material/RouterOutlined'
+import SatelliteAltOutlinedIcon from '@mui/icons-material/SatelliteAltOutlined'
 import SettingsEthernetOutlinedIcon from '@mui/icons-material/SettingsEthernetOutlined'
 import SettingsInputAntennaOutlinedIcon from '@mui/icons-material/SettingsInputAntennaOutlined'
 import ShutterSpeedOutlinedIcon from '@mui/icons-material/ShutterSpeedOutlined'
@@ -120,6 +122,13 @@ const ICONS: Record<string, SvgIconComponent> = {
 
   i2cBus: CableOutlinedIcon,
   powerPin: BoltOutlinedIcon,
+
+  gps: SatelliteAltOutlinedIcon,
+  gpsEnabled: GpsFixedOutlinedIcon,
+  gpsDevice: CableOutlinedIcon,
+  gpsBaudRate: SpeedOutlinedIcon,
+  gpsInfo: SatelliteAltOutlinedIcon,
+  gpsHwInfo: DeveloperBoardOutlinedIcon,
 
   devices: SmartphoneOutlinedIcon,
   general: TuneOutlinedIcon,

@@ -135,6 +135,30 @@ pnpm -C scripts/tools run telemetry:set _repeatMs=1000 speedKph=90 rpm=2500
 </p>
 
 
+## GPS
+
+LIVI reads a GNSS receiver on a serial port. The fix is published into the telemetry
+store, from where the existing adapters carry it to CarPlay and Android Auto.
+
+Any receiver speaking **NMEA-0183** works. On **u-blox** modules LIVI additionally polls
+UBX for the module identity and the RF front end. Development and testing were done with
+a **NEO-M9N**. Configuration (`config.json`):
+
+| Key           | Default        | Description                                |
+| ------------- | -------------- | ------------------------------------------ |
+| `gpsEnabled`  | `false`        | Read the receiver                          |
+| `gpsDevice`   | `/dev/ttyAMA0` | Serial device                              |
+| `gpsBaudRate` | `38400`        | NEO-M9N default; older modules use `9600`  |
+| `timezone`    | `""`           | Last zone derived from a fix, applied at start |
+
+The receiver also serves as a **time source**. Its satellite clock sets the system time, ahead of the time a phone offers at CarPlay session start, and the fix position selects the system timezone, so daylight saving follows the tz database instead of a manual switch.
+
+Settings → General → GPS shows the live values under **GPS Data**, and the module identity together with antenna and interference state under **HW Info**. The same data is
+mirrored to `gpsData.json` for external tools.
+
+On a Raspberry Pi 5, `/dev/ttyAMA0` on GPIO 14/15 (PIN 8/10) does not exist until `dtoverlay=uart0` is set in `config.txt`.
+
+
 ## Multi-Display
 
 LIVI can run as multiple windows at once, each placeable on its own physical display.
