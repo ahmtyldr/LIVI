@@ -765,7 +765,9 @@ describe('SettingsFieldControl', () => {
         onChange={onChange}
       />
     )
-    expect(screen.getByText(themeColors.highlightColorDark.toUpperCase())).toBeInTheDocument()
+    expect(
+      screen.getByDisplayValue(themeColors.highlightColorDark.toUpperCase())
+    ).toBeInTheDocument()
     expect(screen.getByTestId('icon-button')).toBeDisabled()
 
     rerender(
@@ -775,7 +777,7 @@ describe('SettingsFieldControl', () => {
         onChange={onChange}
       />
     )
-    expect(screen.getByText('#FF0000')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('#FF0000')).toBeInTheDocument()
     fireEvent.click(screen.getByTestId('icon-button'))
     expect(onChange).toHaveBeenCalledWith(null)
   })

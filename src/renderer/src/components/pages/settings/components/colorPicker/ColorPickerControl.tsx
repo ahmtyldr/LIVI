@@ -1,10 +1,17 @@
 import RestartAltOutlinedIcon from '@mui/icons-material/RestartAltOutlined'
-import { Box, IconButton, Slider, Typography } from '@mui/material'
+import { Box, IconButton, Slider, TextField, Typography } from '@mui/material'
 import { SettingsNode } from '@renderer/routes'
 import type { Config } from '@shared/types'
 import { type CSSProperties, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { defaultColorForPath, type Hsl, hexToHsl, hslToHex } from './colorUtils'
+import {
+  defaultColorForPath,
+  type Hsl,
+  hexToHsl,
+  hslToHex,
+  isHex,
+  normalizeHex
+} from './colorUtils'
 
 type Props = {
   node: SettingsNode<Config>
@@ -50,6 +57,7 @@ export const ColorPickerControl = ({ node, value, onChange }: Props) => {
   const lastEmitted = useRef<string | null>(null)
   const [hsl, setHsl] = useState<Hsl>(() => hexToHsl(effectiveHex))
   const [draftHex, setDraftHex] = useState<string | null>(null)
+  const [hexInput, setHexInput] = useState<string | null>(null)
   const [seenHex, setSeenHex] = useState(effectiveHex)
   if (effectiveHex !== seenHex) {
     setSeenHex(effectiveHex)
@@ -71,6 +79,15 @@ export const ColorPickerControl = ({ node, value, onChange }: Props) => {
     setDraftHex(nextHex)
     lastEmitted.current = nextHex
     onChange(nextHex)
+  }
+
+  const commitHex = (raw: string) => {
+    if (!isHex(raw)) return
+    const next = normalizeHex(raw)
+    setHsl(hexToHsl(next))
+    setDraftHex(next)
+    lastEmitted.current = next
+    onChange(next)
   }
 
   const reset = () => {
@@ -113,9 +130,36 @@ export const ColorPickerControl = ({ node, value, onChange }: Props) => {
           }}
           style={{ backgroundColor: hex }}
         />
-        <Typography sx={{ fontFamily: 'monospace', minWidth: '7ch' }}>
-          {hex.toUpperCase()}
-        </Typography>
+        <TextField
+          value={hexInput ?? hex.toUpperCase()}
+          onChange={(e) => {
+            setHexInput(e.target.value)
+            commitHex(e.target.value)
+          }}
+          // Drop a half-typed or invalid draft
+          onBlur={() => setHexInput(null)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+          }}
+          variant="outlined"
+          size="small"
+          slotProps={{
+            htmlInput: {
+              maxLength: 7,
+              spellCheck: false,
+              autoCapitalize: 'none',
+              autoCorrect: 'off',
+              style: { fontFamily: 'monospace', textAlign: 'center' }
+            }
+          }}
+          sx={{
+            width: '11ch',
+            '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
+              borderColor: 'primary.main',
+              borderWidth: '1px'
+            }
+          }}
+        />
         <IconButton size="small" disabled={!hasCustom} onClick={reset}>
           <RestartAltOutlinedIcon fontSize="small" />
         </IconButton>

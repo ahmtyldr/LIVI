@@ -21,8 +21,15 @@ export const defaultColorForPath = (path?: string): string => {
   }
 }
 
+const HEX_RE = /^#?([0-9a-f]{6})$/i
+
+export const isHex = (value: string): boolean => HEX_RE.test(value.trim())
+
+export const normalizeHex = (value: string): string =>
+  `#${value.trim().replace(/^#/, '').toLowerCase()}`
+
 export function hexToHsl(hex: string): Hsl {
-  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim())
+  const m = HEX_RE.exec(hex.trim())
   if (!m) return { h: 0, s: 0, l: 0 }
   const n = Number.parseInt(m[1]!, 16)
   const r = ((n >> 16) & 0xff) / 255
