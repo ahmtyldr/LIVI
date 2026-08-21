@@ -1,5 +1,6 @@
 import { stopSystemVolumeMonitor } from '@main/services/audio/SystemVolume'
 import { stopPhoneSuppression } from '@main/services/gvfsPhoneGuard'
+import { runPendingPowerAction } from '@main/services/power/hostPower'
 import { runtimeStateProps, ServicesProps } from '@main/types'
 import { createMainWindow, getMainWindow } from '@main/window/createWindow'
 import { closeAllSecondaryWindows } from '@main/window/secondaryWindows'
@@ -124,6 +125,7 @@ export function setupLifecycle(runtimeState: runtimeStateProps, services: Servic
     } finally {
       setTimeout(() => clearTimeout(watchdog), 250)
 
+      runPendingPowerAction()
       setImmediate(() => process.kill(process.pid, 'SIGKILL'))
     }
   })

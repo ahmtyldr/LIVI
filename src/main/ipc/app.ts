@@ -1,4 +1,5 @@
 import { registerIpcHandle, registerIpcOn } from '@main/ipc/register'
+import { hostPowerAvailable, requestPowerAction } from '@main/services/power/hostPower'
 import { compositorRestart } from '@main/services/video/GstVideo'
 import { runtimeStateProps, ServicesProps } from '@main/types'
 import { isMacPlatform } from '@main/utils'
@@ -20,6 +21,12 @@ export async function restartApp(
 
   // Guard the async teardown window only, reset at the end so a prevented quit is not stuck.
   try {
+    if (hostPowerAvailable()) {
+      requestPowerAction('reboot')
+      app.quit()
+      return
+    }
+
     try {
       services.usbService?.beginShutdown()
     } catch {}
@@ -91,6 +98,7 @@ export function registerAppIpc(runtimeState: runtimeStateProps, services: Servic
   // App Quit
   registerIpcHandle('app:quitApp', () => {
     if (runtimeState.isQuitting) return
+    if (hostPowerAvailable()) requestPowerAction('poweroff')
     app.quit()
   })
 

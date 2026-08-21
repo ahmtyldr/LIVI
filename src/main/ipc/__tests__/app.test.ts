@@ -1,5 +1,6 @@
 import { registerAppIpc } from '@main/ipc/app'
 import { registerIpcHandle, registerIpcOn } from '@main/ipc/register'
+import { hostPowerAvailable, requestPowerAction } from '@main/services/power/hostPower'
 import { isMacPlatform } from '@main/utils'
 import { broadcastToRenderers } from '@main/window/broadcast'
 import { getMainWindow } from '@main/window/createWindow'
@@ -37,12 +38,19 @@ vi.mock('@main/services/video/GstVideo', () => ({
   compositorRestart: vi.fn(() => false)
 }))
 
+vi.mock('@main/services/power/hostPower', () => ({
+  hostPowerAvailable: vi.fn(() => false),
+  requestPowerAction: vi.fn()
+}))
+
 const mockedGetMainWindow = getMainWindow as Mock
 const mockedIsMacPlatform = isMacPlatform as Mock
 const mockedRegisterIpcHandle = registerIpcHandle as Mock
 const mockedRegisterIpcOn = registerIpcOn as Mock
 const mockedSpawn = spawn as Mock
 const mockedBroadcastToRenderers = broadcastToRenderers as Mock
+const mockedHostPowerAvailable = hostPowerAvailable as Mock
+const mockedRequestPowerAction = requestPowerAction as Mock
 
 describe('registerAppIpc', () => {
   const originalPlatform = process.platform
@@ -57,6 +65,7 @@ describe('registerAppIpc', () => {
     Object.defineProperty(process, 'platform', { value: originalPlatform })
     mockedGetMainWindow.mockReturnValue(null)
     mockedIsMacPlatform.mockReturnValue(false)
+    mockedHostPowerAvailable.mockReturnValue(false)
 
     process.env.APPIMAGE = originalAppImage
     process.env.APPDIR = originalAppDir
@@ -255,6 +264,51 @@ describe('registerAppIpc', () => {
     expect(gracefulReset).toHaveBeenCalledTimes(1)
     expect(unref).toHaveBeenCalledTimes(1)
     expect(app.quit).toHaveBeenCalledTimes(1)
+  })
+
+  test('on the appliance app:quitApp powers the host off instead of just quitting', async () => {
+    mockedHostPowerAvailable.mockReturnValue(true)
+    const runtimeState = { isQuitting: false, suppressNextFsSync: false } as never
+    registerAppIpc(runtimeState, { usbService: {} } as never)
+
+    const quitAppHandler = getHandle('app:quitApp') as (() => void) | undefined
+    quitAppHandler?.()
+
+    expect(mockedRequestPowerAction).toHaveBeenCalledWith('poweroff')
+    expect(app.quit).toHaveBeenCalledTimes(1)
+  })
+
+  test('on a desktop app:quitApp asks for no power action', async () => {
+    mockedHostPowerAvailable.mockReturnValue(false)
+    const runtimeState = { isQuitting: false, suppressNextFsSync: false } as never
+    registerAppIpc(runtimeState, { usbService: {} } as never)
+
+    const quitAppHandler = getHandle('app:quitApp') as (() => void) | undefined
+    quitAppHandler?.()
+
+    expect(mockedRequestPowerAction).not.toHaveBeenCalled()
+    expect(app.quit).toHaveBeenCalledTimes(1)
+  })
+
+  test('on the appliance app:restartApp reboots the host and skips the app teardown', async () => {
+    mockedHostPowerAvailable.mockReturnValue(true)
+    const beginShutdown = vi.fn()
+    const gracefulReset = vi.fn().mockResolvedValue(undefined)
+    const runtimeState = { isQuitting: false, suppressNextFsSync: false } as never
+    const services = {
+      usbService: { beginShutdown, gracefulReset },
+      projectionService: { shutdownWirelessSessions: vi.fn().mockResolvedValue(undefined) }
+    } as never
+
+    registerAppIpc(runtimeState, services)
+    const restartHandler = getHandle('app:restartApp') as (() => Promise<void>) | undefined
+    await restartHandler?.()
+
+    expect(mockedRequestPowerAction).toHaveBeenCalledWith('reboot')
+    expect(app.quit).toHaveBeenCalledTimes(1)
+    // before-quit owns the teardown, so the restart path must not start its own
+    expect(beginShutdown).not.toHaveBeenCalled()
+    expect(gracefulReset).not.toHaveBeenCalled()
   })
 
   test('app:restartApp ignores re-entrant calls while a restart is already in flight', async () => {

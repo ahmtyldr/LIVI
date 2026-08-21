@@ -251,6 +251,21 @@ exit 0
 EOF
 }
 
+# Powers the host down or reboots it.
+livi_install_power_helper() {
+  livi_install_root_helper /usr/local/lib/livi/livi-power.sh /etc/sudoers.d/99-LIVI-power \
+    "lets $USER power the host down or reboot it." <<'EOF'
+#!/bin/bash
+# Managed by LIVI. Powers the host off or reboots it. Nothing else.
+set -euo pipefail
+case "${1:-}" in
+  poweroff) systemctl poweroff ;;
+  reboot)   systemctl reboot ;;
+  *) echo "usage: livi-power.sh poweroff|reboot" >&2 ; exit 2 ;;
+esac
+EOF
+}
+
 # Sets the system clock and timezone.
 livi_install_time_helper() {
   livi_install_root_helper /usr/local/lib/livi/livi-set-time.sh /etc/sudoers.d/99-LIVI-time \
@@ -276,8 +291,6 @@ EOF
 }
 
 # livi_fetch_resource <appimage> <path inside resources> <path in the repository>
-# Prints the path to the extracted file. Same order as livi_fetch_template: the
-# AppImage on disk first, the repository only for releases that predate the file.
 livi_fetch_resource() {
   local appimage="$1" res="$2" repo="$3" dir path
   dir="${LIVI_EXTRACT_DIR:-$(mktemp -d)}/$(printf '%s' "$res" | tr '/' '_').d"
