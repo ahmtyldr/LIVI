@@ -740,6 +740,23 @@ describe('CpStack screen setup', () => {
     expect(reg.gst.setActiveFeeder).toHaveBeenCalled()
   })
 
+  it('reports the advertised codec once per native screen on linux', async () => {
+    Object.defineProperty(process, 'platform', { value: 'linux', configurable: true })
+    const { stack, session } = await stackWith({ hevc: false })
+    const codec = vi.fn()
+    const clusterCodec = vi.fn()
+    stack.on('video-codec', codec)
+    stack.on('cluster-video-codec', clusterCodec)
+    await internals(stack)._setupScreen({ streamConnectionID: 1 }, session)
+    await internals(stack)._setupScreen({ streamConnectionID: 1 }, session)
+    await internals(stack)._setupScreen({ streamConnectionID: 2 }, session, true)
+    await internals(stack)._setupScreen({ streamConnectionID: 2 }, session, true)
+    expect(codec).toHaveBeenCalledTimes(1)
+    expect(codec).toHaveBeenCalledWith('h264')
+    expect(clusterCodec).toHaveBeenCalledTimes(1)
+    expect(clusterCodec).toHaveBeenCalledWith('h264')
+  })
+
   it('builds a ScreenStream off linux and emits codec, config and frames', async () => {
     Object.defineProperty(process, 'platform', { value: 'darwin', configurable: true })
     const { stack, session } = await stackWith()
@@ -1243,10 +1260,11 @@ describe('CpStack event messages and iAP relay', () => {
     eventReady(session)
     const relay = fakeSock()
     reg.createConnection.mockReturnValue(relay)
+    session.deviceBtMac = 'AA:BB:CC:DD:EE:FF'
     internals(stack)._openIapMessageRelay(session)
     internals(stack)._openIapMessageRelay(session)
     expect(reg.createConnection).toHaveBeenCalledTimes(1)
-    expect(relay.write).toHaveBeenCalledWith('tunnel ctrl-1\n')
+    expect(relay.write).toHaveBeenCalledWith('tunnel ctrl-1 AA:BB:CC:DD:EE:FF\n')
     relay.emit('data', Buffer.from('from-helper'))
     relay.emit('error', new Error('relay-fail'))
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('iAP relay error'))
@@ -1260,7 +1278,15 @@ describe('CpStack event messages and iAP relay', () => {
     const relay = fakeSock()
     reg.createConnection.mockReturnValue(relay)
     internals(stack)._openIapMessageRelay(session)
-    expect(relay.write).toHaveBeenCalledWith('tunnel \n')
+    expect(relay.write).toHaveBeenCalledWith('tunnel\n')
+  })
+
+  it('omits the BT MAC from the tunnel header until the SETUP delivers one', async () => {
+    const { stack, session } = await fresh()
+    const relay = fakeSock()
+    reg.createConnection.mockReturnValue(relay)
+    internals(stack)._openIapMessageRelay(session)
+    expect(relay.write).toHaveBeenCalledWith('tunnel ctrl-1\n')
   })
 })
 

@@ -117,6 +117,10 @@ export function setupLifecycle(runtimeState: runtimeStateProps, services: Servic
         )
       })
 
+      await measureStep('projection.stopHelper()', async () => {
+        await withTimeout('projection.stopHelper()', projectionService.stopHelper(), 2500)
+      })
+
       await measureStep('projection.stop()', async () => {
         await withTimeout('projection.stop()', projectionService.stop(), tCarplayStop)
       })

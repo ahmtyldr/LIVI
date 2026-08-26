@@ -1,12 +1,8 @@
 const BENIGN_USB_PATTERNS: RegExp[] = [
   /udev/i,
-  /LIBUSB_ERROR_NO_DEVICE/i,
-  /LIBUSB_ERROR_NOT_FOUND/i,
-  /LIBUSB_TRANSFER_NO_DEVICE/i,
-  /LIBUSB_TRANSFER_ERROR/i,
-  /LIBUSB_ERROR_BUSY/i,
   /No such device/i,
-  /device has been disconnected/i,
+  /device (has been )?disconnected/i,
+  /\berrno 19\b/i,
   /transferIn error/i
 ]
 

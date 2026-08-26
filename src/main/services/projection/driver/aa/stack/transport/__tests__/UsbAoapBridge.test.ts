@@ -316,7 +316,7 @@ describe('UsbAoapBridge — loopback server + pump', () => {
     const sock = new MockLoopbackSocket()
     // First transferIn rejects with a fatal "no device" — pump tears the socket down.
     dev.transferIn.mockImplementationOnce(async () => {
-      throw new Error('LIBUSB_ERROR_NO_DEVICE: device gone')
+      throw new Error('device disconnected')
     })
     connect()(sock as never)
     await flush()
@@ -333,7 +333,7 @@ describe('UsbAoapBridge — loopback server + pump', () => {
     await bridge.start()
     const sock = new MockLoopbackSocket()
     dev.transferIn.mockImplementationOnce(async () => {
-      throw new Error('LIBUSB_ERROR_NO_DEVICE: device gone')
+      throw new Error('device disconnected')
     })
     connect()(sock as never)
     await flush()
@@ -353,7 +353,7 @@ describe('UsbAoapBridge — loopback server + pump', () => {
     })
     const sock = new MockLoopbackSocket()
     dev.transferIn.mockImplementationOnce(async () => {
-      throw new Error('LIBUSB_ERROR_NO_DEVICE: device gone')
+      throw new Error('device disconnected')
     })
     connect()(sock as never)
     await flush()

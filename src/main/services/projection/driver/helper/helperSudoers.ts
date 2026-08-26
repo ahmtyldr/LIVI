@@ -6,7 +6,7 @@ import { app, BrowserWindow, dialog } from 'electron'
 
 const RULE_FILE = '/etc/sudoers.d/99-LIVI-bt'
 const TEMPLATE_FILENAME = '99-LIVI-bt.sudoers.template'
-const SENTINEL_VERSION = 'v1'
+const SENTINEL_VERSION = 'v2'
 function sentinelPath(): string {
   return join(app.getPath('userData'), `bt-sudoers-${SENTINEL_VERSION}.installed`)
 }
@@ -24,17 +24,6 @@ function loadTemplate(): string {
   return readFileSync(resolveTemplatePath(), 'utf8')
 }
 
-function pythonPath(): string {
-  for (const p of ['/usr/bin/python3', '/usr/local/bin/python3']) {
-    if (existsSync(p)) return p
-  }
-  try {
-    return execFileSync('which', ['python3'], { encoding: 'utf8' }).trim() || '/usr/bin/python3'
-  } catch {
-    return '/usr/bin/python3'
-  }
-}
-
 function resolveUsername(): string {
   if (process.env.PKEXEC_UID) {
     try {
@@ -46,9 +35,7 @@ function resolveUsername(): string {
 }
 
 function buildRuleContent(): string {
-  return loadTemplate()
-    .replace(/__USERNAME__/g, resolveUsername())
-    .replace(/__PYTHON__/g, pythonPath())
+  return loadTemplate().replace(/__USERNAME__/g, resolveUsername())
 }
 
 function ruleActiveInSudo(): boolean {
@@ -57,7 +44,8 @@ function ruleActiveInSudo(): boolean {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore']
     })
-    return out.includes('LIVI_BT') || out.includes('livi-helper.py')
+    // Only a rule naming the helper binary counts; an older python-era rule does not.
+    return out.includes('livi-helperd') || /\(ALL(\s*:\s*ALL)?\)\s+NOPASSWD:\s+ALL/.test(out)
   } catch {
     return false
   }
@@ -88,6 +76,7 @@ function installRule(): Promise<void> {
     // set -e keeps a file that fails validation from ever reaching sudoers.d.
     const script = [
       'set -e',
+      `trap 'rm -f ${tmpFile}' EXIT`,
       `cat > ${tmpFile} <<'EOF'`,
       content.trimEnd(),
       'EOF',
@@ -121,7 +110,7 @@ export async function checkAndInstallHelperSudoers(window: BrowserWindow): Promi
       'LIVI needs permission to manage Bluetooth and Wi-Fi for wireless Android Auto / CarPlay.',
     detail:
       `A sudoers rule will be installed at ${RULE_FILE} so the BT/Wi-Fi helper ` +
-      `(livi-helper.py) can run as root without prompting on each session.`,
+      `(livi-helperd) can run as root without prompting on each session.`,
     buttons: ['Install', 'Skip'],
     defaultId: 0,
     cancelId: 1

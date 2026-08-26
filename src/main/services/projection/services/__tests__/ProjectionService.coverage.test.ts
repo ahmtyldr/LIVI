@@ -1322,6 +1322,50 @@ describe('ProjectionService delegations and ipc host', () => {
     expect(svc.helperSupervisor).toBeNull()
   })
 
+  test('remote input reaches an active native session even when started is false', () => {
+    const svc = makeSvc()
+    svc.started = false
+    const handleInput = vi.fn()
+    svc.sessions.active = vi.fn(() => ({ index: 3, protocol: 'androidauto' }))
+    svc.drivers.getActive = vi.fn(() => ({ handleInput }))
+    svc.dispatchRemoteInput('pause')
+    expect(handleInput).toHaveBeenCalledWith('pause')
+  })
+
+  test('remote input is dropped when idle', () => {
+    const svc = makeSvc()
+    svc.started = false
+    const handleInput = vi.fn()
+    svc.sessions.active = vi.fn(() => null)
+    svc.drivers.getActive = vi.fn(() => ({ handleInput }))
+    svc.dispatchRemoteInput('pause')
+    expect(handleInput).not.toHaveBeenCalled()
+  })
+
+  test('stopHelper stops the supervisor and clears the field', async () => {
+    const svc = makeSvc()
+    const sup = { stop: vi.fn(async () => undefined) }
+    svc.helperSupervisor = sup
+    await svc.stopHelper()
+    expect(sup.stop).toHaveBeenCalled()
+    expect(svc.helperSupervisor).toBeNull()
+  })
+
+  test('stopHelper resolves when no supervisor is running', async () => {
+    const svc = makeSvc()
+    svc.helperSupervisor = null
+    await expect(svc.stopHelper()).resolves.toBeUndefined()
+  })
+
+  test('stopHelper swallows a stop failure', async () => {
+    const svc = makeSvc()
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    svc.helperSupervisor = { stop: vi.fn(async () => Promise.reject(new Error('stop boom'))) }
+    await expect(svc.stopHelper()).resolves.toBeUndefined()
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('stop boom'))
+    warn.mockRestore()
+  })
+
   test('shutdownWirelessSessions swallows a deauth failure', async () => {
     const svc = makeSvc()
     svc.drivers.releaseAa = vi.fn(async () => undefined)

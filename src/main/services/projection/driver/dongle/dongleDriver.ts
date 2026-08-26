@@ -245,14 +245,11 @@ export class DongleDriver extends EventEmitter {
   private isBenignUsbShutdownError(err: unknown): boolean {
     const msg = err instanceof Error ? err.message : String(err)
 
-    // Typical macOS/libusb shutdown / unplug / reset fallout.
+    // Unplug and shutdown fallout, which macOS produces liberally.
     return (
-      msg.includes('LIBUSB_ERROR_NO_DEVICE') ||
-      msg.includes('LIBUSB_ERROR_NOT_FOUND') ||
-      msg.includes('LIBUSB_TRANSFER_NO_DEVICE') ||
-      msg.includes('LIBUSB_TRANSFER_ERROR') ||
       msg.includes('transferIn error') ||
-      msg.includes('device has been disconnected') ||
+      /device (has been )?disconnected/i.test(msg) ||
+      /\berrno 19\b/i.test(msg) ||
       msg.includes('No such device')
     )
   }
@@ -937,7 +934,7 @@ export class DongleDriver extends EventEmitter {
                 '[DongleDriver] device.close(): pending request -> trying underlying usb reset()'
               )
 
-              // Try to cancel libusb I/O at the raw level
+              // Cancel the in-flight transfer through the device's own handle
               const resetOk = await this.tryResetUnderlyingUsbDevice(dev)
               if (resetOk) {
                 await this.sleep(50)
@@ -953,7 +950,7 @@ export class DongleDriver extends EventEmitter {
                   console.warn(
                     '[DongleDriver] device.close(): pending request did not resolve before deadline'
                   )
-                  // Intentionally keep reference: avoids GC finalizer calling libusb_close later
+                  // Keep the reference so a GC finalizer cannot close the device mid-transfer
                   keepDeviceRefToAvoidGcFinalizerCrash = true
                 } else {
                   console.warn('[DongleDriver] device.close() failed', e2)

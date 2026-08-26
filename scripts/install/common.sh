@@ -64,23 +64,6 @@ livi_packages() {
   done
 }
 
-# Wired CarPlay drives the phone over usbmux, which needs pymobiledevice3.
-livi_install_pymobiledevice3() {
-  echo "→ Installing pymobiledevice3 for wired CarPlay"
-  if ! command -v pip3 >/dev/null; then
-    echo "   WARNING: pip3 missing, wired CarPlay stays disabled" >&2
-    return 0
-  fi
-  local out
-  # pip is loud even with -q, so keep its output for the failure case only.
-  if out="$(pip3 install --break-system-packages --ignore-installed -q pymobiledevice3 2>&1)"; then
-    echo "   installed"
-  else
-    echo "   WARNING: install failed, wired CarPlay stays disabled" >&2
-    printf '%s\n' "$out" | tail -5 >&2
-  fi
-}
-
 # Sets LIVI_CHANNEL and LIVI_RELEASE_API. Skips the prompt when LIVI_CHANNEL is
 # already set or an AppImage was passed in, so unattended runs keep working.
 livi_pick_channel() {
@@ -444,11 +427,10 @@ livi_write_udev_rule() {
 # Lets the helper run as root without a password, which a headless host needs
 # because the in-app pkexec dialog has no agent to display it.
 livi_write_sudoers() {
-  local template="$1" python_bin staged
+  local template="$1" staged
   echo "→ Writing $LIVI_SUDOERS_FILE"
-  python_bin="$(command -v python3 || echo /usr/bin/python3)"
   staged="$(mktemp)"
-  sed -e "s/__USERNAME__/$USER/g" -e "s#__PYTHON__#$python_bin#g" "$template" > "$staged"
+  sed -e "s/__USERNAME__/$USER/g" "$template" > "$staged"
   sudo install -m 0440 -o root -g root "$staged" "$LIVI_SUDOERS_FILE.livi-tmp"
   rm -f "$staged"
   if sudo visudo -c -f "$LIVI_SUDOERS_FILE.livi-tmp" >/dev/null; then
@@ -458,6 +440,20 @@ livi_write_sudoers() {
     echo "Error: the generated sudoers file failed validation and was not installed" >&2
     return 1
   fi
+  livi_drop_obsolete_sudoers
+}
+
+# Earlier releases gave each python helper its own drop-in. They grant root to
+# scripts that no longer ship, so drop them once the current rule is in place.
+livi_drop_obsolete_sudoers() {
+  local f
+  for f in /etc/sudoers.d/99-LIVI-aa /etc/sudoers.d/99-LIVI-cp; do
+    if sudo test -f "$f" && sudo grep -q 'bluetooth\.py' "$f" 2>/dev/null; then
+      echo "→ Removing obsolete $f"
+      sudo rm -f "$f"
+    fi
+  done
+  sudo rm -f "$LIVI_SUDOERS_FILE.livi-tmp"
 }
 
 # Sets LIVI_MFI to yes or no. LIVI_MFI skips the prompt.

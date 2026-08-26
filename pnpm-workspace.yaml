@@ -6,6 +6,9 @@ overrides:
   # windows-2025-vs2026 runner (nodejs/node-gyp#3214, pnpm/pnpm#10268). 12.x adds
   # support; force the whole tree to it until @electron/rebuild bumps its node-gyp
   node-gyp: ^12.3.0
+  # @electron/rebuild pins node-abi 4.31.0, which only knows up to Electron 42.
+  # 4.34.0 adds Electron 44 (abi 149); force it until @electron/rebuild bumps.
+  node-abi: 4.34.0
 allowBuilds:
   electron-winstaller: true
   esbuild: true

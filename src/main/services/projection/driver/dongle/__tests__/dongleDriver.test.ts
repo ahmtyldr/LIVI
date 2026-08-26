@@ -705,8 +705,11 @@ describe('DongleDriver core behavior', () => {
   test('isBenignUsbShutdownError detects benign usb shutdown messages', async () => {
     const d = new DongleDriver() as any
 
-    expect(d.isBenignUsbShutdownError(new Error('LIBUSB_ERROR_NO_DEVICE'))).toBe(true)
+    expect(d.isBenignUsbShutdownError(new Error('transferIn error: Disconnected'))).toBe(true)
     expect(d.isBenignUsbShutdownError(new Error('device has been disconnected'))).toBe(true)
+    expect(
+      d.isBenignUsbShutdownError(new Error('reset error: device disconnected (errno 19)'))
+    ).toBe(true)
     expect(d.isBenignUsbShutdownError(new Error('No such device'))).toBe(true)
     expect(d.isBenignUsbShutdownError(new Error('some other error'))).toBe(false)
   })
@@ -1164,7 +1167,7 @@ describe('DongleDriver core behavior', () => {
     d._device = { opened: true }
     d._closing = false
 
-    d.readOneMessage = vi.fn().mockRejectedValueOnce(new Error('LIBUSB_ERROR_NO_DEVICE'))
+    d.readOneMessage = vi.fn().mockRejectedValueOnce(new Error('device disconnected'))
     d.isBenignUsbShutdownError = vi.fn(() => true)
 
     await d.readLoop()

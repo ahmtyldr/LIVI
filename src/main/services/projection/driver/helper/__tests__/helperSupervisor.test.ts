@@ -1,28 +1,16 @@
-import { spawn } from 'node:child_process'
+import { execFileSync, spawn } from 'node:child_process'
 import { EventEmitter } from 'node:events'
-import {
-  cpSync,
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  readFileSync,
-  rmSync,
-  statSync,
-  writeFileSync
-} from 'node:fs'
+import { chmodSync, copyFileSync, existsSync, mkdirSync, statSync } from 'node:fs'
 import type { Mock } from 'vitest'
 
-vi.mock('node:child_process', () => ({ spawn: vi.fn() }))
+vi.mock('node:child_process', () => ({ spawn: vi.fn(), execFileSync: vi.fn(() => '') }))
 vi.mock('node:fs', () => {
   const __m = {
-    cpSync: vi.fn(),
+    chmodSync: vi.fn(),
+    copyFileSync: vi.fn(),
     existsSync: vi.fn(() => false),
     mkdirSync: vi.fn(),
-    readdirSync: vi.fn(() => []),
-    readFileSync: vi.fn(() => Buffer.alloc(0)),
-    rmSync: vi.fn(),
-    statSync: vi.fn(),
-    writeFileSync: vi.fn()
+    statSync: vi.fn(() => ({ size: 0 }))
   }
   return { ...__m, default: __m }
 })
@@ -40,13 +28,10 @@ vi.mock('../../cp/stack/identity', () => ({
 
 const mockedSpawn = spawn as Mock
 const mockedExists = existsSync as Mock
-const mockedReaddir = readdirSync as Mock
-const mockedReadFile = readFileSync as Mock
 const mockedStat = statSync as Mock
-const mockedRm = rmSync as Mock
 const mockedMkdir = mkdirSync as Mock
-const mockedCp = cpSync as Mock
-const mockedWrite = writeFileSync as Mock
+const mockedCopy = copyFileSync as Mock
+const mockedChmod = chmodSync as Mock
 
 type SupervisorModule = typeof import('../helperSupervisor')
 
@@ -74,9 +59,19 @@ function makeChild(): FakeChild {
   return child
 }
 
-function devScriptOnly(): void {
+/** Models the paths that exist, so a staged copy is visible to the next check. */
+function fakeFs(present: string[], sizes: Record<string, number> = {}): void {
+  const files = new Set(present)
+  mockedExists.mockImplementation((p: string) => files.has(String(p)))
+  mockedStat.mockImplementation((p: string) => ({ size: sizes[String(p)] ?? 4096 }))
+  mockedCopy.mockImplementation((_src: string, dest: string) => {
+    files.add(String(dest))
+  })
+}
+
+function devBinOnly(): void {
   mockedExists.mockImplementation(
-    (p: string) => !String(p).startsWith('/res') && String(p).endsWith('/livi-helper.py')
+    (p: string) => !String(p).startsWith('/res') && String(p).endsWith('/livi-helperd')
   )
 }
 
@@ -92,13 +87,12 @@ beforeEach(() => {
   mockedSpawn.mockImplementation(() => makeChild())
   mockedExists.mockReset()
   mockedExists.mockReturnValue(false)
-  mockedReaddir.mockReset()
-  mockedReadFile.mockReset()
   mockedStat.mockReset()
-  mockedRm.mockReset()
+  mockedStat.mockReturnValue({ size: 0 })
   mockedMkdir.mockReset()
-  mockedCp.mockReset()
-  mockedWrite.mockReset()
+  mockedCopy.mockReset()
+  mockedChmod.mockReset()
+  delete process.env.LIVI_HELPER_BIN
   Object.defineProperty(process, 'platform', { value: 'linux', configurable: true })
   ;(process as { resourcesPath?: string }).resourcesPath = undefined
   delete process.env.APPIMAGE
@@ -116,7 +110,7 @@ afterEach(() => {
 })
 
 describe('spawning', () => {
-  test('emits an error when the helper script is missing', async () => {
+  test('emits an error when the helper binary is missing', async () => {
     const { HelperSupervisor } = await load(false)
     const sup = new HelperSupervisor()
     const onError = vi.fn()
@@ -127,17 +121,32 @@ describe('spawning', () => {
     expect(sup.running).toBe(false)
   })
 
-  test('spawns via sudo on linux with the wireless env from the config', async () => {
-    devScriptOnly()
+  test('kills a leftover python helper from an older release before spawning', async () => {
+    devBinOnly()
+    const mockedExec = execFileSync as Mock
+    mockedExec.mockReturnValueOnce('1234\n')
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const { HelperSupervisor } = await load(false)
-    const sup = new HelperSupervisor({ python: '/opt/py3' })
+    const sup = new HelperSupervisor()
+    sup.start(CONFIG)
+    expect(mockedExec).toHaveBeenCalledWith('pgrep', ['-f', 'livi-helper\\.py'], expect.anything())
+    expect(mockedExec).toHaveBeenCalledWith('sudo', ['-n', 'pkill', '-f', 'livi-helper\\.py'], {
+      stdio: 'ignore'
+    })
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('older release'))
+    warn.mockRestore()
+  })
+
+  test('spawns via sudo on linux with the wireless env from the config', async () => {
+    devBinOnly()
+    const { HelperSupervisor } = await load(false)
+    const sup = new HelperSupervisor()
     sup.start(CONFIG)
 
     const [cmd, args, opts] = mockedSpawn.mock.calls[0]
     expect(cmd).toBe('sudo')
-    expect(args.slice(0, 3)).toEqual(['-n', '-E', '/opt/py3'])
-    expect(args[3]).toBe('-u')
-    expect(String(args[4])).toContain('livi-helper.py')
+    expect(args.slice(0, 2)).toEqual(['-n', '-E'])
+    expect(String(args[2])).toContain('livi-helperd')
     expect(opts.env.LIVI_AA_WIRELESS).toBe('1')
     expect(opts.env.LIVI_CP_WIRELESS).toBe('')
     expect(opts.env.LIVI_CP_PK).toBe('aabbcc')
@@ -146,22 +155,22 @@ describe('spawning', () => {
     expect(sup.running).toBe(true)
   })
 
-  test('runs python directly off linux', async () => {
+  test('runs the binary directly off linux', async () => {
     Object.defineProperty(process, 'platform', { value: 'darwin', configurable: true })
-    devScriptOnly()
+    devBinOnly()
     const { HelperSupervisor } = await load(false)
     const sup = new HelperSupervisor()
     sup.start({ wirelessAaEnabled: false, wirelessCpEnabled: true } as never)
 
     const [cmd, args, opts] = mockedSpawn.mock.calls[0]
-    expect(cmd).toBe('python3')
-    expect(args[0]).toBe('-u')
+    expect(String(cmd)).toContain('livi-helperd')
+    expect(args).toEqual([])
     expect(opts.env.LIVI_AA_WIRELESS).toBe('')
     expect(opts.env.LIVI_CP_WIRELESS).toBe('1')
   })
 
   test('logs the spawn line and flags in debug builds', async () => {
-    devScriptOnly()
+    devBinOnly()
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     const { HelperSupervisor } = await load(true)
     new HelperSupervisor().start(CONFIG)
@@ -171,7 +180,7 @@ describe('spawning', () => {
   })
 
   test('the debug spawn line shows 0 for a disabled aa link', async () => {
-    devScriptOnly()
+    devBinOnly()
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     const { HelperSupervisor } = await load(true)
     new HelperSupervisor().start({ wirelessAaEnabled: false, wirelessCpEnabled: true } as never)
@@ -196,98 +205,53 @@ describe('helper root resolution', () => {
     expect(mockedSpawn.mock.calls[0][2].cwd).toBe('/res/driver')
   })
 
-  test('stages the helper out of an AppImage mount and reuses a valid stage', async () => {
+  test('stages the binary out of an AppImage mount so root can exec it, and reuses it', async () => {
     ;(process as { resourcesPath?: string }).resourcesPath = '/tmp/.mount_livi/res'
     process.env.APPIMAGE = '/apps/livi.AppImage'
     process.env.APPDIR = '/tmp/.mount_livi'
-    mockedExists.mockImplementation((p: string) => {
-      const s = String(p)
-      return (
-        s === '/tmp/.mount_livi/res/driver/helper/livi-helper.py' ||
-        s === '/data/driver/unified/helper/livi-helper.py'
-      )
-    })
-    mockedReaddir.mockImplementation((root: string) =>
-      String(root).endsWith('/helper') ? ['livi-helper.py'] : ['helper']
-    )
-    mockedStat.mockImplementation((p: string) => ({
-      isDirectory: () => String(p).endsWith('/helper'),
-      isFile: () => !String(p).endsWith('/helper'),
-      size: 10,
-      mtimeMs: 1
-    }))
-    mockedReadFile.mockReturnValue(Buffer.from('print("hi")'))
+    fakeFs(['/tmp/.mount_livi/res/driver/livi-helperd'])
 
     const { HelperSupervisor } = await load(false)
     new HelperSupervisor().start(CONFIG)
 
-    expect(mockedRm).toHaveBeenCalledWith('/data/driver/unified', { recursive: true, force: true })
-    expect(mockedCp).toHaveBeenCalledWith('/tmp/.mount_livi/res/driver', '/data/driver/unified', {
-      recursive: true,
-      force: true
-    })
-    const [sigPath, sigContent, sigOpts] = mockedWrite.mock.calls[0]
-    expect(sigPath).toBe('/data/driver/unified/.livi-staged-sig')
-    expect(sigOpts).toEqual({ mode: 0o644 })
-    expect(mockedSpawn.mock.calls[0][2].cwd).toBe('/data/driver/unified')
-
-    const sig = String(sigContent).trim()
-    mockedExists.mockImplementation((p: string) => {
-      const s = String(p)
-      return (
-        s === '/tmp/.mount_livi/res/driver/helper/livi-helper.py' ||
-        s === '/data/driver/unified/helper/livi-helper.py' ||
-        s === '/data/driver/unified/.livi-staged-sig'
-      )
-    })
-    mockedReadFile.mockImplementation((p: string, enc?: string) =>
-      enc === 'utf8' && String(p).endsWith('.livi-staged-sig')
-        ? `${sig}\n`
-        : Buffer.from('print("hi")')
+    expect(mockedMkdir).toHaveBeenCalledWith('/data/driver', { recursive: true })
+    expect(mockedCopy).toHaveBeenCalledWith(
+      '/tmp/.mount_livi/res/driver/livi-helperd',
+      '/data/driver/livi-helperd'
     )
-    mockedCp.mockClear()
+    expect(mockedChmod).toHaveBeenCalledWith('/data/driver/livi-helperd', 0o755)
+    expect(String(mockedSpawn.mock.calls[0][1][2])).toBe('/data/driver/livi-helperd')
+    expect(mockedSpawn.mock.calls[0][2].cwd).toBe('/data/driver')
+
+    // A staged copy of the same size is reused instead of copied again.
+    mockedCopy.mockClear()
     new HelperSupervisor().start(CONFIG)
-    expect(mockedCp).not.toHaveBeenCalled()
+    expect(mockedCopy).not.toHaveBeenCalled()
   })
 
-  test('re-stages when the signature is unreadable and warns when cleanup fails', async () => {
+  test('re-stages when the staged copy has a different size', async () => {
     ;(process as { resourcesPath?: string }).resourcesPath = '/x/.mount_abc/res'
-    mockedExists.mockImplementation((p: string) => {
-      const s = String(p)
-      return (
-        s === '/x/.mount_abc/res/driver/helper/livi-helper.py' ||
-        s === '/data/driver/unified/helper/livi-helper.py' ||
-        s === '/data/driver/unified/.livi-staged-sig'
-      )
+    fakeFs(['/x/.mount_abc/res/driver/livi-helperd', '/data/driver/livi-helperd'], {
+      '/x/.mount_abc/res/driver/livi-helperd': 4096,
+      '/data/driver/livi-helperd': 128
     })
-    mockedReaddir.mockReturnValue([])
-    mockedReadFile.mockImplementation((p: string, enc?: string) => {
-      if (enc === 'utf8') throw new Error('corrupt')
-      return Buffer.alloc(0)
-    })
-    mockedRm.mockImplementation(() => {
-      throw new Error('busy')
-    })
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-    const { HelperSupervisor } = await load(true)
+    const { HelperSupervisor } = await load(false)
     new HelperSupervisor().start(CONFIG)
 
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('could not clear'))
-    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('staged driver/'))
-    expect(mockedCp).toHaveBeenCalled()
-    warnSpy.mockRestore()
-    logSpy.mockRestore()
+    expect(mockedCopy).toHaveBeenCalledWith(
+      '/x/.mount_abc/res/driver/livi-helperd',
+      '/data/driver/livi-helperd'
+    )
   })
 
   test('falls back to the mount path when staging throws', async () => {
     ;(process as { resourcesPath?: string }).resourcesPath = '/y/.mount_z/res'
     mockedExists.mockImplementation(
-      (p: string) => String(p) === '/y/.mount_z/res/driver/helper/livi-helper.py'
+      (p: string) => String(p) === '/y/.mount_z/res/driver/livi-helperd'
     )
-    mockedReaddir.mockImplementation(() => {
-      throw new Error('unreadable tree')
+    mockedStat.mockImplementation(() => {
+      throw new Error('unreadable')
     })
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
@@ -295,75 +259,58 @@ describe('helper root resolution', () => {
     new HelperSupervisor().start(CONFIG)
 
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('staging failed'))
-    expect(mockedSpawn.mock.calls[0][2].cwd).toBe('/y/.mount_z/res/driver')
+    expect(String(mockedSpawn.mock.calls[0][1][2])).toBe('/y/.mount_z/res/driver/livi-helperd')
     warnSpy.mockRestore()
+  })
+
+  test('an explicit LIVI_HELPER_BIN wins over the packaged copy', async () => {
+    process.env.LIVI_HELPER_BIN = '/opt/dev/livi-helperd'
+    ;(process as { resourcesPath?: string }).resourcesPath = '/res'
+    mockedExists.mockReturnValue(true)
+
+    const { HelperSupervisor } = await load(false)
+    new HelperSupervisor().start(CONFIG)
+
+    expect(String(mockedSpawn.mock.calls[0][1][2])).toBe('/opt/dev/livi-helperd')
+    expect(mockedCopy).not.toHaveBeenCalled()
   })
 
   test('a mount path outside APPDIR still counts via the .mount_ marker', async () => {
     process.env.APPIMAGE = '/apps/livi.AppImage'
     process.env.APPDIR = '/somewhere/else'
     ;(process as { resourcesPath?: string }).resourcesPath = '/y/.mount_z/res'
-    mockedExists.mockImplementation(
-      (p: string) => String(p) === '/y/.mount_z/res/driver/helper/livi-helper.py'
-    )
-    mockedReaddir.mockImplementation(() => {
-      throw new Error('unreadable tree')
-    })
+    fakeFs(['/y/.mount_z/res/driver/livi-helperd'])
     const { HelperSupervisor } = await load(false)
     new HelperSupervisor().start(CONFIG)
-    expect(mockedSpawn.mock.calls[0][2].cwd).toBe('/y/.mount_z/res/driver')
+    expect(mockedCopy).toHaveBeenCalled()
+    expect(mockedSpawn.mock.calls[0][2].cwd).toBe('/data/driver')
   })
 
   test('with APPIMAGE set and no APPDIR every resources path counts as mounted', async () => {
     process.env.APPIMAGE = '/apps/livi.AppImage'
     ;(process as { resourcesPath?: string }).resourcesPath = '/plain/res'
-    mockedExists.mockImplementation(
-      (p: string) => String(p) === '/plain/res/driver/helper/livi-helper.py'
-    )
-    mockedReaddir.mockImplementation(() => {
-      throw new Error('unreadable tree')
-    })
+    fakeFs(['/plain/res/driver/livi-helperd'])
     const { HelperSupervisor } = await load(false)
     new HelperSupervisor().start(CONFIG)
-    expect(mockedSpawn.mock.calls[0][2].cwd).toBe('/plain/res/driver')
-  })
-
-  test('walkTree skips entries that are neither file nor directory', async () => {
-    ;(process as { resourcesPath?: string }).resourcesPath = '/y/.mount_z/res'
-    mockedExists.mockImplementation((p: string) => {
-      const s = String(p)
-      return (
-        s === '/y/.mount_z/res/driver/helper/livi-helper.py' ||
-        s === '/data/driver/unified/helper/livi-helper.py'
-      )
-    })
-    mockedReaddir.mockImplementation((root: string) =>
-      String(root).endsWith('/driver') ? ['weird.sock'] : []
+    expect(mockedCopy).toHaveBeenCalledWith(
+      '/plain/res/driver/livi-helperd',
+      '/data/driver/livi-helperd'
     )
-    mockedStat.mockImplementation(() => ({
-      isDirectory: () => false,
-      isFile: () => false,
-      size: 0,
-      mtimeMs: 0
-    }))
-    const { HelperSupervisor } = await load(false)
-    new HelperSupervisor().start(CONFIG)
-    expect(mockedCp).toHaveBeenCalled()
   })
 
   test('quietly falls back when staging throws outside debug builds', async () => {
     ;(process as { resourcesPath?: string }).resourcesPath = '/y/.mount_z/res'
     mockedExists.mockImplementation(
-      (p: string) => String(p) === '/y/.mount_z/res/driver/helper/livi-helper.py'
+      (p: string) => String(p) === '/y/.mount_z/res/driver/livi-helperd'
     )
-    mockedReaddir.mockImplementation(() => {
-      throw new Error('unreadable tree')
+    mockedStat.mockImplementation(() => {
+      throw new Error('unreadable')
     })
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const { HelperSupervisor } = await load(false)
     new HelperSupervisor().start(CONFIG)
     expect(warnSpy).not.toHaveBeenCalled()
-    expect(mockedSpawn.mock.calls[0][2].cwd).toBe('/y/.mount_z/res/driver')
+    expect(String(mockedSpawn.mock.calls[0][1][2])).toBe('/y/.mount_z/res/driver/livi-helperd')
     warnSpy.mockRestore()
   })
 })
@@ -373,7 +320,7 @@ describe('io and lifecycle', () => {
     sup: InstanceType<SupervisorModule['HelperSupervisor']>
     child: FakeChild
   }> {
-    devScriptOnly()
+    devBinOnly()
     const { HelperSupervisor } = await load(debug)
     const child = makeChild()
     mockedSpawn.mockReturnValue(child)
@@ -441,7 +388,7 @@ describe('io and lifecycle', () => {
 
   test('gives up after maxRestarts', async () => {
     vi.useFakeTimers()
-    devScriptOnly()
+    devBinOnly()
     const { HelperSupervisor } = await load(false)
     const first = makeChild()
     mockedSpawn.mockReturnValue(first)

@@ -131,6 +131,8 @@ interface CpSession {
   encBuf: Buffer
   /** The phone's address, used to drive the timing sync and reach its ports. */
   peerHost: string
+  /** BT MAC from the session SETUP, sent in the tunnel header for the carkit guard. */
+  deviceBtMac: string
   /** Media session servers, created during SETUP, torn down with the connection. */
   timing: TimingSync | null
   keepAlive: KeepAliveServer | null
@@ -154,7 +156,7 @@ interface CpSession {
      *  jitter buffer and the /feedback playback-position lag so the two stay consistent. */
     playoutLatencyMs: number
   }[]
-  /** iAP2-over-CarPlay tunnel + its relay connection to the Python iAP2 stack. */
+  /** iAP2-over-CarPlay tunnel + its relay connection to the helper's iAP2 stack. */
   iapTunnel: IapTunnel | null
   iapRelay: net.Socket | null
   /** TCP event channel the phone connects to after session SETUP. */
@@ -215,6 +217,7 @@ export class CpStack extends EventEmitter {
       cipher: null,
       encBuf: Buffer.alloc(0),
       peerHost: sock.remoteAddress ?? '',
+      deviceBtMac: '',
       timing: null,
       keepAlive: null,
       screen: null,
@@ -652,6 +655,7 @@ export class CpStack extends EventEmitter {
     const idDevice = typeof dict.deviceID === 'string' ? dict.deviceID : ''
     const idWifi = typeof dict.macAddress === 'string' ? dict.macAddress.toLowerCase() : ''
     const idModel = typeof dict.model === 'string' ? dict.model : ''
+    if (idDevice) session.deviceBtMac = idDevice
     if (idName || idDevice || idWifi) {
       this.emit('device-info', {
         name: idName,
@@ -1007,7 +1011,10 @@ export class CpStack extends EventEmitter {
     if (session.iapRelay) return
     const sock = net.createConnection(CP_BT_SOCK_PATH)
     session.iapRelay = sock
-    sock.write(`tunnel ${session.pairVerify.controllerId ?? ''}\n`)
+    const mac = session.deviceBtMac || this.cfg.phoneBtMac?.() || ''
+    const cid = session.pairVerify.controllerId ?? ''
+    console.log(`[cpStack] opening iAP relay (cid=${cid}, btMac=${mac || 'unknown'})`)
+    sock.write(`tunnel ${cid} ${mac}`.trimEnd() + '\n')
     sock.on('data', (d: Buffer) => this._sendIapMessage(session, d))
     sock.on('error', (e) => console.warn(`[cpStack] iAP relay error: ${e.message}`))
     sock.on('close', () => {
@@ -1035,6 +1042,10 @@ export class CpStack extends EventEmitter {
       32
     )
     if (process.platform === 'linux') {
+      // The native receiver decodes inside gst-host, so nothing here parses the config atom
+      // that would announce the codec. Report the one we advertised — the phone streams it —
+      // so the session records it and a later switch back restores the matching pipeline.
+      const nativeCodec = this.cfg.hevc ? 'h265' : 'h264'
       if (isCluster) {
         const { port, receiverId } = await gstHost.openVideoReceiver(
           VIDEO_PLANE_CLUSTER_RECV,
@@ -1043,18 +1054,30 @@ export class CpStack extends EventEmitter {
         )
         session.clusterScreenNativeId = receiverId
         if (this._videoActive) gstHost.setActiveFeeder(receiverId, true)
-        console.log(`[cpStack] SETUP screen NATIVE (cluster, dataPort=${port}, id=${streamId})`)
+        if (!session.clusterCodecEmitted) {
+          this.emit('cluster-video-codec', nativeCodec)
+          session.clusterCodecEmitted = true
+        }
+        console.log(
+          `[cpStack] SETUP screen NATIVE (cluster, dataPort=${port}, id=${streamId}, codec=${nativeCodec})`
+        )
         return port
       }
       const { port, receiverId } = await gstHost.openVideoReceiver(VIDEO_PLANE_MAIN, key)
       session.screenNativeId = receiverId
       if (this._videoActive) gstHost.setActiveFeeder(receiverId, true)
+      if (!session.codecEmitted) {
+        this.emit('video-codec', nativeCodec)
+        session.codecEmitted = true
+      }
       if (!session.mainStreamReady) {
         session.mainStreamReady = true
         if (this._clusterWantActive) this._activateClusterStream(session)
       }
       this.emit('main-screen-ready')
-      console.log(`[cpStack] SETUP screen NATIVE (main, dataPort=${port}, id=${streamId})`)
+      console.log(
+        `[cpStack] SETUP screen NATIVE (main, dataPort=${port}, id=${streamId}, codec=${nativeCodec})`
+      )
       return port
     }
     const codec = this.cfg.hevc ? 'h265' : 'h264'

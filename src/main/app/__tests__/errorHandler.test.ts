@@ -37,9 +37,10 @@ describe('installMainProcessErrorHandlers', () => {
     ["Couldn't find matching udev device"],
     ['could not find matching udev device'],
     ['Couldnt find matching udev device'],
-    ['LIBUSB_ERROR_NO_DEVICE'],
-    ['matching udev device']
-  ])('warns but never raises on benign libusb noise: %s', async (msg) => {
+    ['matching udev device'],
+    ['reset error: device disconnected (errno 19)'],
+    ['transferIn error: Disconnected']
+  ])('warns but never raises on benign unplug noise: %s', async (msg) => {
     await install()
     handlers.uncaughtException?.(new Error(msg))
     expect(warnSpy).toHaveBeenCalled()
@@ -66,7 +67,7 @@ describe('installMainProcessErrorHandlers', () => {
 
   test('warns on benign USB rejections without raising', async () => {
     await install()
-    handlers.unhandledRejection?.(new Error('LIBUSB_ERROR_BUSY'))
+    handlers.unhandledRejection?.(new Error('device disconnected'))
     expect(warnSpy).toHaveBeenCalled()
     expect(errorSpy).not.toHaveBeenCalled()
   })

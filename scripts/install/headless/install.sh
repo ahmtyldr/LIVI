@@ -47,8 +47,6 @@ echo "→ Installing required packages"
 sudo apt-get update
 sudo apt-get install -y $(livi_packages core lite | tr '\n' ' ')
 
-livi_install_pymobiledevice3
-
 echo "→ Adding $USER to required groups"
 WANTED_GROUPS=(video render input plugdev)
 EXISTING_GROUPS=()

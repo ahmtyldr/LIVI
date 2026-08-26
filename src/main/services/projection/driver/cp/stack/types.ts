@@ -57,6 +57,8 @@ export interface CpStackConfig {
   sourceVersion: string
   /** HW-decodable codecs advertised to the phone (Pi5: hevc only, Pi4: h264 only). */
   hevc: boolean
+  /** Tunnel-header fallback when the SETUP carried no deviceID. */
+  phoneBtMac?: () => string
   h264: boolean
   /** Main (centre) screen. */
   main: CpDisplayConfig

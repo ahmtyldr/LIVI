@@ -1,7 +1,7 @@
 import * as net from 'net'
 
 /**
- * Client for the aa-bluetooth.py helper IPC socket.
+ * Client for the livi-helperd IPC socket.
  *
  * Protocol-agnostic BlueZ device management (list_paired / connect / disconnect /
  * remove), shared by every projection path (Android Auto and CarPlay alike).
@@ -116,6 +116,11 @@ export class BluezDeviceClient {
   // Kick every associated Wi-Fi station off the AP
   async deauthApClients(timeoutMs = 5000): Promise<ActionResponse> {
     return (await this.request('deauth-ap', timeoutMs)) as ActionResponse
+  }
+
+  /** Mirrors the active session's play state into the helper's AVRCP player. */
+  async setPlaybackStatus(state: 'playing' | 'paused' | 'stopped'): Promise<ActionResponse> {
+    return (await this.request(`playback-status ${state}`)) as ActionResponse
   }
 
   // Open a event subscription

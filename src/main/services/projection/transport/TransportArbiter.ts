@@ -162,7 +162,6 @@ export class TransportArbiter {
 
   detectedCandidates(): Candidate[] {
     const list: Candidate[] = []
-    if (this.dongleConnected) list.push(DONGLE)
     if (this.phoneConnected) {
       list.push(this.phoneDevice?.vendorId === APPLE_VENDOR_ID ? CP_WIRED : AA_WIRED)
     }
@@ -170,6 +169,8 @@ export class TransportArbiter {
       this.deps.isWirelessEnabled() &&
       (this.deps.isWirelessPhoneInRange() || this.deps.isWiredAaSessionActive())
     if (offerWireless) list.push(AA_WIRELESS)
+    // The dongle is the fallback transport and ranks last.
+    if (this.dongleConnected) list.push(DONGLE)
     return list
   }
 

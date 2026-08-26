@@ -56,9 +56,9 @@ describe('the shipped manifest', () => {
     }
   })
 
-  it('keeps avahi in core, since pi-lite needs the daemon too', () => {
+  it('keeps avahi in core, since pi-lite needs the daemon and the helper spawns the tools', () => {
     const avahi = entries.filter((e) => e.name.includes('avahi'))
-    expect(avahi.map((e) => e.name).sort()).toEqual(['avahi-daemon'])
+    expect(avahi.map((e) => e.name).sort()).toEqual(['avahi-daemon', 'avahi-utils'])
     for (const e of avahi) expect(e.section).toBe('core')
   })
 })

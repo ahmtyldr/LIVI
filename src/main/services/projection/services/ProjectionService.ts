@@ -139,7 +139,8 @@ export class ProjectionService {
   private readonly mediaStore = new MediaStore({
     emit: (p) => this.emitProjectionEvent(p),
     getPlaybackInferred: () => this.aaPlaybackInferred,
-    getLastPhoneType: () => this.lastPluggedPhoneType
+    getLastPhoneType: () => this.lastPluggedPhoneType,
+    onPlaybackStatus: (state) => this.bluez.setPlaybackStatus(state).catch(() => {})
   })
   private readonly navStore = new NavStore({
     emit: (p) => this.emitProjectionEvent(p),
@@ -1768,7 +1769,15 @@ export class ProjectionService {
       console.warn(`[ProjectionService] remote input: unknown command "${command}"`)
       return
     }
-    if (!this.started) return
+    // Native sessions activate without start(), so the flag alone must not gate.
+    const active = this.sessions.active()
+    if (!this.started && !active) {
+      console.log(`[ProjectionService] remote input "${command}" dropped (idle)`)
+      return
+    }
+    console.log(
+      `[ProjectionService] remote input "${command}" → ${active ? `#${active.index} ${active.protocol}` : 'dongle'}`
+    )
     try {
       this.driver.handleInput(command)
     } catch (e) {
@@ -1856,11 +1865,24 @@ export class ProjectionService {
       } catch {}
     }
     if (this.shuttingDown) return
-    if (this.sessions.all().length > 0) return
-    if (this.started || this.startPromise) return
+    if (this.sessions.all().length > 0) {
+      console.log(
+        `[ProjectionService] autoStart skipped: ${this.sessions.all().length} session(s) present`
+      )
+      return
+    }
+    if (this.started || this.startPromise) {
+      console.log(
+        `[ProjectionService] autoStart skipped: ${this.startPromise ? 'start in progress' : 'already started'}`
+      )
+      return
+    }
 
     const decision = this.arbiter.decideNextStart()
-    if (decision.kind === 'none') return
+    if (decision.kind === 'none') {
+      console.log('[ProjectionService] autoStart skipped: no start candidate')
+      return
+    }
     if (decision.kind === 'defer') {
       setTimeout(() => {
         this.autoStartIfNeeded().catch(console.error)
@@ -2061,6 +2083,18 @@ export class ProjectionService {
     }
     this.emitProjectionEvent({ type: 'unplugged' })
     this.autoStartIfNeeded().catch(() => {})
+  }
+
+  /** Stops the root helper so it can drop BT advertising and hand the phones back. */
+  public async stopHelper(): Promise<void> {
+    const sup = this.helperSupervisor
+    this.helperSupervisor = null
+    if (!sup) return
+    try {
+      await sup.stop()
+    } catch (e) {
+      console.warn(`[ProjectionService] helper stop failed: ${(e as Error).message}`)
+    }
   }
 
   public async stop(): Promise<void> {

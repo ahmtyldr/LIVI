@@ -47,8 +47,6 @@ echo "→ Ensuring GStreamer, wireless AP and Bluetooth runtime packages"
 sudo apt-get update
 sudo apt-get install -y $(livi_packages core | tr '\n' ' ')
 
-livi_install_pymobiledevice3
-
 ICON_URL="$LIVI_RAW/assets/icons/linux/livi.png"
 ICON_DEST="$USER_HOME/.local/share/icons/livi.png"
 

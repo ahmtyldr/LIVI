@@ -142,22 +142,21 @@ describe('missingPackages', () => {
           e: Error | null,
           r?: unknown
         ) => void
-        if (cmd === 'python3' && args[1] === 'import dbus') done(new Error('no module'))
+        if (cmd === 'gst-inspect-1.0' && args[1] === 'missingelement') done(new Error('no element'))
         else done(null, { stdout: '', stderr: '' })
       }
     )
     try {
       const missing = await missingPackages([
         entry('cmd-ok', 'cmd:bluetoothctl'),
-        entry('py-ok', 'py:serial'),
-        entry('py-missing', 'py:dbus'),
         entry('gst-ok', 'gst:opusenc'),
+        entry('gst-missing', 'gst:missingelement'),
         entry('file-missing', 'file:/nope'),
         entry('unknown-kind', 'zz:whatever'),
         entry('no-colon', 'nocolon'),
         entry('empty-arg', 'cmd:')
       ])
-      expect(missing.map((m) => m.name)).toEqual(['py-missing', 'file-missing'])
+      expect(missing.map((m) => m.name)).toEqual(['gst-missing', 'file-missing'])
     } finally {
       process.env.PATH = originalPath
     }

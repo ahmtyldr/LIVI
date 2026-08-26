@@ -1,0 +1,21 @@
+[package]
+name = "livi-helperd"
+version = "0.1.0"
+edition.workspace = true
+
+[[bin]]
+name = "livi-helperd"
+path = "src/main.rs"
+
+[dependencies]
+iap2-runtime = { path = "../../crates/iap2-runtime" }
+iap2-csm = { path = "../../crates/iap2-csm" }
+iap2-mfi = { path = "../../crates/iap2-mfi" }
+iap2-link = { path = "../../crates/iap2-link" }
+livi-aa = { path = "../../crates/livi-aa" }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal", "sync", "time"] }
+serde_json = "1"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+iap2-usbmux = { path = "../../crates/iap2-usbmux" }
+iap2-wired = { path = "../../crates/iap2-wired" }

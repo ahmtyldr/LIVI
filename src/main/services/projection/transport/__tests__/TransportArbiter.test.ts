@@ -423,25 +423,32 @@ describe('TransportArbiter', () => {
       expect(arbiter.pickPreferred()).toEqual(DONGLE)
     })
 
+    test('the wired phone outranks the dongle', async () => {
+      const { arbiter } = makeArbiter()
+      arbiter.markDongleConnected(true)
+      arbiter.markPhoneConnected(true, fakeDevice())
+      expect(arbiter.pickPreferred()).toEqual(AA_WIRED)
+    })
+
     test('override beats preference', async () => {
       const { arbiter } = makeArbiter()
       arbiter.markDongleConnected(true)
       arbiter.markPhoneConnected(true, fakeDevice())
       arbiter.prepareSwitch()
-      expect(arbiter.pickPreferred()).toEqual(AA_WIRED)
+      expect(arbiter.pickPreferred()).toEqual(DONGLE)
     })
 
     test('override is dropped when the chosen candidate disappears', async () => {
       const { arbiter } = makeArbiter()
       arbiter.markDongleConnected(true)
       arbiter.markPhoneConnected(true, fakeDevice())
-      arbiter.prepareSwitch() // anchor=DONGLE (pref), cycles to AA_WIRED
+      arbiter.prepareSwitch() // anchor=AA_WIRED (pref), cycles to DONGLE
 
-      arbiter.markPhoneConnected(false)
-      vi.advanceTimersByTime(1_000)
+      arbiter.markDongleConnected(false)
+      vi.advanceTimersByTime(5_000)
 
       expect(arbiter.getOverride()).toBeNull()
-      expect(arbiter.pickPreferred()).toEqual(DONGLE)
+      expect(arbiter.pickPreferred()).toEqual(AA_WIRED)
     })
   })
 

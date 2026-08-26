@@ -1,0 +1,17 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/iap2-csm",
+    "crates/iap2-link",
+    "crates/iap2-mfi",
+    "crates/iap2-runtime",
+    "crates/iap2-usbmux",
+    "crates/iap2-wired",
+    "crates/livi-aa",
+    "bin/mfi-probe",
+    "bin/livi-helperd",
+    "bin/muxd-probe",
+]
+
+[workspace.package]
+edition = "2021"

@@ -483,7 +483,7 @@ describe('USBService', () => {
   test('resetDongle treats disconnect errors as success', async () => {
     const s = new USBService(projection) as any
     const dongle = mkDevice()
-    dongle.reset.mockRejectedValue(new Error('LIBUSB_ERROR_NO_DEVICE'))
+    dongle.reset.mockRejectedValue(new Error('device disconnected'))
 
     await expect(s.resetDongle(dongle)).resolves.toBe(true)
     expect(dongle.close).toHaveBeenCalledTimes(1)
@@ -509,7 +509,7 @@ describe('USBService', () => {
   test('resetDongle treats string disconnect rejection as success', async () => {
     const s = new USBService(projection) as any
     const dongle = mkDevice()
-    dongle.reset.mockRejectedValue('LIBUSB_ERROR_NO_DEVICE')
+    dongle.reset.mockRejectedValue('device disconnected')
 
     await expect(s.resetDongle(dongle)).resolves.toBe(true)
   })

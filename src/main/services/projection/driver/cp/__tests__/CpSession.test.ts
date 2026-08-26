@@ -1,5 +1,6 @@
 import { EventEmitter } from 'node:events'
 import type net from 'node:net'
+import { InputCommand } from '@main/shared/types/InputCommand'
 import type { Config } from '@shared/types'
 import { AudioCommand, CommandMapping } from '@shared/types/ProjectionEnums'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -542,6 +543,21 @@ describe('CpSession send', () => {
     await session.close()
     await expect(session.send(new SendTouch(0, 0, 0))).resolves.toBe(false)
     await expect(session.send(new SendCommand('play'))).resolves.toBe(false)
+  })
+
+  it('maps remote input commands onto the media and telephony reports', () => {
+    const { session, stack } = makeSession()
+    session.handleInput(InputCommand.Pause)
+    expect(stack.sendMedia).toHaveBeenCalledWith(MediaButton.pause)
+    session.handleInput(InputCommand.Next)
+    expect(stack.sendMedia).toHaveBeenCalledWith(MediaButton.next)
+    session.handleInput(InputCommand.AcceptCall)
+    expect(stack.sendTelephony).toHaveBeenCalledWith(TelephonyButton.hookSwitch)
+    session.handleInput(InputCommand.VoiceAssistant)
+    expect(stack.invokeSiri).toHaveBeenCalled()
+    stack.sendMedia.mockClear()
+    session.handleInput(InputCommand.VolumeUp)
+    expect(stack.sendMedia).not.toHaveBeenCalled()
   })
 
   it('routes every command mapping to the stack', () => {

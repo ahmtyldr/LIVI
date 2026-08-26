@@ -55,6 +55,38 @@ jobs:
         run: |
           pnpm exec node-gyp rebuild
 
+      - name: Setup Rust
+        shell: bash
+        run: |
+          set -euo pipefail
+          rustup toolchain install stable --profile minimal --component clippy
+          rustup default stable
+          rustc --version
+
+      - name: Cache cargo
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            native/livi-helperd/target
+          key: cargo-check-${{ hashFiles('native/livi-helperd/**/Cargo.toml') }}
+          restore-keys: cargo-check-
+
+      - name: Install helper build deps
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends cmake
+          sudo rm -rf /var/lib/apt/lists/*
+
+      - name: Check the helper (fmt, clippy, tests)
+        working-directory: native/livi-helperd
+        run: |
+          cargo clippy --workspace --all-targets -- -D warnings
+          cargo test --workspace
+
       - name: Run Biome checks
         run: pnpm run lint:check
 

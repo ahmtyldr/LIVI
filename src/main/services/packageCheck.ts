@@ -87,10 +87,6 @@ async function probeSatisfied(probe: string): Promise<boolean> {
       await execFileAsync('which', [arg], { env })
       return true
     }
-    if (kind === 'py') {
-      await execFileAsync('python3', ['-c', `import ${arg}`])
-      return true
-    }
     if (kind === 'gst') {
       await execFileAsync('gst-inspect-1.0', ['--exists', arg])
       return true

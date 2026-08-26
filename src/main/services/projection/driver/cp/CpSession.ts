@@ -16,7 +16,7 @@ import { panelPhysicalMm } from '@main/services/video/GstVideo'
 import { ICON_120_B64, ICON_180_B64, ICON_256_B64 } from '@shared/assets/carIcons'
 import type { Config } from '@shared/types'
 import { DEFAULT_CONFIG } from '@shared/types'
-import type { InputCommand } from '@shared/types/InputCommand'
+import { InputCommand } from '@shared/types/InputCommand'
 import {
   AudioCommand,
   CommandMapping,
@@ -580,7 +580,22 @@ export class CpSession extends EventEmitter implements IPhoneDriver {
     }
   }
 
-  handleInput(_command: InputCommand): void {}
+  handleInput(command: InputCommand): void {
+    const map: Partial<Record<InputCommand, CommandMapping>> = {
+      [InputCommand.Play]: CommandMapping.play,
+      [InputCommand.Pause]: CommandMapping.pause,
+      [InputCommand.PlayPause]: CommandMapping.playPause,
+      [InputCommand.Next]: CommandMapping.next,
+      [InputCommand.Previous]: CommandMapping.prev,
+      [InputCommand.AcceptCall]: CommandMapping.acceptPhone,
+      [InputCommand.RejectCall]: CommandMapping.rejectPhone,
+      [InputCommand.HookSwitch]: CommandMapping.phoneKeyHookSwitch,
+      [InputCommand.VoiceAssistant]: CommandMapping.voiceAssistant
+    }
+    const cmd = map[command]
+    if (cmd === undefined) return
+    this._sendCommand(cmd)
+  }
 
   /** OEM icons for the CarPlay homescreen: user upload (config) or the LIVI default. */
   private _buildIcons(cfg: Config): CpIcon[] {
@@ -605,6 +620,7 @@ export class CpSession extends EventEmitter implements IPhoneDriver {
     const clusterPanel = panelPhysicalMm('cluster', cfg.clusterWidth, cfg.clusterHeight)
     const name = cfg.carName?.trim() ? cfg.carName : 'LIVI'
     return {
+      phoneBtMac: () => this._btMac,
       deviceName: name,
       oemLabel: cfg.oemName?.trim() ? cfg.oemName : name,
       icons: this._buildIcons(cfg),
