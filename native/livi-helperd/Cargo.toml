@@ -11,6 +11,7 @@ members = [
     "bin/mfi-probe",
     "bin/livi-helperd",
     "bin/muxd-probe",
+    "bin/usb-probe",
 ]
 
 [workspace.package]
