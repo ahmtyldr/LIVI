@@ -135,6 +135,8 @@
     "cameraRotation": "Обертання",
     "reverseCamera": "Камера заднього виду",
     "appearance": "Зовнішній вигляд",
+    "displayBrightness": "Яскравість дисплея",
+    "displayBrightnessAuto": "Автояскравість",
     "darkMode": "Темний режим",
     "phoneAppearance": "Вигляд телефону",
     "phoneAppearanceAuto": "Авто",

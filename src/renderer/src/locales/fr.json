@@ -135,6 +135,8 @@
     "cameraRotation": "Rotation",
     "reverseCamera": "Caméra de recul",
     "appearance": "Apparence",
+    "displayBrightness": "Luminosité de l'écran",
+    "displayBrightnessAuto": "Luminosité automatique",
     "darkMode": "Mode Sombre",
     "phoneAppearance": "Apparence du Téléphone",
     "phoneAppearanceAuto": "Auto",

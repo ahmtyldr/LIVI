@@ -208,6 +208,7 @@ describe('CpSession construction and stack config', () => {
     const { stack } = makeSession({ config: baseConfig() })
     const built = stack.cfg as Record<string, unknown>
     expect(built.cluster).toBeDefined()
+    expect((built.phoneBtMac as () => unknown)()).toBe('')
     expect((built.main as Record<string, unknown>).widthPhysicalMm).toBe(100)
     expect(built.entertainmentSampleRate).toBe(48000)
   })

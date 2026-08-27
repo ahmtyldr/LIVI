@@ -79,6 +79,22 @@ app.whenReady().then(async () => {
   projectionService.onProjectionEvent((payload) => carBridge.handleEvent(payload))
   carBridge.onKey = (command) => projectionService.dispatchRemoteInput(command)
   carBridge.onTelemetry = (payload) => telemetryStore.merge(payload)
+  carBridge.setBrightness(runtimeState.config.displayBrightness * 100)
+  configEvents.on('changed', (next: Config) =>
+    carBridge.setBrightness(next.displayBrightness * 100)
+  )
+  //auto: the vehicle's panel dimmer writes displayBrightness itself, so the
+  //slider stays truthful; manual: vehicle values run into the void
+  let brightnessAuto = runtimeState.config.displayBrightnessAuto
+  configEvents.on('changed', (next: Config) => {
+    brightnessAuto = next.displayBrightnessAuto
+  })
+  telemetryStore.on('change', (patch: { dimmerPct?: unknown }) => {
+    if (!brightnessAuto || typeof patch.dimmerPct !== 'number') return
+    const next = Math.min(1, Math.max(0, patch.dimmerPct / 100))
+    if (Math.abs(next - runtimeState.config.displayBrightness) < 0.005) return
+    saveSettings(runtimeState, { displayBrightness: next })
+  })
 
   runtimeState.telemetrySocket = telemetrySocket
 

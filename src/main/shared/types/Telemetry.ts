@@ -73,6 +73,7 @@ import type { GnssInfo } from './Gnss'
 //    lambda / afr                    ✓     ·          TODO       ·
 //    batteryV                        ✓     ·          TODO       ·
 //    ambientLux                      ✓     ·          ·          ·
+//    dimmerPct                       ✓     ·          ·          ·
 //    odometerKm / odometerTripKm     ✓     ✓          TODO       ·
 //    drivingStatus                   ✓     ✓          ·          ·
 //    gps.lat / lng / alt / heading   ✓     ✓          ✓          ✓
@@ -227,6 +228,9 @@ export type TelemetryPayload = {
   /** Ambient light sensor value in lux (raw). */
   ambientLux?: number
 
+  /** Vehicle panel-illumination dimmer position, percent (0-100). */
+  dimmerPct?: number
+
   // ── External UI overrides ──────────────────────────────────────────────
 
   /** Force night mode for LIVI UI / AA / Dongle regardless of ambient sensor. */
@@ -326,6 +330,7 @@ export const TELEMETRY_ROUTES = {
 
   // Environment
   ambientLux: { dash: true, aa: false, dongle: false, cp: false },
+  dimmerPct: { dash: true, aa: false, dongle: false, cp: false },
 
   // External overrides
   nightMode: { dash: true, aa: true, dongle: true, cp: true },

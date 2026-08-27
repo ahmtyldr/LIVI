@@ -7,6 +7,7 @@ import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined'
 import BluetoothOutlinedIcon from '@mui/icons-material/BluetoothOutlined'
 import BoltOutlinedIcon from '@mui/icons-material/BoltOutlined'
 import BorderStyleOutlinedIcon from '@mui/icons-material/BorderStyleOutlined'
+import Brightness6OutlinedIcon from '@mui/icons-material/Brightness6Outlined'
 import BrightnessAutoOutlinedIcon from '@mui/icons-material/BrightnessAutoOutlined'
 import BugReportOutlinedIcon from '@mui/icons-material/BugReportOutlined'
 import CableOutlinedIcon from '@mui/icons-material/CableOutlined'
@@ -166,6 +167,8 @@ const ICONS: Record<string, SvgIconComponent> = {
 
   darkMode: DarkModeOutlinedIcon,
   phoneAppearance: BrightnessAutoOutlinedIcon,
+  displayBrightness: Brightness6OutlinedIcon,
+  displayBrightnessAuto: BrightnessAutoOutlinedIcon,
   uiColors: PaletteOutlinedIcon,
   contrastGamma: TonalityOutlinedIcon,
   displayColor: InvertColorsOutlinedIcon,

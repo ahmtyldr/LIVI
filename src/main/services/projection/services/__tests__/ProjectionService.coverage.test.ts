@@ -240,6 +240,18 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
+describe('autoStartIfNeeded skip logging', () => {
+  test('logs both the started and the in-progress variant', async () => {
+    const svc = makeSvc()
+    svc.started = true
+    await svc.autoStartIfNeeded()
+    svc.started = false
+    svc.startPromise = Promise.resolve()
+    await svc.autoStartIfNeeded()
+    svc.startPromise = null
+  })
+})
+
 describe('ProjectionService driver getters and codec caps', () => {
   test('getDongleDriver / getCpDriver expose driver manager state', () => {
     const svc = makeSvc()

@@ -135,6 +135,8 @@
     "cameraRotation": "Drehung",
     "reverseCamera": "Rückfahrkamera",
     "appearance": "Aussehen",
+    "displayBrightness": "Display-Helligkeit",
+    "displayBrightnessAuto": "Automatische Helligkeit",
     "darkMode": "Dark Mode",
     "phoneAppearance": "Erscheinungsbild Telefon",
     "phoneAppearanceAuto": "Auto",

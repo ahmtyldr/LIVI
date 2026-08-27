@@ -3,7 +3,7 @@ import type { Mock } from 'vitest'
 
 vi.mock('../config/loadConfig', () => ({
   loadConfig: vi.fn(function () {
-    return { width: 800, height: 480, kiosk: false }
+    return { width: 800, height: 480, kiosk: false, displayBrightness: 1.0 }
   })
 }))
 
@@ -106,7 +106,7 @@ vi.mock('../window/secondaryWindows', () => ({
 
 vi.mock('../services/carBridge/CarBridgeService', () => ({
   CarBridgeService: vi.fn().mockImplementation(function () {
-    return { start: vi.fn(), stop: vi.fn(), handleEvent: vi.fn() }
+    return { start: vi.fn(), stop: vi.fn(), handleEvent: vi.fn(), setBrightness: vi.fn() }
   })
 }))
 
@@ -197,6 +197,27 @@ describe('main index bootstrap', () => {
     const mergeSpy = vi.spyOn(TelemetryStore.prototype, 'merge')
     bridge.onTelemetry({ speedKph: 73 })
     expect(mergeSpy).toHaveBeenCalledWith({ speedKph: 73 })
+    expect(bridge.setBrightness).toHaveBeenCalled()
+    const { configEvents } = await import('@main/ipc/utils')
+    bridge.setBrightness.mockClear()
+    configEvents.emit('changed', { displayBrightness: 0.4, displayBrightnessAuto: true })
+    expect(bridge.setBrightness).toHaveBeenCalledWith(40)
+    const { TelemetryStore: TS } = await import('@main/services/telemetry/TelemetryStore')
+    const { saveSettings } = await import('@main/ipc/utils')
+    const storeInstance = mergeSpy.mock.instances[0] as InstanceType<typeof TS>
+    // auto: the dimmer writes the setting (slider stays truthful)
+    storeInstance.emit('change', { dimmerPct: 68 }, {})
+    expect(saveSettings).toHaveBeenCalledWith(expect.anything(), { displayBrightness: 0.68 })
+    ;(saveSettings as Mock).mockClear()
+    storeInstance.emit('change', { speedKph: 50 }, {})
+    expect(saveSettings).not.toHaveBeenCalled()
+    // unchanged value is deduped (config default is 1.0 = 100%)
+    storeInstance.emit('change', { dimmerPct: 100 }, {})
+    expect(saveSettings).not.toHaveBeenCalled()
+    // manual: vehicle values run into the void
+    configEvents.emit('changed', { displayBrightness: 0.4, displayBrightnessAuto: false })
+    storeInstance.emit('change', { dimmerPct: 30 }, {})
+    expect(saveSettings).not.toHaveBeenCalled()
   })
 
   test('exits without booting when the outer launcher hands off to the compositor', async () => {

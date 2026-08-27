@@ -2,7 +2,17 @@ import type { Config } from '@shared/types'
 import { ColorCalibration } from '../../components/pages/settings/pages/displayCalibration/ColorCalibration'
 import { ContrastGammaCalibration } from '../../components/pages/settings/pages/displayCalibration/ContrastGammaCalibration'
 import { IconUploader } from '../../components/pages/settings/pages/system/iconUploader/IconUploader'
-import { SettingsNode } from '../types'
+import { SettingsNode, ValueTransform } from '../types'
+
+const brightnessValueTransform: ValueTransform<number | undefined, number> = {
+  toView: (v) => Math.round((v ?? 1) * 100),
+  fromView: (v, prev) => {
+    const next = v / 100
+    if (!Number.isFinite(next)) return prev ?? 1
+    return next
+  },
+  format: (v) => `${v} %`
+}
 
 export const appearanceSchema: SettingsNode<Config> = {
   type: 'route',
@@ -12,6 +22,27 @@ export const appearanceSchema: SettingsNode<Config> = {
   icon: 'appearance',
   path: '',
   children: [
+    {
+      type: 'slider',
+      label: 'Display Brightness',
+      labelKey: 'settings.displayBrightness',
+      icon: 'displayBrightness',
+      path: 'displayBrightness',
+      displayValue: true,
+      displayValueUnit: '%',
+      valueTransform: brightnessValueTransform,
+      page: {
+        title: 'Display Brightness',
+        labelTitle: 'settings.displayBrightness'
+      }
+    },
+    {
+      type: 'checkbox',
+      label: 'Auto Brightness',
+      labelKey: 'settings.displayBrightnessAuto',
+      icon: 'displayBrightnessAuto',
+      path: 'displayBrightnessAuto'
+    },
     {
       type: 'checkbox',
       label: 'Dark Mode',
