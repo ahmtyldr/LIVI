@@ -2,7 +2,7 @@ import { resolve } from 'node:path'
 import react from '@vitejs/plugin-react'
 import { coverageConfigDefaults, defineConfig } from 'vitest/config'
 
-const r = (p: string): string => resolve(__dirname, p)
+const r = (p: string): string => resolve(import.meta.dirname, p)
 
 const define = {
   __BUILD_SHA__: JSON.stringify(process.env.BUILD_SHA ?? 'dev'),
@@ -45,7 +45,6 @@ export default defineConfig({
           environment: 'jsdom',
           setupFiles: ['./vitest.setup.ts'],
           include: ['src/renderer/**/*.test.{ts,tsx}'],
-          // import-heavy tests (await import after resetModules) can exceed the 5s default under load
           testTimeout: 15000,
           // @mui ships ESM with directory imports Node cannot resolve when externalized
           server: { deps: { inline: [/@mui\//] } }
@@ -68,6 +67,8 @@ export default defineConfig({
           environment: 'node',
           setupFiles: ['./vitest.main.setup.ts'],
           include: ['src/main/**/*.test.ts', 'src/preload/**/*.test.ts'],
+          // import-heavy tests (ProjectionService module graph) can exceed the 5s default under load
+          testTimeout: 15000,
           // these ESM deps import named exports from electron (CJS); inline so Vite transforms them
           // and their electron import resolves to the global mock instead of failing CJS interop
           server: { deps: { inline: ['@electron-toolkit/utils'] } }
