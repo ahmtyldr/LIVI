@@ -1,7 +1,7 @@
 import { type ChildProcess, execFileSync, spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { EventEmitter } from 'node:events'
-import { chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
+import { chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync, renameSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { DEBUG } from '@main/constants'
 import type { Config } from '@shared/types'
@@ -17,13 +17,17 @@ function isInsideAppImageMount(p: string): boolean {
 
 // The AppImage FUSE mount is private to the launching user, so root cannot exec the
 // binary from there. Copy it onto a real filesystem path that root can reach.
+// Staged via temp + rename: the AP boot service runs this binary, and writing the
+// executing inode in place raises ETXTBSY — rename swaps the path atomically instead.
 function stageHelperBin(src: string): string {
   const dest = join(app.getPath('userData'), 'driver', HELPER_BIN)
   const digest = (p: string): string => createHash('sha256').update(readFileSync(p)).digest('hex')
   if (!existsSync(dest) || digest(dest) !== digest(src)) {
     mkdirSync(dirname(dest), { recursive: true })
-    copyFileSync(src, dest)
-    chmodSync(dest, 0o755)
+    const tmp = `${dest}.new`
+    copyFileSync(src, tmp)
+    chmodSync(tmp, 0o755)
+    renameSync(tmp, dest)
   }
   return dest
 }
@@ -54,7 +58,11 @@ function resolveHelperBin(): string {
       try {
         return stageHelperBin(resBin)
       } catch (err) {
-        if (DEBUG) console.warn(`[helper] staging failed: ${(err as Error).message}`)
+        console.warn(`[helper] staging failed: ${(err as Error).message}`)
+        // root can never exec from the user's FUSE mount — a previously staged
+        // copy, even an older build, is the only path sudo can run.
+        const staged = join(app.getPath('userData'), 'driver', HELPER_BIN)
+        if (existsSync(staged)) return staged
         return resBin
       }
     }

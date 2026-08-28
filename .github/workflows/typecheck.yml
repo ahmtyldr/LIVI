@@ -50,11 +50,6 @@ jobs:
       - name: Install dependencies from lockfile
         run: pnpm install --frozen-lockfile --ignore-scripts
 
-      - name: Build native crypto addon
-        working-directory: native/crypto
-        run: |
-          pnpm exec node-gyp rebuild
-
       - name: Setup Rust
         shell: bash
         run: |
@@ -86,6 +81,9 @@ jobs:
         run: |
           cargo clippy --workspace --all-targets -- -D warnings
           cargo test --workspace
+
+      - name: Build native crypto addon (cargo)
+        run: node scripts/build-crypto-node.mjs
 
       - name: Run Biome checks
         run: pnpm run lint:check

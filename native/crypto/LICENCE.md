@@ -1,3 +1,7 @@
+This file covers the vendored Monocypher sources (`monocypher.c` /
+`monocypher.h`) only. Licences of the Rust crates embedded in the compiled
+addon are listed in `README.md`.
+
 Monocypher as a whole is dual-licensed.  Choose whichever licence you
 want from the two licences listed below.
 

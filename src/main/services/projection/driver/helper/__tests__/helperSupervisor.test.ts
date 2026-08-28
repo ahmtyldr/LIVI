@@ -1,6 +1,14 @@
 import { execFileSync, spawn } from 'node:child_process'
 import { EventEmitter } from 'node:events'
-import { chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync, statSync } from 'node:fs'
+import {
+  chmodSync,
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  statSync
+} from 'node:fs'
 import type { Mock } from 'vitest'
 
 vi.mock('node:child_process', () => ({ spawn: vi.fn(), execFileSync: vi.fn(() => '') }))
@@ -11,6 +19,7 @@ vi.mock('node:fs', () => {
     existsSync: vi.fn(() => false),
     mkdirSync: vi.fn(),
     readFileSync: vi.fn(() => Buffer.from('x')),
+    renameSync: vi.fn(),
     statSync: vi.fn(() => ({ size: 0 }))
   }
   return { ...__m, default: __m }
@@ -33,6 +42,7 @@ const mockedStat = statSync as Mock
 const mockedRead = readFileSync as Mock
 const mockedMkdir = mkdirSync as Mock
 const mockedCopy = copyFileSync as Mock
+const mockedRename = renameSync as Mock
 const mockedChmod = chmodSync as Mock
 
 type SupervisorModule = typeof import('../helperSupervisor')
@@ -68,6 +78,10 @@ function fakeFs(present: string[], sizes: Record<string, number> = {}): void {
   mockedStat.mockImplementation((p: string) => ({ size: sizes[String(p)] ?? 4096 }))
   mockedRead.mockImplementation((p: string) => Buffer.from(`c${sizes[String(p)] ?? 4096}`))
   mockedCopy.mockImplementation((_src: string, dest: string) => {
+    files.add(String(dest))
+  })
+  mockedRename.mockImplementation((src: string, dest: string) => {
+    files.delete(String(src))
     files.add(String(dest))
   })
 }
@@ -222,9 +236,13 @@ describe('helper root resolution', () => {
     expect(mockedMkdir).toHaveBeenCalledWith('/data/driver', { recursive: true })
     expect(mockedCopy).toHaveBeenCalledWith(
       '/tmp/.mount_livi/res/driver/livi-helperd',
+      '/data/driver/livi-helperd.new'
+    )
+    expect(mockedChmod).toHaveBeenCalledWith('/data/driver/livi-helperd.new', 0o755)
+    expect(mockedRename).toHaveBeenCalledWith(
+      '/data/driver/livi-helperd.new',
       '/data/driver/livi-helperd'
     )
-    expect(mockedChmod).toHaveBeenCalledWith('/data/driver/livi-helperd', 0o755)
     expect(String(mockedSpawn.mock.calls[0][1][2])).toBe('/data/driver/livi-helperd')
     expect(mockedSpawn.mock.calls[0][2].cwd).toBe('/data/driver')
 
@@ -246,11 +264,12 @@ describe('helper root resolution', () => {
 
     expect(mockedCopy).toHaveBeenCalledWith(
       '/x/.mount_abc/res/driver/livi-helperd',
-      '/data/driver/livi-helperd'
+      '/data/driver/livi-helperd.new'
     )
+    expect(mockedRename).toHaveBeenCalled()
   })
 
-  test('falls back to the mount path when staging throws', async () => {
+  test('when staging throws, a previously staged copy wins over the mount path', async () => {
     ;(process as { resourcesPath?: string }).resourcesPath = '/y/.mount_z/res'
     mockedExists.mockImplementation((p: string) =>
       ['/y/.mount_z/res/driver/livi-helperd', '/data/driver/livi-helperd'].includes(String(p))
@@ -264,6 +283,23 @@ describe('helper root resolution', () => {
     new HelperSupervisor().start(CONFIG)
 
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('staging failed'))
+    expect(String(mockedSpawn.mock.calls[0][1][2])).toBe('/data/driver/livi-helperd')
+    warnSpy.mockRestore()
+  })
+
+  test('falls back to the mount path only when nothing was ever staged', async () => {
+    ;(process as { resourcesPath?: string }).resourcesPath = '/y/.mount_z/res'
+    mockedExists.mockImplementation(
+      (p: string) => String(p) === '/y/.mount_z/res/driver/livi-helperd'
+    )
+    mockedCopy.mockImplementation(() => {
+      throw new Error('read-only fs')
+    })
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const { HelperSupervisor } = await load(true)
+    new HelperSupervisor().start(CONFIG)
+
     expect(String(mockedSpawn.mock.calls[0][1][2])).toBe('/y/.mount_z/res/driver/livi-helperd')
     warnSpy.mockRestore()
   })
@@ -299,11 +335,11 @@ describe('helper root resolution', () => {
     new HelperSupervisor().start(CONFIG)
     expect(mockedCopy).toHaveBeenCalledWith(
       '/plain/res/driver/livi-helperd',
-      '/data/driver/livi-helperd'
+      '/data/driver/livi-helperd.new'
     )
   })
 
-  test('quietly falls back when staging throws outside debug builds', async () => {
+  test('staging failures warn even outside debug builds', async () => {
     ;(process as { resourcesPath?: string }).resourcesPath = '/y/.mount_z/res'
     mockedExists.mockImplementation((p: string) =>
       ['/y/.mount_z/res/driver/livi-helperd', '/data/driver/livi-helperd'].includes(String(p))
@@ -314,8 +350,8 @@ describe('helper root resolution', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const { HelperSupervisor } = await load(false)
     new HelperSupervisor().start(CONFIG)
-    expect(warnSpy).not.toHaveBeenCalled()
-    expect(String(mockedSpawn.mock.calls[0][1][2])).toBe('/y/.mount_z/res/driver/livi-helperd')
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('staging failed'))
+    expect(String(mockedSpawn.mock.calls[0][1][2])).toBe('/data/driver/livi-helperd')
     warnSpy.mockRestore()
   })
 })

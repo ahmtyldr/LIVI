@@ -1,0 +1,18 @@
+[package]
+name = "livi-crypto-node"
+version = "0.1.0"
+edition.workspace = true
+
+# N-API addon behind require('livi-crypto'): ChaCha20-Poly1305 seal/open via
+# aws-lc-rs. scripts/build-crypto-node.mjs copies the cdylib to
+# native/crypto/build/Release/livi_crypto.node.
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+aws-lc-rs = "1"
+napi = { version = "2", default-features = false, features = ["napi8"] }
+napi-derive = "2"
+
+[build-dependencies]
+napi-build = "2"
