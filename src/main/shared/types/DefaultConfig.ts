@@ -46,6 +46,7 @@ export const DEFAULT_CONFIG: Config = {
   disableAudioOutput: false,
   wifiType: '5ghz',
   wifiChannel: 36,
+  wifiChannelWidth: 40,
   country: 'DE',
   phoneConfig: {},
   carType: CarType.Gasoline,

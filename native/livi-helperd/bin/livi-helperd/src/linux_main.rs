@@ -31,12 +31,12 @@ fn config_path() -> std::path::PathBuf {
     std::path::Path::new(&home).join(".config/LIVI/config.json")
 }
 
-struct DeviceConfig {
+pub struct DeviceConfig {
     json: serde_json::Value,
 }
 
 impl DeviceConfig {
-    fn load() -> Self {
+    pub fn load() -> Self {
         let json = std::fs::read_to_string(config_path())
             .ok()
             .and_then(|s| serde_json::from_str(&s).ok())
@@ -45,7 +45,7 @@ impl DeviceConfig {
     }
 
     // config.json wins, then env, then default — mirroring the previous helper.
-    fn string(&self, json_key: &str, env_key: &str, default: &str) -> String {
+    pub fn string(&self, json_key: &str, env_key: &str, default: &str) -> String {
         if let Some(s) = self.json.get(json_key).and_then(|v| v.as_str()) {
             if !s.is_empty() {
                 return s.to_string();
@@ -54,7 +54,7 @@ impl DeviceConfig {
         std::env::var(env_key).ok().filter(|s| !s.is_empty()).unwrap_or_else(|| default.to_string())
     }
 
-    fn int<T: std::str::FromStr + std::convert::TryFrom<i64>>(&self, json_key: &str, env_key: &str, default: T) -> T {
+    pub fn int<T: std::str::FromStr + std::convert::TryFrom<i64>>(&self, json_key: &str, env_key: &str, default: T) -> T {
         if let Some(n) = self.json.get(json_key).and_then(|v| v.as_i64()) {
             if let Ok(v) = T::try_from(n) {
                 return v;
@@ -62,6 +62,21 @@ impl DeviceConfig {
         }
         env_or(env_key, default)
     }
+}
+
+/// `--wifi-ap`: dedicated early-boot AP mode (hostapd + dnsmasq ownership).
+pub fn run_wifi_ap() -> ExitCode {
+    let dc = DeviceConfig::load();
+    let cfg = iap2_runtime::wifi_ap::ApConfig {
+        iface: dc.string("wifiInterface", "LIVI_WIFI_IFACE", "wlan0"),
+        ssid: dc.string("carName", "LIVI_CP_NAME", "LIVI"),
+        passphrase: dc.string("wifiPassword", "LIVI_PASSPHRASE", "12345678"),
+        channel: dc.int("wifiChannel", "LIVI_CHANNEL", 36u16) as u8,
+        width: dc.int("wifiChannelWidth", "LIVI_CHANNEL_WIDTH", 40u16) as u8,
+        country: dc.string("country", "LIVI_COUNTRY", "DE"),
+        ap_ip: std::env::var("LIVI_AP_IP").unwrap_or_else(|_| "10.10.0.1".into()),
+    };
+    iap2_runtime::wifi_ap::run(cfg)
 }
 
 pub fn run() -> ExitCode {

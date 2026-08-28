@@ -19,6 +19,7 @@
     "wifiFrequency": "Wi-Fi Frequency",
     "wifiPassword": "Wi-Fi Password",
     "wifiChannel": "Wi-Fi Channel",
+    "wifiChannelWidth": "Wi-Fi Channel Width",
     "wifiCountry": "Wi-Fi Country",
     "wifiInterface": "Wi-Fi Interface",
     "btAdapter": "Bluetooth Interface",

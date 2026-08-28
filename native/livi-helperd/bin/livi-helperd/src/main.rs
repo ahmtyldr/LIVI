@@ -10,6 +10,9 @@ mod aa;
 fn main() -> ExitCode {
     #[cfg(target_os = "linux")]
     {
+        if std::env::args().any(|a| a == "--wifi-ap") {
+            return linux_main::run_wifi_ap();
+        }
         linux_main::run()
     }
     #[cfg(not(target_os = "linux"))]

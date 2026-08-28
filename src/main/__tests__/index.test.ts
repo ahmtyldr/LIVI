@@ -77,6 +77,9 @@ vi.mock('../services/usb/udevRule', () => ({
 vi.mock('@main/services/projection/driver/helper/helperSudoers', () => ({
   checkAndInstallHelperSudoers: vi.fn(() => Promise.resolve())
 }))
+vi.mock('@main/services/projection/driver/helper/wifiApUnit', () => ({
+  checkAndInstallWifiApUnit: vi.fn(() => Promise.resolve())
+}))
 
 vi.mock('@main/services/gvfsPhoneGuard', () => ({
   checkAndInstallGvfsGuard: vi.fn(() => Promise.resolve()),

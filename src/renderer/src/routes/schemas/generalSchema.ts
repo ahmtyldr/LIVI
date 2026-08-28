@@ -148,6 +148,32 @@ export const generalSchema: SettingsNode<Config> = {
             },
             {
               type: 'select',
+              label: 'Wi-Fi Channel Width',
+              labelKey: 'settings.wifiChannelWidth',
+              icon: 'wifiChannel',
+              path: 'wifiChannelWidth',
+              displayValue: true,
+              options: [
+                {
+                  label: '20 MHz',
+                  value: 20
+                },
+                {
+                  label: '40 MHz',
+                  value: 40
+                },
+                {
+                  label: '80 MHz',
+                  value: 80
+                }
+              ],
+              page: {
+                title: 'Wi-Fi Channel Width',
+                labelTitle: 'settings.wifiChannelWidth'
+              }
+            },
+            {
+              type: 'select',
               label: 'Wi-Fi Country',
               labelKey: 'settings.wifiCountry',
               icon: 'wifiCountry',

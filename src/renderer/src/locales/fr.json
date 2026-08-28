@@ -19,6 +19,7 @@
     "wifiFrequency": "Fréquence Wi-Fi",
     "wifiPassword": "Mot de passe Wi-Fi",
     "wifiChannel": "Canal Wi-Fi",
+    "wifiChannelWidth": "Largeur du canal Wi-Fi",
     "wifiCountry": "Pays Wi-Fi",
     "wifiInterface": "Interface Wi-Fi",
     "btAdapter": "Interface Bluetooth",

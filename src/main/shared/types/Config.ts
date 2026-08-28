@@ -108,6 +108,7 @@ export type Config = {
   wifiDedicatedInterface: boolean
   wifiType: '2.4ghz' | '5ghz'
   wifiChannel: number
+  wifiChannelWidth: number
   country: string
 
   // AirPlay protocol version we advertise

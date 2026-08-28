@@ -21,7 +21,8 @@ pub struct Slc {
     established: bool,
     post: Vec<&'static str>,
     indicators: Vec<String>,
-    pub battchg: Option<u8>, /// battchg 0-5, updated by +CIND? and +CIEV
+    /// battchg 0-5, updated by +CIND? and +CIEV.
+    pub battchg: Option<u8>,
 }
 
 impl Slc {

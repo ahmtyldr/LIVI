@@ -20,6 +20,7 @@ import { ensureWireplumberBtRoles } from '@main/services/audio/wireplumberBtRole
 import { checkAndInstallGvfsGuard, startPhoneSuppression } from '@main/services/gvfsPhoneGuard'
 import { checkMissingPackages } from '@main/services/packageCheck'
 import { checkAndInstallHelperSudoers } from '@main/services/projection/driver/helper/helperSudoers'
+import { checkAndInstallWifiApUnit } from '@main/services/projection/driver/helper/wifiApUnit'
 import { ProjectionService } from '@main/services/projection/services/ProjectionService'
 import { TelemetrySocket } from '@main/services/Socket'
 import { setupTelemetry } from '@main/services/telemetry/setupTelemetry'
@@ -178,6 +179,7 @@ app.whenReady().then(async () => {
       runtimeState.config.wirelessCpEnabled === true)
   ) {
     await checkAndInstallHelperSudoers(win)
+    await checkAndInstallWifiApUnit(win)
   }
 
   if (win && process.platform === 'linux') {

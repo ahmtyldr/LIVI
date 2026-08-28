@@ -2,5 +2,5 @@
 # Single source of truth for helperSudoers.ts and the headless installer.
 # Lets __USERNAME__ run livi-helperd as root without a password prompt,
 # which the Bluetooth and Wi-Fi helper needs. Remove this file to revoke.
-Cmnd_Alias LIVI_BT = */livi-helperd
+Cmnd_Alias LIVI_BT = /home/__USERNAME__/.config/LIVI/driver/livi-helperd
 __USERNAME__ ALL=(root) NOPASSWD: SETENV: LIVI_BT
