@@ -1,0 +1,56 @@
+// Builds the native cargo targets and places the artifacts where their loaders
+// expect them:
+//   livi-crypto-node  -> native/crypto/build/Release/livi_crypto.node
+//   gst-video-addon   -> native/gst-video/build/Release/gst_video.node
+//   gst-video-host    -> native/gst-video/build/Release/livi-gst-host (linux)
+//
+// Usage: node scripts/build-native.mjs [--arch=x64|arm64] [--only=crypto]
+// Linux runners are arch-native; only macOS cross-compiles (arm64 host -> x64 app).
+import { execFileSync } from 'node:child_process'
+import { copyFileSync, mkdirSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const root = join(dirname(fileURLToPath(import.meta.url)), '..')
+const archArg = process.argv.find((a) => a.startsWith('--arch='))?.slice(7)
+const only = process.argv.find((a) => a.startsWith('--only='))?.slice(7)
+const wantArch = archArg === 'x64' ? 'x64' : archArg === 'arm64' ? 'arm64' : process.arch
+const cross = process.platform === 'darwin' && wantArch !== process.arch
+const triple = wantArch === 'x64' ? 'x86_64-apple-darwin' : 'aarch64-apple-darwin'
+
+const dylib = (name) =>
+  process.platform === 'darwin' ? `lib${name}.dylib` : `lib${name}.so`
+
+function cargoBuild(manifest, pkg) {
+  const args = ['build', '--release', '-p', pkg, '--manifest-path', manifest]
+  if (cross) {
+    execFileSync('rustup', ['target', 'add', triple], { stdio: 'inherit' })
+    args.push('--target', triple)
+  }
+  execFileSync('cargo', args, { stdio: 'inherit', env: { ...process.env, PKG_CONFIG_ALLOW_CROSS: '1' } })
+  return join(dirname(manifest), 'target', ...(cross ? [triple] : []), 'release')
+}
+
+function place(src, destDir, destName) {
+  mkdirSync(destDir, { recursive: true })
+  copyFileSync(src, join(destDir, destName))
+  console.log(`[build-native] ${destName} <- ${src}`)
+}
+
+const cryptoOut = cargoBuild(join(root, 'native', 'livi-helperd', 'Cargo.toml'), 'livi-crypto-node')
+place(
+  join(cryptoOut, dylib('livi_crypto_node')),
+  join(root, 'native', 'crypto', 'build', 'Release'),
+  'livi_crypto.node'
+)
+
+if (only !== 'crypto') {
+  const gstManifest = join(root, 'native', 'gst-video', 'rust', 'Cargo.toml')
+  const gstDest = join(root, 'native', 'gst-video', 'build', 'Release')
+  const addonOut = cargoBuild(gstManifest, 'gst-video-addon')
+  place(join(addonOut, dylib('gst_video_addon')), gstDest, 'gst_video.node')
+  if (process.platform === 'linux') {
+    const hostOut = cargoBuild(gstManifest, 'gst-video-host')
+    place(join(hostOut, 'livi-gst-host'), gstDest, 'livi-gst-host')
+  }
+}

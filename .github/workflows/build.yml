@@ -213,7 +213,8 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             native/livi-helperd/target
-          key: cargo-linux-x64-${{ hashFiles('native/livi-helperd/**/Cargo.toml') }}
+            native/gst-video/rust/target
+          key: cargo-linux-x64-${{ hashFiles('native/livi-helperd/**/Cargo.toml', 'native/gst-video/rust/**/Cargo.toml') }}
           restore-keys: cargo-linux-x64-
 
       - name: Install deps (pnpm) [linux-x64]
@@ -226,8 +227,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ELECTRON_VERSION=$(node -p "require('./node_modules/electron/package.json').version")
-          npx --yes node-gyp install --target="$ELECTRON_VERSION" --dist-url=https://artifacts.electronjs.org/headers/dist
           pnpm run typecheck
           rm -rf dist
           pnpm run build:linux:x64
@@ -268,7 +267,8 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             native/livi-helperd/target
-          key: cargo-linux-arm64-${{ hashFiles('native/livi-helperd/**/Cargo.toml') }}
+            native/gst-video/rust/target
+          key: cargo-linux-arm64-${{ hashFiles('native/livi-helperd/**/Cargo.toml', 'native/gst-video/rust/**/Cargo.toml') }}
           restore-keys: cargo-linux-arm64-
 
       - name: Install deps (pnpm) [linux-arm64]
@@ -280,8 +280,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ELECTRON_VERSION=$(node -p "require('./node_modules/electron/package.json').version")
-          npx --yes node-gyp install --target="$ELECTRON_VERSION" --dist-url=https://artifacts.electronjs.org/headers/dist
           pnpm run typecheck
           rm -rf dist
           pnpm run build:linux:arm64
@@ -367,7 +365,8 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             native/livi-helperd/target
-          key: cargo-macos-${{ matrix.arch }}-${{ hashFiles('native/livi-helperd/**/Cargo.toml') }}
+            native/gst-video/rust/target
+          key: cargo-macos-${{ matrix.arch }}-${{ hashFiles('native/livi-helperd/**/Cargo.toml', 'native/gst-video/rust/**/Cargo.toml') }}
           restore-keys: cargo-macos-${{ matrix.arch }}-
 
       - name: Build for macOS (arm64 native, x64 cross-compiled)
@@ -375,8 +374,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ELECTRON_VERSION=$(node -p "require('./node_modules/electron/package.json').version")
-          npx --yes node-gyp install --target="$ELECTRON_VERSION" --dist-url=https://artifacts.electronjs.org/headers/dist
           pnpm run typecheck
           if [ "${{ matrix.arch }}" = "x64" ]; then
             npx --yes electron-builder install-app-deps --arch=x64

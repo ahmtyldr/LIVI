@@ -295,10 +295,10 @@ After this, the app will launch normally and future updates will work without ad
 Make sure the following packages and tools are installed on your system before building. The lists below cover both building and running, including everything native CarPlay needs:
 
 - **Node.js 24.x** (with `corepack` for `pnpm`)
-- **Rust** (stable, ≥ 1.88 — via [rustup](https://rustup.rs)
-- **Python 3.x** (build tooling only: `node-gyp` still ships gyp as a Python program, and `meson` is installed from pip — LIVI itself runs no Python)
+- **Rust** (stable, ≥ 1.88 — via [rustup](https://rustup.rs)): builds `livi-helperd` and all native addons (`livi-crypto`, `gst-video`, `livi-gst-host`)
+- **Python 3.x** (Linux build tooling only: the wlroots compositor is built with `meson`, a Python tool installed from pip — LIVI itself runs no Python, and the Node addons build without it)
 - **build-essential** (Linux: includes `gcc`, `g++`, `make`, etc.)
-- **libgstreamer1.0-dev** + **libgstreamer-plugins-base1.0-dev** (required to build the `gst-video` addon)
+- **libgstreamer1.0-dev** + **libgstreamer-plugins-base1.0-dev** (required to build the `gst-video` addon and the `livi-gst-host` binary)
 - **meson** (≥ 1.4), **ninja**, **pkg-config**, **bison**, **cmake** and the wlroots/EGL stack: **libwayland-dev**, **wayland-protocols**, **libxkbcommon-dev** (≥ 1.8.0), **libpixman-1-dev**, **libcairo2-dev**, **libegl-dev** / **libgles-dev** / **libgbm-dev** / **libffi-dev** / **libexpat1-dev** (Linux only: to build the embedded wlroots compositor)
 - **fuse3** (required to run AppImages)
 - runtime packages for native CarPlay and wireless Android Auto: **bluez**, **libspa-0.2-bluetooth**, **hostapd**, **dnsmasq-base**, **iw**, **rfkill**, **avahi-daemon**, **avahi-utils**, **pulseaudio-utils**
@@ -307,7 +307,7 @@ On Debian/Ubuntu/Raspberry Pi OS, install everything with:
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y git build-essential python3 python3-dev python3-pip \
+sudo apt-get install -y git build-essential python3 python3-pip \
   pkg-config bison ninja-build cmake \
   libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
   libegl-dev libgles-dev libgbm-dev libffi-dev libexpat1-dev \
@@ -327,7 +327,7 @@ i2c and gpio character devices, so no extra package is needed for either.
 On Fedora, install everything with:
 
 ```bash
-sudo dnf install -y git gcc gcc-c++ make python3 python3-devel \
+sudo dnf install -y git gcc gcc-c++ make python3 python3-pip \
   pkgconf-pkg-config systemd-devel \
   gstreamer1-devel gstreamer1-plugins-base-devel \
   meson ninja-build bison cmake \
@@ -348,8 +348,9 @@ Fedora has no `rfkill` package, the command comes with `util-linux`. `libspa-0.2
 On macOS, the `gst-video` addon links against the **GStreamer.framework**. Install
 both the runtime and development packages (matching versions) from
 [gstreamer.freedesktop.org](https://gstreamer.freedesktop.org/download/#macos)
-before building. `node-gyp` discovers it via `pkg-config` under
-`/Library/Frameworks/GStreamer.framework`.
+before building. The cargo build discovers it via `pkg-config` under
+`/Library/Frameworks/GStreamer.framework`; besides that, macOS needs only
+Node.js, pnpm and Rust.
 
 ### Clone & Build
 

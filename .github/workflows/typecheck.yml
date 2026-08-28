@@ -83,7 +83,7 @@ jobs:
           cargo test --workspace
 
       - name: Build native crypto addon (cargo)
-        run: node scripts/build-crypto-node.mjs
+        run: node scripts/build-native.mjs --only=crypto
 
       - name: Run Biome checks
         run: pnpm run lint:check
