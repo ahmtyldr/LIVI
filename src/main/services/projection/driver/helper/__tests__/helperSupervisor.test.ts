@@ -1,6 +1,6 @@
 import { execFileSync, spawn } from 'node:child_process'
 import { EventEmitter } from 'node:events'
-import { chmodSync, copyFileSync, existsSync, mkdirSync, statSync } from 'node:fs'
+import { chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync, statSync } from 'node:fs'
 import type { Mock } from 'vitest'
 
 vi.mock('node:child_process', () => ({ spawn: vi.fn(), execFileSync: vi.fn(() => '') }))
@@ -10,6 +10,7 @@ vi.mock('node:fs', () => {
     copyFileSync: vi.fn(),
     existsSync: vi.fn(() => false),
     mkdirSync: vi.fn(),
+    readFileSync: vi.fn(() => Buffer.from('x')),
     statSync: vi.fn(() => ({ size: 0 }))
   }
   return { ...__m, default: __m }
@@ -29,6 +30,7 @@ vi.mock('../../cp/stack/identity', () => ({
 const mockedSpawn = spawn as Mock
 const mockedExists = existsSync as Mock
 const mockedStat = statSync as Mock
+const mockedRead = readFileSync as Mock
 const mockedMkdir = mkdirSync as Mock
 const mockedCopy = copyFileSync as Mock
 const mockedChmod = chmodSync as Mock
@@ -64,6 +66,7 @@ function fakeFs(present: string[], sizes: Record<string, number> = {}): void {
   const files = new Set(present)
   mockedExists.mockImplementation((p: string) => files.has(String(p)))
   mockedStat.mockImplementation((p: string) => ({ size: sizes[String(p)] ?? 4096 }))
+  mockedRead.mockImplementation((p: string) => Buffer.from(`c${sizes[String(p)] ?? 4096}`))
   mockedCopy.mockImplementation((_src: string, dest: string) => {
     files.add(String(dest))
   })
@@ -89,6 +92,8 @@ beforeEach(() => {
   mockedExists.mockReturnValue(false)
   mockedStat.mockReset()
   mockedStat.mockReturnValue({ size: 0 })
+  mockedRead.mockReset()
+  mockedRead.mockReturnValue(Buffer.from('x'))
   mockedMkdir.mockReset()
   mockedCopy.mockReset()
   mockedChmod.mockReset()
@@ -223,13 +228,13 @@ describe('helper root resolution', () => {
     expect(String(mockedSpawn.mock.calls[0][1][2])).toBe('/data/driver/livi-helperd')
     expect(mockedSpawn.mock.calls[0][2].cwd).toBe('/data/driver')
 
-    // A staged copy of the same size is reused instead of copied again.
+    // A staged copy with identical content is reused instead of copied again.
     mockedCopy.mockClear()
     new HelperSupervisor().start(CONFIG)
     expect(mockedCopy).not.toHaveBeenCalled()
   })
 
-  test('re-stages when the staged copy has a different size', async () => {
+  test('re-stages when the staged copy has different content', async () => {
     ;(process as { resourcesPath?: string }).resourcesPath = '/x/.mount_abc/res'
     fakeFs(['/x/.mount_abc/res/driver/livi-helperd', '/data/driver/livi-helperd'], {
       '/x/.mount_abc/res/driver/livi-helperd': 4096,
@@ -247,10 +252,10 @@ describe('helper root resolution', () => {
 
   test('falls back to the mount path when staging throws', async () => {
     ;(process as { resourcesPath?: string }).resourcesPath = '/y/.mount_z/res'
-    mockedExists.mockImplementation(
-      (p: string) => String(p) === '/y/.mount_z/res/driver/livi-helperd'
+    mockedExists.mockImplementation((p: string) =>
+      ['/y/.mount_z/res/driver/livi-helperd', '/data/driver/livi-helperd'].includes(String(p))
     )
-    mockedStat.mockImplementation(() => {
+    mockedRead.mockImplementation(() => {
       throw new Error('unreadable')
     })
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
@@ -300,10 +305,10 @@ describe('helper root resolution', () => {
 
   test('quietly falls back when staging throws outside debug builds', async () => {
     ;(process as { resourcesPath?: string }).resourcesPath = '/y/.mount_z/res'
-    mockedExists.mockImplementation(
-      (p: string) => String(p) === '/y/.mount_z/res/driver/livi-helperd'
+    mockedExists.mockImplementation((p: string) =>
+      ['/y/.mount_z/res/driver/livi-helperd', '/data/driver/livi-helperd'].includes(String(p))
     )
-    mockedStat.mockImplementation(() => {
+    mockedRead.mockImplementation(() => {
       throw new Error('unreadable')
     })
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})

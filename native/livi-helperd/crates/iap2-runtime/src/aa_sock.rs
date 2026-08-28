@@ -10,7 +10,8 @@ use zbus::Connection;
 
 pub const SOCK_PATH: &str = "/tmp/aa-bt.sock";
 
-const HSP_AG_UUID: &str = "00001112-0000-1000-8000-00805f9b34fb";
+// Default wake/profile target: the phone's HFP AG.
+const WAKE_UUID: &str = "0000111f-0000-1000-8000-00805f9b34fb";
 
 pub struct AaSockDeps {
     pub adapter: String,
@@ -69,7 +70,14 @@ async fn handle(
                 Some((m, u)) => (m, Some(u)),
                 None => (arg, None),
             };
-            action(device_call(&bus, &deps.adapter, mac, "ConnectProfile", uuid.or(Some(HSP_AG_UUID))).await)
+            action(device_call(&bus, &deps.adapter, mac, "ConnectProfile", uuid.or(Some(WAKE_UUID))).await)
+        }
+        "disconnect-profile" => {
+            let (mac, uuid) = match arg.split_once(' ') {
+                Some((m, u)) => (m, Some(u)),
+                None => (arg, None),
+            };
+            action(device_call(&bus, &deps.adapter, mac, "DisconnectProfile", uuid.or(Some(WAKE_UUID))).await)
         }
         "connect-full" => action(device_call(&bus, &deps.adapter, arg, "Connect", None).await),
         "disconnect" => action(device_call(&bus, &deps.adapter, arg, "Disconnect", None).await),
@@ -154,7 +162,8 @@ fn ok_json() -> String {
 }
 
 fn err_json(msg: &str) -> String {
-    format!("{{\"ok\":false,\"error\":\"{}\"}}", msg.replace('"', "'"))
+    let clean = msg.replace(['"', '\n', '\r'], " ");
+    format!("{{\"ok\":false,\"error\":\"{}\"}}", clean.trim())
 }
 
 fn action(result: Result<(), String>) -> String {

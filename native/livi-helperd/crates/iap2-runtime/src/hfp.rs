@@ -3,8 +3,9 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
-// Bit 2 CLI, bit 3 voice recognition, bit 4 remote volume, bit 7 codec negotiation.
-pub const HF_FEATURES: u32 = (1 << 2) | (1 << 3) | (1 << 4) | (1 << 7);
+// Bit 2 CLI, bit 3 voice recognition, bit 4 remote volume. No codec negotiation:
+// the AG then defaults to CVSD and SCO carries raw PCM s16le 8kHz.
+pub const HF_FEATURES: u32 = (1 << 2) | (1 << 3) | (1 << 4);
 
 const OK: &str = "\r\nOK\r";
 
@@ -18,6 +19,9 @@ pub struct Slc {
     sent_cind_read: bool,
     sent_cmer: bool,
     established: bool,
+    post: Vec<&'static str>,
+    indicators: Vec<String>,
+    pub battchg: Option<u8>, /// battchg 0-5, updated by +CIND? and +CIEV
 }
 
 impl Slc {
@@ -43,6 +47,9 @@ impl Slc {
         }
         if line == "OK" {
             if self.established {
+                if !self.post.is_empty() {
+                    return vec![self.post.remove(0).into()];
+                }
                 return vec![];
             }
             let both_codec_neg =
@@ -63,13 +70,44 @@ impl Slc {
                 self.sent_cmer = true;
                 return vec!["AT+CMER=3,0,0,1\r".into()];
             }
-            if self.sent_cmer {
+            if self.sent_cmer && !self.established {
                 self.established = true;
                 println!("[hfp] SLC established");
+                // Android drops a silent HF after ~12s; the post-SLC dialogue
+                // (same sequence PipeWire used) keeps the link alive.
+                self.post = vec![
+                    "AT+CLIP=1\r",
+                    "AT+CCWA=1\r",
+                    "AT+CMEE=1\r",
+                    "AT+CLCC\r",
+                    "AT+VGS=12\r",
+                    "AT+VGM=12\r",
+                ];
+                return vec![self.post.remove(0).into()];
             }
             return vec![];
         }
-        if line.starts_with("+CIND:") || line == "ERROR" {
+        if let Some(v) = line.strip_prefix("+CIND:") {
+            let v = v.trim();
+            if v.starts_with('(') {
+                // Test response: ("call",(0,1)),... — capture the order.
+                self.indicators = v
+                    .split('"')
+                    .skip(1)
+                    .step_by(2)
+                    .map(str::to_string)
+                    .collect();
+            } else {
+                // Read response: current values in the captured order.
+                for (i, val) in v.split(',').enumerate() {
+                    if self.indicators.get(i).map(String::as_str) == Some("battchg") {
+                        self.battchg = val.trim().parse().ok();
+                    }
+                }
+            }
+            return vec![];
+        }
+        if line == "ERROR" {
             return vec![];
         }
 
@@ -107,7 +145,17 @@ impl Slc {
             }
             return vec![OK.into()];
         }
-        if line.starts_with("+CIEV:") || line == "RING" || line.starts_with("+CLIP:") {
+        if let Some(v) = line.strip_prefix("+CIEV:") {
+            let mut it = v.trim().split(',');
+            let idx: usize = it.next().and_then(|s| s.trim().parse().ok()).unwrap_or(0);
+            let val: u8 = it.next().and_then(|s| s.trim().parse().ok()).unwrap_or(0);
+            // +CIEV indices are 1-based over the +CIND=? order.
+            if idx >= 1 && self.indicators.get(idx - 1).map(String::as_str) == Some("battchg") {
+                self.battchg = Some(val);
+            }
+            return vec![];
+        }
+        if line == "RING" || line.starts_with("+CLIP:") {
             return vec![];
         }
         // Everything else the phone asks gets acknowledged: AT+CMER=, AT+BIND=, AT+BAC=,
@@ -126,9 +174,9 @@ pub struct Hfp {
 #[derive(Default)]
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 struct HfpInner {
-    last_attempt: Mutex<Option<std::time::Instant>>,
-    cache: Mutex<std::collections::HashMap<String, u8>>,
     established: AtomicBool,
+    owned_elsewhere: AtomicBool,
+    events: Mutex<Option<crate::livi_sock::Broadcaster>>,
 }
 
 impl Hfp {
@@ -136,97 +184,47 @@ impl Hfp {
         self.inner.established.load(Ordering::SeqCst)
     }
 
-    #[cfg(target_os = "linux")]
-    pub fn trigger(&self, mac: &str) {
-        const COOLDOWN: std::time::Duration = std::time::Duration::from_secs(8);
-        {
-            let mut last = self.inner.last_attempt.lock().unwrap();
-            if last.is_some_and(|t| t.elapsed() < COOLDOWN) {
-                return;
-            }
-            *last = Some(std::time::Instant::now());
-        }
-        let inner = self.inner.clone();
-        let mac = mac.to_string();
-        tokio::task::spawn_blocking(move || linux::probe(&inner, &mac));
+    /// The audio daemon holds the HF profile (incl. SCO)
+    pub fn set_owned_elsewhere(&self) {
+        self.inner.owned_elsewhere.store(true, Ordering::SeqCst);
     }
+
+    /// Event sink for SLC state and battery updates.
+    pub fn set_events(&self, events: crate::livi_sock::Broadcaster) {
+        *self.inner.events.lock().unwrap() = Some(events);
+    }
+
+    /// Channel probing is retired: LIVI's keeper connects via the registered
+    /// profile (ConnectProfile), incoming SLCs land in accept().
+    #[cfg(target_os = "linux")]
+    pub fn trigger(&self, _mac: &str) {}
 
     /// Incoming Profile1 connection: the AG connected to us, run the SLC on its fd.
     #[cfg(target_os = "linux")]
-    pub fn accept(&self, fd: std::os::fd::OwnedFd) {
+    pub fn accept(&self, fd: std::os::fd::OwnedFd, mac: String) {
         let inner = self.inner.clone();
-        tokio::task::spawn_blocking(move || linux::slc_loop(&inner, fd, Vec::new(), true));
+        tokio::task::spawn_blocking(move || linux::slc_loop(&inner, fd, Vec::new(), true, &mac));
     }
 }
 
 #[cfg(target_os = "linux")]
 mod linux {
-    use super::{HfpInner, Slc, HF_FEATURES};
-    use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
+    use super::{HfpInner, Slc};
+    use std::os::fd::{AsRawFd, OwnedFd};
     use std::sync::atomic::Ordering;
     use std::time::Duration;
 
-    const BTPROTO_RFCOMM: libc::c_int = 3;
-    const CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
-    const PROBE_TIMEOUT: Duration = Duration::from_secs(3);
     const AT_TIMEOUT: Duration = Duration::from_secs(300);
 
-    #[repr(C)]
-    struct SockaddrRc {
-        rc_family: libc::sa_family_t,
-        rc_bdaddr: [u8; 6],
-        rc_channel: u8,
-    }
-
-    pub fn probe(inner: &HfpInner, mac: &str) {
-        let cached = inner.cache.lock().unwrap().get(mac).copied();
-        let mut candidates: Vec<u8> = Vec::new();
-        candidates.extend(cached);
-        candidates.extend((1..16).filter(|c| Some(*c) != cached));
-        println!("[hfp] probing {} channels for HFP AG on {mac}", candidates.len());
-
-        for ch in candidates {
-            let fd = match rfcomm_connect(mac, ch) {
-                Ok(fd) => fd,
-                Err(e) if e.raw_os_error() == Some(libc::ECONNREFUSED) => continue,
-                Err(e) if e.raw_os_error() == Some(libc::EBUSY) && Some(ch) == cached => {
-                    println!("[hfp] ch={ch} busy (SLC already active)");
-                    return;
-                }
-                Err(e) => {
-                    println!("[hfp] ch={ch} error: {e}");
-                    continue;
-                }
-            };
-
-            let probe = format!("AT+BRSF={HF_FEATURES}\r");
-            if write_all(&fd, probe.as_bytes()).is_err() || !readable(&fd, PROBE_TIMEOUT) {
-                continue;
-            }
-            let mut buf = [0u8; 1024];
-            let n = unsafe { libc::read(fd.as_raw_fd(), buf.as_mut_ptr().cast(), buf.len()) };
-            if n <= 0 {
-                continue;
-            }
-            let initial = buf[..n as usize].to_vec();
-            if !initial.windows(5).any(|w| w == b"+BRSF") {
-                continue;
-            }
-
-            inner.cache.lock().unwrap().insert(mac.to_string(), ch);
-            println!("[hfp] ch={ch} HFP AG confirmed, starting SLC");
-            slc_loop(inner, fd, initial, false);
-            return;
-        }
-        println!("[hfp] channels 1-15 exhausted for {mac} — HFP AG not found");
-    }
-
-    /// Blocking AT loop until the peer hangs up or stays silent past AT_TIMEOUT.
-    pub fn slc_loop(inner: &HfpInner, fd: OwnedFd, initial: Vec<u8>, send_hello: bool) {
+    /// Blocking AT loop until the peer hangs up. AT_TIMEOUT applies only while the SLC
+    /// is still negotiating. An established SLC is silent by design.
+    pub fn slc_loop(inner: &HfpInner, fd: OwnedFd, initial: Vec<u8>, send_hello: bool, mac: &str) {
         let mut slc = Slc::default();
         if send_hello && write_all(&fd, Slc::hello().as_bytes()).is_err() {
             return;
         }
+        let mut was_up = false;
+        let mut last_batt: Option<u8> = None;
         let mut buf = initial;
         loop {
             while let Some(pos) = buf.iter().position(|b| *b == b'\r') {
@@ -234,79 +232,53 @@ mod linux {
                 let line = String::from_utf8_lossy(&line[..line.len() - 1]).to_string();
                 for out in slc.on_line(&line) {
                     if write_all(&fd, out.as_bytes()).is_err() {
-                        return finish(inner);
+                        return finish(inner, mac, was_up);
                     }
                 }
-                if slc.established() {
+                if slc.established() && !was_up {
+                    was_up = true;
                     inner.established.store(true, Ordering::SeqCst);
+                    emit(inner, &format!("{{\"event\":\"hfp\",\"up\":true,\"mac\":\"{mac}\"}}"));
+                }
+                if slc.battchg != last_batt {
+                    last_batt = slc.battchg;
+                    if let Some(b) = slc.battchg {
+                        let pct = u32::from(b.min(5)) * 20;
+                        emit(inner, &format!("{{\"event\":\"phone-battery\",\"mac\":\"{mac}\",\"pct\":{pct}}}"));
+                    }
                 }
             }
-            if !readable(&fd, AT_TIMEOUT) {
-                println!("[hfp] AT timeout — disconnecting");
-                return finish(inner);
+            while !readable(&fd, AT_TIMEOUT) {
+                if hung_up(&fd) {
+                    println!("[hfp] peer closed");
+                    return finish(inner, mac, was_up);
+                }
+                if !slc.established() {
+                    println!("[hfp] AT timeout during SLC setup — disconnecting");
+                    return finish(inner, mac, was_up);
+                }
             }
             let mut chunk = [0u8; 1024];
             let n = unsafe { libc::read(fd.as_raw_fd(), chunk.as_mut_ptr().cast(), chunk.len()) };
             if n <= 0 {
                 println!("[hfp] disconnected");
-                return finish(inner);
+                return finish(inner, mac, was_up);
             }
             buf.extend_from_slice(&chunk[..n as usize]);
         }
     }
 
-    fn finish(inner: &HfpInner) {
-        inner.established.store(false, Ordering::SeqCst);
+    fn emit(inner: &HfpInner, line: &str) {
+        if let Some(ev) = inner.events.lock().unwrap().as_ref() {
+            ev.push_json(line.to_string());
+        }
     }
 
-    fn rfcomm_connect(mac: &str, channel: u8) -> std::io::Result<OwnedFd> {
-        let mut bdaddr = [0u8; 6];
-        for (i, part) in mac.split(':').enumerate().take(6) {
-            // sockaddr_rc carries the address little-endian, reversed from the string.
-            bdaddr[5 - i] = u8::from_str_radix(part, 16).unwrap_or(0);
+    fn finish(inner: &HfpInner, mac: &str, was_up: bool) {
+        inner.established.store(false, Ordering::SeqCst);
+        if was_up {
+            emit(inner, &format!("{{\"event\":\"hfp\",\"up\":false,\"mac\":\"{mac}\"}}"));
         }
-        let raw = unsafe { libc::socket(libc::AF_BLUETOOTH, libc::SOCK_STREAM | libc::SOCK_NONBLOCK, BTPROTO_RFCOMM) };
-        if raw < 0 {
-            return Err(std::io::Error::last_os_error());
-        }
-        let fd = unsafe { OwnedFd::from_raw_fd(raw) };
-        let addr = SockaddrRc { rc_family: libc::AF_BLUETOOTH as libc::sa_family_t, rc_bdaddr: bdaddr, rc_channel: channel };
-        let rc = unsafe {
-            libc::connect(
-                fd.as_raw_fd(),
-                std::ptr::addr_of!(addr).cast(),
-                std::mem::size_of::<SockaddrRc>() as libc::socklen_t,
-            )
-        };
-        if rc != 0 {
-            let err = std::io::Error::last_os_error();
-            if err.raw_os_error() != Some(libc::EINPROGRESS) {
-                return Err(err);
-            }
-            if !writable(&fd, CONNECT_TIMEOUT) {
-                return Err(std::io::ErrorKind::TimedOut.into());
-            }
-            let mut so_err: libc::c_int = 0;
-            let mut len = std::mem::size_of::<libc::c_int>() as libc::socklen_t;
-            unsafe {
-                libc::getsockopt(
-                    fd.as_raw_fd(),
-                    libc::SOL_SOCKET,
-                    libc::SO_ERROR,
-                    std::ptr::addr_of_mut!(so_err).cast(),
-                    &mut len,
-                );
-            }
-            if so_err != 0 {
-                return Err(std::io::Error::from_raw_os_error(so_err));
-            }
-        }
-        // Back to blocking for the AT loop.
-        unsafe {
-            let fl = libc::fcntl(fd.as_raw_fd(), libc::F_GETFL);
-            libc::fcntl(fd.as_raw_fd(), libc::F_SETFL, fl & !libc::O_NONBLOCK);
-        }
-        Ok(fd)
     }
 
     fn poll(fd: &OwnedFd, events: libc::c_short, timeout: Duration) -> bool {
@@ -319,8 +291,10 @@ mod linux {
         poll(fd, libc::POLLIN, timeout)
     }
 
-    fn writable(fd: &OwnedFd, timeout: Duration) -> bool {
-        poll(fd, libc::POLLOUT, timeout)
+    fn hung_up(fd: &OwnedFd) -> bool {
+        let mut pfd = libc::pollfd { fd: fd.as_raw_fd(), events: libc::POLLIN, revents: 0 };
+        let rc = unsafe { libc::poll(&mut pfd, 1, 0) };
+        rc > 0 && pfd.revents & (libc::POLLHUP | libc::POLLERR) != 0
     }
 
     fn write_all(fd: &OwnedFd, mut data: &[u8]) -> std::io::Result<()> {
@@ -344,26 +318,28 @@ mod tests {
     }
 
     #[test]
-    fn slc_with_codec_negotiation() {
+    fn slc_walks_to_established_and_tracks_battchg() {
         let mut slc = Slc::default();
         assert_eq!(Slc::hello(), format!("AT+BRSF={HF_FEATURES}\r"));
         assert!(drive(&mut slc, "+BRSF:4095").is_empty());
-        assert_eq!(drive(&mut slc, "OK"), vec!["AT+BAC=1,2\r"]);
+        // No codec negotiation offered — straight to the indicator dance.
         assert_eq!(drive(&mut slc, "OK"), vec!["AT+CIND=?\r"]);
-        assert!(drive(&mut slc, "+CIND: (\"service\",(0,1))").is_empty());
+        assert!(drive(&mut slc, "+CIND: (\"call\",(0,1)),(\"battchg\",(0-5))").is_empty());
         assert_eq!(drive(&mut slc, "OK"), vec!["AT+CIND?\r"]);
-        assert!(drive(&mut slc, "+CIND: 1,0,0,0,5,0,5").is_empty());
+        assert!(drive(&mut slc, "+CIND: 0,4").is_empty());
+        assert_eq!(slc.battchg, Some(4));
         assert_eq!(drive(&mut slc, "OK"), vec!["AT+CMER=3,0,0,1\r"]);
         assert!(!slc.established());
-        assert!(drive(&mut slc, "OK").is_empty());
+        assert_eq!(drive(&mut slc, "OK"), vec!["AT+CLIP=1\r"]);
         assert!(slc.established());
-    }
-
-    #[test]
-    fn slc_without_codec_negotiation() {
-        let mut slc = Slc::default();
-        drive(&mut slc, "+BRSF:256");
-        assert_eq!(drive(&mut slc, "OK"), vec!["AT+CIND=?\r"]);
+        assert_eq!(drive(&mut slc, "OK"), vec!["AT+CCWA=1\r"]);
+        assert_eq!(drive(&mut slc, "OK"), vec!["AT+CMEE=1\r"]);
+        assert_eq!(drive(&mut slc, "OK"), vec!["AT+CLCC\r"]);
+        assert_eq!(drive(&mut slc, "OK"), vec!["AT+VGS=12\r"]);
+        assert_eq!(drive(&mut slc, "OK"), vec!["AT+VGM=12\r"]);
+        assert!(drive(&mut slc, "OK").is_empty());
+        assert!(drive(&mut slc, "+CIEV: 2,3").is_empty());
+        assert_eq!(slc.battchg, Some(3));
     }
 
     #[test]

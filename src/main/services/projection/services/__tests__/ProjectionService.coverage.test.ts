@@ -20,10 +20,19 @@ const bluezMock = {
   connect: vi.fn(async (_mac: string) => ({ ok: true })),
   connectFull: vi.fn(async (_mac: string) => ({ ok: true })),
   disconnect: vi.fn(async (_mac: string) => ({ ok: true })),
+  disconnectProfile: vi.fn(async (_mac: string, _uuid: string) => ({ ok: true })),
+  setPlaybackStatus: vi.fn(async () => ({ ok: true })),
   deauthApClients: vi.fn(async () => undefined),
   setWiredPhones: vi.fn(async () => undefined),
   subscribe: vi.fn(() => ({ close: vi.fn() }))
 }
+
+const execFileMock = vi.hoisted(() =>
+  vi.fn((_c: string, _a: string[], _o: unknown, cb: (e: unknown, out: string) => void) =>
+    cb(null, execFileMock.__out ?? '')
+  )
+) as unknown as { (...a: unknown[]): void; __out?: string }
+vi.mock('node:child_process', () => ({ execFile: execFileMock }))
 
 vi.mock('../../bt/BluezDeviceClient', () => ({
   BluezDeviceClient: vi.fn().mockImplementation(function () {
@@ -836,10 +845,10 @@ describe('ProjectionService audio handling', () => {
     expect(svc.aaPlaybackInferred).toBe(1)
 
     svc.handleAudioData({ command: 11, audioType: 1, decodeType: 1 })
-    expect(svc.aaPlaybackInferred).toBe(2)
+    expect(svc.aaPlaybackInferred).toBe(0)
 
     svc.handleAudioData({ command: 2, audioType: 1, decodeType: 1 })
-    expect(svc.aaPlaybackInferred).toBe(2)
+    expect(svc.aaPlaybackInferred).toBe(0)
 
     expect(svc.statusFile.applyAudioCommand).toHaveBeenCalled()
     expect(svc.mediaStore.patchAaPlayStatus).toHaveBeenCalled()
@@ -3650,5 +3659,316 @@ describe('ProjectionService last-mile coverage', () => {
     svc.onActiveSessionChanged(next, { index: 2 })
     expect(driver.requestKeyframe).toHaveBeenCalled()
     expect(svc.audio.resetForSessionStart).not.toHaveBeenCalled()
+  })
+})
+
+describe('HFP keeper, SCO and battery wiring', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  test('hfp/sco/phone-battery events drive keeper state, ScoAudio and the registry', () => {
+    const svc = makeSvc()
+    svc.aaBtActive = true
+    svc.webContents = { send: vi.fn() }
+    svc.deviceController.emitDevices = vi.fn()
+    svc.refreshBtPairedList = vi.fn(async () => 0)
+    let onEvent: any
+    bluezMock.subscribe.mockImplementationOnce((cb: any) => {
+      onEvent = cb
+      return { close: vi.fn() }
+    })
+    svc.openAaBtSubscription()
+    svc.scoAudio.start = vi.fn()
+    svc.scoAudio.stop = vi.fn()
+    const note = vi.spyOn(svc.deviceRegistry, 'noteStatus').mockImplementation(() => {})
+
+    onEvent({ event: 'hfp', up: true, mac: 'AA:BB:CC:DD:EE:FF' })
+    expect(svc.helperHfpUp).toBe(true)
+    expect(svc.hfpSlcUp.get('aa:bb:cc:dd:ee:ff')).toBe(true)
+
+    onEvent({ event: 'sco', up: true, mtu: 64 })
+    expect(svc.scoAudio.start).toHaveBeenCalled()
+    onEvent({ event: 'sco', up: false })
+    expect(svc.scoAudio.stop).toHaveBeenCalled()
+
+    onEvent({ event: 'phone-battery', mac: 'AA:BB:CC:DD:EE:FF', pct: 80 })
+    expect(note).toHaveBeenCalledWith({ btMac: 'AA:BB:CC:DD:EE:FF' }, { batteryLevel: 80 })
+
+    // A precise AA value demotes battchg to log-only.
+    svc.aaBatteryPrecise = true
+    note.mockClear()
+    onEvent({ event: 'phone-battery', mac: 'AA:BB:CC:DD:EE:FF', pct: 60 })
+    expect(note).not.toHaveBeenCalled()
+
+    onEvent({ event: 'hfp', up: false, mac: 'AA:BB:CC:DD:EE:FF' })
+    expect(svc.helperHfpUp).toBe(false)
+  })
+
+  test('watchPhoneHfp nudges a dead SLC once per cooldown', async () => {
+    const svc = makeSvc()
+    svc.aaBtMacByInstance.set('inst', 'AA:BB:CC:DD:EE:FF')
+    svc.helperHfpUp = false
+    svc.hfpScoActive = vi.fn(async () => false)
+    bluezMock.disconnectProfile.mockClear()
+    bluezMock.connect.mockClear()
+
+    await svc.watchPhoneHfp('aa:bb:cc:dd:ee:ff')
+    expect(bluezMock.disconnectProfile).toHaveBeenCalled()
+    expect(bluezMock.connect).toHaveBeenCalled()
+
+    bluezMock.connect.mockClear()
+    await svc.watchPhoneHfp('aa:bb:cc:dd:ee:ff')
+    expect(bluezMock.connect).not.toHaveBeenCalled()
+  })
+
+  test('watchPhoneHfp skips the nudge during SCO and drops unwanted keepers', async () => {
+    const svc = makeSvc()
+    svc.aaBtMacByInstance.set('inst', 'AA:BB:CC:DD:EE:FF')
+    svc.helperHfpUp = false
+    svc.hfpScoActive = vi.fn(async () => true)
+    bluezMock.connect.mockClear()
+    await svc.watchPhoneHfp('aa:bb:cc:dd:ee:ff')
+    expect(bluezMock.connect).not.toHaveBeenCalled()
+
+    const timer = setInterval(() => {}, 100000)
+    svc.hfpKeepers.set('11:22:33:44:55:66', timer)
+    await svc.watchPhoneHfp('11:22:33:44:55:66')
+    expect(svc.hfpKeepers.has('11:22:33:44:55:66')).toBe(false)
+  })
+
+  test('ensurePhoneHfp installs exactly one keeper per mac and an up SLC stays quiet', async () => {
+    const realPlatform = Object.getOwnPropertyDescriptor(process, 'platform')
+    Object.defineProperty(process, 'platform', { value: 'linux', configurable: true })
+    const svc = makeSvc()
+    svc.aaBtMacByInstance.set('inst', 'AA:BB:CC:DD:EE:FF')
+    svc.helperHfpUp = true
+    bluezMock.connect.mockClear()
+    svc.ensurePhoneHfp('AA:BB:CC:DD:EE:FF')
+    svc.ensurePhoneHfp('AA:BB:CC:DD:EE:FF')
+    expect(svc.hfpKeepers.size).toBe(1)
+    await new Promise((r) => setTimeout(r, 5))
+    expect(bluezMock.connect).not.toHaveBeenCalled()
+    for (const t of svc.hfpKeepers.values()) clearInterval(t)
+    if (realPlatform) Object.defineProperty(process, 'platform', realPlatform)
+  })
+
+  test('ensureAaPhoneHfp adopts the single connected phone when the aa-device event was lost', async () => {
+    const realPlatform = Object.getOwnPropertyDescriptor(process, 'platform')
+    Object.defineProperty(process, 'platform', { value: 'linux', configurable: true })
+    const svc = makeSvc()
+    svc.helperHfpUp = true
+    svc.webContents = { send: vi.fn() }
+    svc.deviceController.emitDevices = vi.fn()
+    svc.deviceRegistry.noteDevice = vi.fn()
+    svc.sessions.all = vi.fn(() => [
+      { protocol: 'androidauto', device: { instanceId: 'inst' } }
+    ]) as any
+    bluezMock.listPaired.mockResolvedValueOnce([
+      { mac: 'AA:BB:CC:DD:EE:FF', connected: true, class: 0x5a020c } as any
+    ])
+    svc.ensureAaPhoneHfp()
+    await new Promise((r) => setTimeout(r, 5))
+    expect(svc.aaBtMacByInstance.get('inst')).toBe('AA:BB:CC:DD:EE:FF')
+    expect(svc.deviceRegistry.noteDevice).toHaveBeenCalledWith(
+      expect.objectContaining({ btMac: 'AA:BB:CC:DD:EE:FF', protocol: 'androidauto' })
+    )
+    for (const t of svc.hfpKeepers.values()) clearInterval(t)
+    if (realPlatform) Object.defineProperty(process, 'platform', realPlatform)
+  })
+
+  test('ensureAaPhoneHfp uses the known mapping when present', () => {
+    const realPlatform = Object.getOwnPropertyDescriptor(process, 'platform')
+    Object.defineProperty(process, 'platform', { value: 'linux', configurable: true })
+    const svc = makeSvc()
+    svc.helperHfpUp = true
+    svc.aaBtMacByInstance.set('inst', 'AA:BB:CC:DD:EE:FF')
+    bluezMock.listPaired.mockClear()
+    svc.ensureAaPhoneHfp()
+    expect(bluezMock.listPaired).not.toHaveBeenCalled()
+    expect(svc.hfpKeepers.size).toBe(1)
+    for (const t of svc.hfpKeepers.values()) clearInterval(t)
+    if (realPlatform) Object.defineProperty(process, 'platform', realPlatform)
+  })
+
+  test('watchPhoneHfp keeps a keeper alive via a matching session and no-ops while up', async () => {
+    const svc = makeSvc()
+    // aaBtMacByInstance has no entry for this mac; a session keeps it wanted (1838).
+    svc.sessions.all = vi.fn(() => [{ protocol: 'androidauto', device: {} }]) as any
+    svc.helperHfpUp = true
+    bluezMock.connect.mockClear()
+    bluezMock.disconnectProfile.mockClear()
+    await svc.watchPhoneHfp('aa:bb:cc:dd:ee:ff')
+    // alive → returns before any nudge (1859).
+    expect(bluezMock.connect).not.toHaveBeenCalled()
+    expect(bluezMock.disconnectProfile).not.toHaveBeenCalled()
+    expect(svc.hfpKeepers.has('aa:bb:cc:dd:ee:ff')).toBe(false)
+  })
+
+  test('emitProjectionEvent tolerates a webContents whose send is gone', () => {
+    const svc = makeSvc()
+    const listener = vi.fn()
+    svc.onProjectionEvent(listener)
+    svc.webContents = { isDestroyed: () => false } // torn-down: no send
+    expect(() => svc.emitProjectionEvent({ type: 'devices', payload: [] })).not.toThrow()
+    expect(listener).toHaveBeenCalled()
+  })
+
+  test('hfpScoActive is true only when the phone SCO sink is listed', async () => {
+    const svc = makeSvc()
+    ;(execFileMock as { __out?: string }).__out = 'bluez_output.AA_BB_CC_DD_EE_FF.1\tmodule\ts16le'
+    await expect(svc.hfpScoActive('AA:BB:CC:DD:EE:FF')).resolves.toBe(true)
+    ;(execFileMock as { __out?: string }).__out = 'nothing here'
+    await expect(svc.hfpScoActive('AA:BB:CC:DD:EE:FF')).resolves.toBe(false)
+  })
+
+  test('watchPhoneHfp with no keeper and no interest just cleans up', async () => {
+    const svc = makeSvc()
+    svc.aaBtMacByInstance.clear()
+    svc.sessions.all = vi.fn(() => []) as any
+    await expect(svc.watchPhoneHfp('zz:zz:zz:zz:zz:zz')).resolves.toBeUndefined()
+    expect(svc.hfpKeepers.has('zz:zz:zz:zz:zz:zz')).toBe(false)
+  })
+
+  test('onAaPresence status without a session or ip uses empty ids', () => {
+    const svc = makeSvc()
+    svc.webContents = { send: vi.fn() }
+    svc.deviceController.emitDevices = vi.fn()
+    const note = vi.spyOn(svc.deviceRegistry, 'noteStatus').mockImplementation(() => {})
+    svc.sessions.byDriver = vi.fn(() => null) as any
+    svc.onAaPresence({} as any, { kind: 'status', batteryLevel: 42 })
+    expect(note).toHaveBeenCalledWith({}, expect.objectContaining({ batteryLevel: 42 }))
+    expect(svc.aaBatteryPrecise).toBe(true)
+  })
+
+  test('adoption skips sessions that already have a mac or lack an instance id', async () => {
+    const realPlatform = Object.getOwnPropertyDescriptor(process, 'platform')
+    Object.defineProperty(process, 'platform', { value: 'linux', configurable: true })
+    const svc = makeSvc()
+    svc.helperHfpUp = true
+    svc.webContents = { send: vi.fn() }
+    svc.deviceController.emitDevices = vi.fn()
+    const noteDevice = vi.spyOn(svc.deviceRegistry, 'noteDevice').mockImplementation(() => {})
+    svc.sessions.all = vi.fn(() => [
+      { protocol: 'carplay', device: { instanceId: 'x' } }, // wrong protocol → continue
+      { protocol: 'androidauto', device: { btMac: 'ZZ' } }, // already has mac → continue
+      { protocol: 'androidauto', device: {} } // no instanceId → adopt without map set
+    ]) as any
+    bluezMock.listPaired.mockResolvedValueOnce([
+      { mac: 'AA:BB:CC:DD:EE:FF', connected: true, class: 0x5a020c } as any
+    ])
+    svc.ensureAaPhoneHfp()
+    await new Promise((r) => setTimeout(r, 5))
+    expect(noteDevice).toHaveBeenCalledWith(
+      expect.objectContaining({ btMac: 'AA:BB:CC:DD:EE:FF', instanceId: undefined })
+    )
+    for (const t of svc.hfpKeepers.values()) clearInterval(t)
+    if (realPlatform) Object.defineProperty(process, 'platform', realPlatform)
+  })
+
+  test('adoption filter drops disconnected and non-phone devices', async () => {
+    const svc = makeSvc()
+    svc.helperHfpUp = true
+    svc.deviceRegistry.noteDevice = vi.fn()
+    svc.sessions.all = vi.fn(() => [{ protocol: 'androidauto', device: {} }]) as any
+    bluezMock.listPaired.mockResolvedValueOnce([
+      { mac: 'AA', connected: false, class: 0x5a020c } as any, // disconnected → filtered
+      { mac: 'BB', connected: true, class: 0x240404 } as any // not phone-like → filtered
+    ])
+    svc.ensureAaPhoneHfp()
+    await new Promise((r) => setTimeout(r, 5))
+    expect(svc.deviceRegistry.noteDevice).not.toHaveBeenCalled()
+  })
+
+  test('onAaPresence status falls back to the ip when no session matches', () => {
+    const svc = makeSvc()
+    svc.webContents = { send: vi.fn() }
+    svc.deviceController.emitDevices = vi.fn()
+    const note = vi.spyOn(svc.deviceRegistry, 'noteStatus').mockImplementation(() => {})
+    svc.sessions.byDriver = vi.fn(() => null) as any
+    svc.onAaPresence({} as any, { kind: 'status', ip: '10.0.0.5', signalStrength: 3 })
+    expect(note).toHaveBeenCalledWith({ ip: '10.0.0.5' }, expect.any(Object))
+  })
+
+  test('onAaPresence status uses the matched session device ids', () => {
+    const svc = makeSvc()
+    svc.webContents = { send: vi.fn() }
+    svc.deviceController.emitDevices = vi.fn()
+    const note = vi.spyOn(svc.deviceRegistry, 'noteStatus').mockImplementation(() => {})
+    svc.sessions.byDriver = vi.fn(() => ({ device: { btMac: 'AA:BB' } })) as any
+    svc.onAaPresence({} as any, { kind: 'status', batteryLevel: 10 })
+    expect(note).toHaveBeenCalledWith(
+      { btMac: 'AA:BB' },
+      expect.objectContaining({ batteryLevel: 10 })
+    )
+  })
+
+  test('adoption ignores a non-single phone set (nudges each, adopts none)', async () => {
+    const realPlatform = Object.getOwnPropertyDescriptor(process, 'platform')
+    Object.defineProperty(process, 'platform', { value: 'linux', configurable: true })
+    const svc = makeSvc()
+    svc.helperHfpUp = true
+    svc.deviceRegistry.noteDevice = vi.fn()
+    svc.ensurePhoneHfp = vi.fn()
+    svc.sessions.all = vi.fn(() => []) as any
+    // clearAllMocks does not drain the once-queue; reset it so this call is deterministic.
+    bluezMock.listPaired.mockReset()
+    bluezMock.listPaired.mockResolvedValueOnce([
+      { mac: 'AA', connected: true, class: 0x5a020c } as any,
+      { mac: 'BB', connected: true, class: 0x5a020c } as any
+    ])
+    bluezMock.listPaired.mockResolvedValue([] as any)
+    svc.ensureAaPhoneHfp()
+    await new Promise((r) => setTimeout(r, 5))
+    // phones.length !== 1 → no adoption, but every phone is still nudged.
+    expect(svc.deviceRegistry.noteDevice).not.toHaveBeenCalled()
+    expect(svc.ensurePhoneHfp).toHaveBeenCalledTimes(2)
+    if (realPlatform) Object.defineProperty(process, 'platform', realPlatform)
+  })
+
+  test('the keeper interval re-checks on tick and the nudge tolerates a connect rejection', async () => {
+    const realPlatform = Object.getOwnPropertyDescriptor(process, 'platform')
+    Object.defineProperty(process, 'platform', { value: 'linux', configurable: true })
+    vi.useFakeTimers()
+    const svc = makeSvc()
+    svc.aaBtMacByInstance.set('inst', 'AA:BB:CC:DD:EE:FF')
+    svc.helperHfpUp = false
+    svc.hfpScoActive = vi.fn(async () => false)
+    bluezMock.disconnectProfile.mockResolvedValue({ ok: true })
+    bluezMock.connect.mockRejectedValueOnce(new Error('no bus'))
+    svc.ensurePhoneHfp('AA:BB:CC:DD:EE:FF')
+    await vi.advanceTimersByTimeAsync(31000)
+    expect(bluezMock.connect).toHaveBeenCalled()
+    for (const t of svc.hfpKeepers.values()) clearInterval(t)
+    vi.useRealTimers()
+    if (realPlatform) Object.defineProperty(process, 'platform', realPlatform)
+  })
+
+  test('an hfp event without a mac only flips the helper flag', () => {
+    const svc = makeSvc()
+    svc.aaBtActive = true
+    svc.webContents = { send: vi.fn() }
+    svc.deviceController.emitDevices = vi.fn()
+    let onEvent: any
+    bluezMock.subscribe.mockImplementationOnce((cb: any) => {
+      onEvent = cb
+      return { close: vi.fn() }
+    })
+    svc.openAaBtSubscription()
+    onEvent({ event: 'hfp', up: true })
+    expect(svc.helperHfpUp).toBe(true)
+    onEvent({ event: 'phone-battery', pct: 50 }) // no mac → ignored
+  })
+
+  test('the ScoAudio deps bridge audio into the service and expose the mic device', () => {
+    const svc = makeSvc()
+    svc.handleAudioData = vi.fn()
+    svc.config.audioInputDevice = 'mic7'
+    const deps = svc.scoAudio.deps
+    deps.emitAudio({ any: 'msg' })
+    expect(svc.handleAudioData).toHaveBeenCalled()
+    expect(deps.getMicDevice()).toBe('mic7')
+    svc.config.audioInputDevice = ''
+    expect(deps.getMicDevice()).toBeUndefined()
   })
 })

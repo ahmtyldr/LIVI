@@ -143,11 +143,14 @@ export class ProjectionDriverManager {
   private onAaSpawn(session: AaSession): void {
     this.deps.onAaCreated?.(session)
     this.attachMetaListener(session)
-    session.on('connected', () => this.deps.onAaConnected(session))
+    session.on('connected', () => {
+      this.attachMetaListener(session)
+      this.deps.onAaConnected(session)
+    })
     session.on('device-presence', (p: Record<string, unknown>) =>
       this.deps.onAaPresence?.(session, p)
     )
-    session.once('disconnected', () => {
+    session.on('disconnected', () => {
       this.deps.onAaDisconnected(session)
       this.detachMetaListener(session)
       if (this.routed === session) this.route(this.dongle)

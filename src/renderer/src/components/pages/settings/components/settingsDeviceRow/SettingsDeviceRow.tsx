@@ -36,7 +36,8 @@ const BatteryIcon = ({ level, charging }: { level: number; charging?: boolean })
   const outline = theme.palette.text.secondary
   return (
     <span
-      title={`${pct}%${charging ? ' charging' : ''}`}
+      role="img"
+      aria-label={`${pct}%${charging ? ' charging' : ''}`}
       style={{
         position: 'relative',
         display: 'inline-flex',

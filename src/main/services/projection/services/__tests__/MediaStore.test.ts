@@ -69,6 +69,22 @@ describe('MediaStore', () => {
     )
     expect(onPlaybackStatus).toHaveBeenLastCalledWith('paused')
     expect(onPlaybackStatus).toHaveBeenCalledTimes(2)
+
+    // The AA bridge encodes paused as 0.
+    store.handle(
+      {} as IPhoneDriver,
+      session,
+      mkMsg({ type: MediaType.Data, media: { MediaPlayStatus: 1 } }),
+      true
+    )
+    store.handle(
+      {} as IPhoneDriver,
+      session,
+      mkMsg({ type: MediaType.Data, media: { MediaPlayStatus: 0 } }),
+      true
+    )
+    expect(onPlaybackStatus).toHaveBeenLastCalledWith('paused')
+    expect(onPlaybackStatus).toHaveBeenCalledTimes(4)
   })
 
   test('ignores messages without a payload', () => {

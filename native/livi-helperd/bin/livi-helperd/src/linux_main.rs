@@ -155,9 +155,11 @@ async fn serve() -> Result<(), Box<dyn std::error::Error>> {
                     port: env_or("LIVI_PORT", 5277u16),
                 };
                 let hfp = iap2_runtime::hfp::Hfp::default();
+                hfp.set_events(aa_events.clone());
                 if let Err(e) = bt::start_hfp(&conn, hfp.clone()).await {
                     eprintln!("[hfp] profile registration failed: {e}");
                 }
+                iap2_runtime::sco::serve(aa_events.clone());
                 if let Err(e) = bt::start_ble_ad(&conn, &adapter, &identity.name).await {
                     eprintln!("[aa] BLE advertisement failed: {e}");
                 }

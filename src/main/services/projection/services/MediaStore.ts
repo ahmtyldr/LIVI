@@ -9,7 +9,7 @@ import type { PersistedMediaPayload, ProjectionEvent } from './types'
 
 export type MediaStoreDeps = {
   emit: (payload: ProjectionEvent) => void
-  getPlaybackInferred: () => 1 | 2
+  getPlaybackInferred: () => 1 | 0
   getLastPhoneType: () => PhoneType | undefined
   /** Active session's play state, deduped — drives the AVRCP PlaybackStatus. */
   onPlaybackStatus?: (state: 'playing' | 'paused') => void
@@ -33,7 +33,8 @@ export class MediaStore {
     this.deps.emit({ type: 'media', payload: { payload: out } })
     const ps = payload.media?.MediaPlayStatus
     if (ps !== undefined) {
-      const state = ps === 2 ? 'paused' : 'playing'
+      // Canonical MediaPlayStatus: 1 = playing, anything else = paused.
+      const state = ps === 1 ? 'playing' : 'paused'
       if (state !== this.lastPlaybackStatus) {
         this.lastPlaybackStatus = state
         this.deps.onPlaybackStatus?.(state)
@@ -94,7 +95,7 @@ export class MediaStore {
     }
   }
 
-  patchAaPlayStatus(session: ProjectionSession | null, status: 1 | 2): void {
+  patchAaPlayStatus(session: ProjectionSession | null, status: 1 | 0): void {
     if (!session) return
     try {
       const existingPayload: PersistedMediaPayload =

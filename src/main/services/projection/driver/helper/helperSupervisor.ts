@@ -1,6 +1,7 @@
 import { type ChildProcess, execFileSync, spawn } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { EventEmitter } from 'node:events'
-import { chmodSync, copyFileSync, existsSync, mkdirSync, statSync } from 'node:fs'
+import { chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { DEBUG } from '@main/constants'
 import type { Config } from '@shared/types'
@@ -18,8 +19,8 @@ function isInsideAppImageMount(p: string): boolean {
 // binary from there. Copy it onto a real filesystem path that root can reach.
 function stageHelperBin(src: string): string {
   const dest = join(app.getPath('userData'), 'driver', HELPER_BIN)
-  const srcSize = statSync(src).size
-  if (!existsSync(dest) || statSync(dest).size !== srcSize) {
+  const digest = (p: string): string => createHash('sha256').update(readFileSync(p)).digest('hex')
+  if (!existsSync(dest) || digest(dest) !== digest(src)) {
     mkdirSync(dirname(dest), { recursive: true })
     copyFileSync(src, dest)
     chmodSync(dest, 0o755)

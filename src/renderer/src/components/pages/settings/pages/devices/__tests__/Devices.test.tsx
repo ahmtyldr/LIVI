@@ -98,7 +98,7 @@ describe('Devices', () => {
       'offline',
       'available'
     ])
-    expect(screen.getByTitle('50% charging')).toBeInTheDocument()
+    expect(screen.getByLabelText('50% charging')).toBeInTheDocument()
   })
 
   test('falls back to the id when neither name nor model is set', () => {

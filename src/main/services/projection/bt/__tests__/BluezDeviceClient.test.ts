@@ -84,6 +84,18 @@ describe('BluezDeviceClient.connect / disconnect / remove', () => {
     await expect(p).resolves.toEqual({ ok: true })
   })
 
+  test('disconnectProfile writes "disconnect-profile <mac> <uuid>"', async () => {
+    const { client, nextSocket } = makeClient()
+    const p = client.disconnectProfile('CC:DD', '0000111f-0000-1000-8000-00805f9b34fb', 500)
+    const sock = nextSocket()
+    sock.emit('connect')
+    expect(sock.write).toHaveBeenCalledWith(
+      'disconnect-profile CC:DD 0000111f-0000-1000-8000-00805f9b34fb\n'
+    )
+    sock.emit('data', Buffer.from(JSON.stringify({ ok: true }) + '\n'))
+    await expect(p).resolves.toEqual({ ok: true })
+  })
+
   test('remove writes "remove <mac>"', async () => {
     const { client, nextSocket } = makeClient()
     const p = client.remove('EE:FF', 500)

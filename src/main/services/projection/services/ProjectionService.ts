@@ -1,3 +1,4 @@
+import { execFile } from 'node:child_process'
 import { configEvents } from '@main/ipc/utils'
 import { SystemSound } from '@main/services/audio'
 import { broadcastToSecondaryRenderers } from '@main/window/broadcast'
@@ -65,10 +66,13 @@ import { DeviceRegistry, type DeviceView } from './DeviceRegistry'
 import { MediaStore } from './MediaStore'
 import { NavStore } from './NavStore'
 import { ProjectionAudio } from './ProjectionAudio'
+import { ScoAudio } from './ScoAudio'
 import { type ProjectionSession, SessionManager, type SessionTransport } from './SessionManager'
 import { type PendingStartupConnectTarget, type ProjectionEvent } from './types'
 import { isPhoneLikeCod } from './utils/isPhoneLikeCod'
 import { VideoPlaneManager } from './VideoPlaneManager'
+
+const HFP_AG_UUID = '0000111f-0000-1000-8000-00805f9b34fb'
 
 type Device = USBDevice
 
@@ -189,6 +193,16 @@ export class ProjectionService {
   })
   private aaBtSubscription: { close: () => void } | null = null
   private readonly aaBtMacByInstance = new Map<string, string>()
+  private readonly hfpKeepers = new Map<string, NodeJS.Timeout>()
+  private readonly hfpSlcUp = new Map<string, boolean>()
+  private helperHfpUp = false
+  /** True once the percent-precise AA battery status arrived; battchg then stays log-only. */
+  private aaBatteryPrecise = false
+  private readonly scoAudio = new ScoAudio({
+    emitAudio: (msg) => this.handleAudioData(msg),
+    getMicDevice: () => this.config.audioInputDevice || undefined
+  })
+  private readonly hfpNudgedAt = new Map<string, number>()
   private readonly aaSerialByInstance = new Map<string, string>()
   private audioMonitor: AudioDeviceMonitorHandle | null = null
   private readonly statusFile = new StatusFileWriter()
@@ -238,6 +252,41 @@ export class ProjectionService {
       this.sessions.upsert(session, 'androidauto', this.aaTransport(session), {})
     )
     this.onPhoneConnected(PhoneType.AndroidAuto)
+    this.ensureAaPhoneHfp()
+  }
+
+  /** aa-device can race the boot or skip on warm reconnects; fall back to the
+   *  connected paired phone. */
+  private ensureAaPhoneHfp(): void {
+    if (process.platform !== 'linux') return
+    const known = [...this.aaBtMacByInstance.values()]
+    if (known.length) {
+      for (const mac of known) this.ensurePhoneHfp(mac)
+      return
+    }
+    this.bluez
+      .listPaired()
+      .then((devices) => {
+        const phones = devices.filter((d) => d.connected && isPhoneLikeCod(d.class))
+        // Single-phone recovery: adopt the lost aa-device mapping so registry
+        // linking (battery, presence) and the SLC keeper survive the race.
+        if (phones.length === 1) {
+          const mac = phones[0].mac
+          for (const s of this.sessions.all()) {
+            if (s.protocol !== 'androidauto' || s.device.btMac) continue
+            const inst = s.device.instanceId
+            if (inst) this.aaBtMacByInstance.set(inst, mac)
+            this.deviceRegistry.noteDevice({
+              btMac: mac,
+              instanceId: inst,
+              protocol: 'androidauto',
+              transport: 'wifi'
+            })
+          }
+        }
+        for (const d of phones) this.ensurePhoneHfp(d.mac)
+      })
+      .catch(() => {})
   }
   private readonly onAaDisconnected = (session: AaSession): void => {
     this.refreshBtPairedList().catch(() => {})
@@ -367,6 +416,7 @@ export class ProjectionService {
       }
       case 'status': {
         const ids = this.sessions.byDriver(session)?.device ?? {}
+        if (typeof p.batteryLevel === 'number') this.aaBatteryPrecise = true
         this.deviceRegistry.noteStatus(ids, {
           batteryLevel: typeof p.batteryLevel === 'number' ? p.batteryLevel : undefined,
           batteryCharging: typeof p.batteryCharging === 'boolean' ? p.batteryCharging : undefined,
@@ -381,7 +431,9 @@ export class ProjectionService {
   private onAaPresence(session: AaSession, p: Record<string, unknown>): void {
     const ip = typeof p.ip === 'string' ? p.ip : ''
     if (p.kind === 'status') {
-      const ids = this.sessions.byDriver(session)?.device ?? {}
+      // Battery can arrive before the session upsert; the ip still identifies the phone.
+      const ids = this.sessions.byDriver(session)?.device ?? (ip ? { ip } : {})
+      if (typeof p.batteryLevel === 'number') this.aaBatteryPrecise = true
       this.deviceRegistry.noteStatus(ids, {
         batteryLevel: typeof p.batteryLevel === 'number' ? p.batteryLevel : undefined,
         batteryCritical: typeof p.batteryCritical === 'boolean' ? p.batteryCritical : undefined,
@@ -439,7 +491,8 @@ export class ProjectionService {
   private earlyVideoQueues: Map<string, Array<Record<string, unknown>>> = new Map()
   private static readonly EARLY_QUEUE_MAX_PER_CHANNEL = 256
   private lastPluggedPhoneType?: PhoneType
-  private aaPlaybackInferred: 1 | 2 = 1
+  /** Canonical MediaPlayStatus (1 = playing, 0 = paused), inferred from dongle audio commands. */
+  private aaPlaybackInferred: 1 | 0 = 1
   private pendingStartupConnectTarget: PendingStartupConnectTarget | null = null
 
   private audio: ProjectionAudio
@@ -586,7 +639,10 @@ export class ProjectionService {
   // Single emit point for `projection-event`
   private emitProjectionEvent(payload: ProjectionEvent): void {
     for (const listener of this.projectionEventListeners) listener(payload)
-    this.webContents?.send('projection-event', payload)
+    // A debounced emit can land while the window is tearing down, when send is gone.
+    if (typeof this.webContents?.send === 'function') {
+      this.webContents.send('projection-event', payload)
+    }
     broadcastToSecondaryRenderers('projection-event', payload)
   }
 
@@ -797,8 +853,8 @@ export class ProjectionService {
           this.mediaStore.patchAaPlayStatus(this.sessions.active(), 1)
         }
         if (msg.command === 11 || msg.command === 2) {
-          this.aaPlaybackInferred = 2
-          this.mediaStore.patchAaPlayStatus(this.sessions.active(), 2)
+          this.aaPlaybackInferred = 0
+          this.mediaStore.patchAaPlayStatus(this.sessions.active(), 0)
         }
       }
 
@@ -1444,6 +1500,7 @@ export class ProjectionService {
 
   // Restart the session to apply a config change that needs fresh negotiation
   public async restartSession(): Promise<void> {
+    console.log('[ProjectionService] restartSession requested (settings/IPC)')
     // Native CarPlay renegotiates the advertised displays on reconnect.
     if (this.cpActive) this.drivers.getCpManager()?.dropSessions()
 
@@ -1764,6 +1821,66 @@ export class ProjectionService {
     }
   }
 
+  /** Wireless-AA call audio rides an HFP SLC to our HF (the audio daemon).
+   * The keeper  re-nudges a dead SLC every 2 min (Android's own cadenc).
+   */
+  private ensurePhoneHfp(btMac: string): void {
+    if (process.platform !== 'linux') return
+    const mac = btMac.toLowerCase()
+    if (this.hfpKeepers.has(mac)) return
+    this.hfpKeepers.set(
+      mac,
+      setInterval(() => this.watchPhoneHfp(mac).catch(() => {}), 30000)
+    )
+    this.watchPhoneHfp(mac).catch(() => {})
+  }
+
+  private async watchPhoneHfp(mac: string): Promise<void> {
+    const wanted =
+      [...this.aaBtMacByInstance.values()].some((m) => m.toLowerCase() === mac) ||
+      this.sessions.all().some((s) => s.protocol === 'androidauto')
+    if (!wanted) {
+      const timer = this.hfpKeepers.get(mac)
+      if (timer) clearInterval(timer)
+      this.hfpKeepers.delete(mac)
+      this.hfpSlcUp.delete(mac)
+      this.hfpNudgedAt.delete(mac)
+      return
+    }
+    const alive = await this.hfpSlcAlive()
+    if (this.hfpSlcUp.get(mac) !== alive) {
+      this.hfpSlcUp.set(mac, alive)
+      console.log(`[ProjectionService] HFP SLC ${mac}: ${alive ? 'up' : 'down'} (phone-managed)`)
+    }
+    if (alive) return
+    if (Date.now() - (this.hfpNudgedAt.get(mac) ?? 0) < 120000) return
+    if (await this.hfpScoActive(mac)) return
+    this.hfpNudgedAt.set(mac, Date.now())
+    await this.bluez.disconnectProfile(mac, HFP_AG_UUID).catch(() => {})
+    const r = await this.bluez
+      .connect(mac, 32000, HFP_AG_UUID)
+      .catch((e) => ({ ok: false, error: (e as Error).message }))
+    console.log(`[ProjectionService] HFP nudge ${mac}: ${r.ok ? 'sent' : r.error}`)
+  }
+
+  /** SCO nodes for this phone exist only while call audio runs to us. */
+  private hfpScoActive(mac: string): Promise<boolean> {
+    const node = `bluez_output.${mac.toUpperCase().replace(/:/g, '_')}`
+    return new Promise((resolve) => {
+      execFile(
+        'pactl',
+        ['list', 'short', 'sinks'],
+        { encoding: 'utf8', timeout: 4000 },
+        (err, stdout) => resolve(!err && stdout.includes(node))
+      )
+    })
+  }
+
+  /** The helper owns HFP and reports SLC state over its event stream. */
+  private hfpSlcAlive(): Promise<boolean> {
+    return Promise.resolve(this.helperHfpUp)
+  }
+
   public dispatchRemoteInput(command: string): void {
     if (!isInputCommand(command)) {
       console.warn(`[ProjectionService] remote input: unknown command "${command}"`)
@@ -1796,9 +1913,39 @@ export class ProjectionService {
             this.dispatchRemoteInput(ev.command)
             return
           }
+          if (ev.event === 'sco') {
+            if (ev.up === true) this.scoAudio.start()
+            else this.scoAudio.stop()
+            return
+          }
+          if (ev.event === 'hfp') {
+            this.helperHfpUp = ev.up === true
+            const mac = typeof ev.mac === 'string' ? ev.mac.toLowerCase() : ''
+            if (mac) {
+              this.hfpSlcUp.set(mac, this.helperHfpUp)
+              console.log(
+                `[ProjectionService] HFP SLC ${mac}: ${this.helperHfpUp ? 'up' : 'down'} (helper)`
+              )
+            }
+            return
+          }
+          if (ev.event === 'phone-battery') {
+            console.log(`[ProjectionService] HFP battchg ${ev.mac}: ~${ev.pct}%`)
+            // 20%-coarse fallback: fills the display only until the percent-precise
+            // AA battery status takes over.
+            if (
+              !this.aaBatteryPrecise &&
+              typeof ev.mac === 'string' &&
+              typeof ev.pct === 'number'
+            ) {
+              this.deviceRegistry.noteStatus({ btMac: ev.mac }, { batteryLevel: ev.pct })
+            }
+            return
+          }
           if (ev.event === 'aa-device') {
             if (typeof ev.btMac === 'string' && typeof ev.instanceId === 'string') {
               this.aaBtMacByInstance.set(ev.instanceId, ev.btMac)
+              this.ensurePhoneHfp(ev.btMac)
             }
             if (typeof ev.usbSerial === 'string' && ev.usbSerial && ev.instanceId) {
               this.aaSerialByInstance.set(ev.instanceId, ev.usbSerial)
@@ -2145,7 +2292,7 @@ export class ProjectionService {
       this.lastVideoWidth = undefined
       this.lastVideoHeight = undefined
       this.lastPluggedPhoneType = undefined
-      this.aaPlaybackInferred = 2
+      this.aaPlaybackInferred = 0
     })().finally(() => {
       this.stopPromise = null
       this.emitTransportState()

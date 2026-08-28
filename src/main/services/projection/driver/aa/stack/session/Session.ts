@@ -466,6 +466,25 @@ export class Session extends EventEmitter {
       return
     }
 
+    if (channelId === CH.BLUETOOTH) {
+      // BLUETOOTH_PAIRING_REQUEST (0x8001) -> BLUETOOTH_PAIRING_RESPONSE (0x8002).
+      // The phone routes call audio to the HU's HFP only after this confirmation.
+      if (msgId === 0x8001) {
+        try {
+          const req = decode(this._proto.BluetoothPairingRequest, payload)
+          console.log(`[Session] BT pairing request from ${req['phoneAddress']} → already paired`)
+        } catch (e) {
+          if (DEBUG) console.warn('[Session] BT pairing request parse error:', e)
+        }
+        const buf = encode(this._proto.BluetoothPairingResponse, {
+          status: 1,
+          alreadyPaired: true
+        })
+        this._sendAA(CH.BLUETOOTH, FRAME_FLAGS.ENC_SIGNAL, 0x8002, buf)
+      }
+      return
+    }
+
     if (channelId === CH.MIC_INPUT) {
       if (msgId === AV_MSG.SETUP_REQUEST) {
         this._handleAVSetupRequest(channelId, payload)

@@ -235,9 +235,7 @@ pub async fn start_aa(conn: &Connection) -> Result<mpsc::UnboundedReceiver<Incom
 }
 
 pub const HFP_HF_UUID: &str = "0000111e-0000-1000-8000-00805f9b34fb";
-pub const HSP_HS_UUID: &str = "00001108-0000-1000-8000-00805f9b34fb";
 const HFP_PATH: &str = "/livi/bt/hfp";
-const HSP_PATH: &str = "/livi/bt/hsp_hs";
 const BLE_AD_PATH: &str = "/livi/bt/ble";
 const PLAYER_PATH: &str = "/livi/bt/player";
 
@@ -253,8 +251,9 @@ impl HfpProfile {
         fd: zbus::zvariant::OwnedFd,
         _options: HashMap<String, OwnedValue>,
     ) {
-        println!("[hfp] connection from {}", mac_from_device_path(device.as_str()));
-        self.hfp.accept(OwnedFd::from(fd));
+        let mac = mac_from_device_path(device.as_str());
+        println!("[hfp] connection from {mac}");
+        self.hfp.accept(OwnedFd::from(fd), mac);
     }
 
     fn request_disconnection(&self, _device: ObjectPath<'_>) {}
@@ -262,34 +261,10 @@ impl HfpProfile {
     fn release(&self) {}
 }
 
-/// Accepts and holds the RFCOMM fd so the BR/EDR ACL stays up.
-#[derive(Default)]
-struct HspProfile {
-    fds: std::sync::Mutex<Vec<OwnedFd>>,
-}
-
-#[zbus::interface(name = "org.bluez.Profile1")]
-impl HspProfile {
-    fn new_connection(
-        &self,
-        device: ObjectPath<'_>,
-        fd: zbus::zvariant::OwnedFd,
-        _options: HashMap<String, OwnedValue>,
-    ) {
-        println!("[hsp] connection from {}", mac_from_device_path(device.as_str()));
-        self.fds.lock().unwrap().push(OwnedFd::from(fd));
-    }
-
-    fn request_disconnection(&self, _device: ObjectPath<'_>) {}
-
-    fn release(&self) {}
-}
-
-/// Registration failures are tolerated per profile: the audio daemon may already hold
-/// HFP HF, and the raw prober carries the SLC either way. HSP HS must register even
-/// then — ConnectProfile(HSP AG) on a phone needs the local counterpart.
+/// The audio daemon usually holds HFP HF (incl. SCO); ours registers only as fallback,
+/// and calls go through the daemon's — a second SLC just makes the phone drop one.
 pub async fn start_hfp(conn: &Connection, hfp: crate::hfp::Hfp) -> Result<(), Box<dyn Error>> {
-    conn.object_server().at(HFP_PATH, HfpProfile { hfp }).await?;
+    conn.object_server().at(HFP_PATH, HfpProfile { hfp: hfp.clone() }).await?;
     let mut opts: HashMap<&str, Value> = HashMap::new();
     opts.insert("Name", Value::from("HFP Hands-Free"));
     opts.insert("Role", Value::from("client"));
@@ -299,18 +274,10 @@ pub async fn start_hfp(conn: &Connection, hfp: crate::hfp::Hfp) -> Result<(), Bo
     opts.insert("Version", Value::from(0x0108u16));
     match register_profile(conn, HFP_PATH, HFP_HF_UUID, opts).await {
         Ok(()) => println!("[hfp] HF profile registered"),
-        Err(e) => eprintln!("[hfp] HF profile registration failed: {e}"),
-    }
-
-    conn.object_server().at(HSP_PATH, HspProfile::default()).await?;
-    let mut opts: HashMap<&str, Value> = HashMap::new();
-    opts.insert("Name", Value::from("HSP HS"));
-    opts.insert("Role", Value::from("client"));
-    opts.insert("RequireAuthentication", Value::from(false));
-    opts.insert("RequireAuthorization", Value::from(false));
-    match register_profile(conn, HSP_PATH, HSP_HS_UUID, opts).await {
-        Ok(()) => println!("[hsp] HS profile registered"),
-        Err(e) => eprintln!("[hsp] HS profile registration failed: {e}"),
+        Err(e) => {
+            println!("[hfp] HF profile held by the audio daemon, prober stands down ({e})");
+            hfp.set_owned_elsewhere();
+        }
     }
     Ok(())
 }
@@ -416,6 +383,7 @@ impl MediaPlayerHandle {
             }
             *s = status.to_string();
         }
+        println!("[aa] avrcp playback status -> {status}");
         if let Ok(iface) = self.conn.object_server().interface::<_, MprisPlayer>(PLAYER_PATH).await {
             let _ = iface.get().await.playback_status_changed(iface.signal_context()).await;
         }

@@ -98,6 +98,11 @@ export class BluezDeviceClient {
     return (await this.request(`connect-full ${mac}`, timeoutMs)) as ActionResponse
   }
 
+  // Tear down one profile connection (BlueZ Device1.DisconnectProfile)
+  async disconnectProfile(mac: string, uuid: string, timeoutMs = 10000): Promise<ActionResponse> {
+    return (await this.request(`disconnect-profile ${mac} ${uuid}`, timeoutMs)) as ActionResponse
+  }
+
   // Tear down the BT connection (BlueZ Device1.Disconnect)
   async disconnect(mac: string, timeoutMs = 10000): Promise<ActionResponse> {
     return (await this.request(`disconnect ${mac}`, timeoutMs)) as ActionResponse
@@ -133,6 +138,9 @@ export class BluezDeviceClient {
       btMac?: string
       instanceId?: string
       usbSerial?: string
+      up?: boolean
+      pct?: number
+      mtu?: number
     }) => void,
     onClose?: () => void,
     onOpen?: () => void

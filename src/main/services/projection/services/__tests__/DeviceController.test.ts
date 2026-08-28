@@ -4,7 +4,7 @@ import type { DeviceEntry, DeviceRegistry } from '../DeviceRegistry'
 import type { ProjectionSession, SessionManager } from '../SessionManager'
 
 const IAP = '00000000-deca-fade-deca-deafdecacafe'
-const HSP = '00001112-0000-1000-8000-00805f9b34fb'
+const HSP = '0000111f-0000-1000-8000-00805f9b34fb'
 
 type SessionsApi = {
   all: ReturnType<typeof vi.fn>
@@ -213,7 +213,7 @@ describe('DeviceController', () => {
       expect(deps.bluez.connect).toHaveBeenCalledWith('aa:bb:cc:dd:ee:ff', undefined, IAP)
     })
 
-    test('wakes a known android phone on the HSP AG profile', () => {
+    test('wakes a known android phone on the HFP AG profile', () => {
       const { ctl, deps } = mkCtl()
       deps.deviceRegistry.list.mockReturnValue([
         mkEntry({ btMac: 'aa:bb:cc:dd:ee:ff', protocol: 'androidauto', name: 'P' })

@@ -14,6 +14,19 @@ fi
 LAUNCH="$ROOT/bin/gst-launch-1.0"
 INSPECT="$ROOT/bin/gst-inspect-1.0"
 
+# Reject symbols newer than the glibc of the host running this test.
+GLIBC_CEILING="${GLIBC_CEILING:-$(getconf GNU_LIBC_VERSION | awk '{print $2}')}"
+worst=$(find "$ROOT" -type f \( -name '*.so*' -o -perm -u+x \) -exec sh -c \
+  'strings "$1" 2>/dev/null | grep -oE "GLIBC_2\.[0-9]+"' _ {} \; | sort -t. -k2 -n -u | tail -1)
+if [[ -n "$worst" ]]; then
+  need="${worst#GLIBC_}"
+  if [[ $(printf '%s\n' "$GLIBC_CEILING" "$need" | sort -t. -k2 -n | tail -1) != "$GLIBC_CEILING" ]]; then
+    echo "FAIL bundle requires $worst, ceiling is GLIBC_$GLIBC_CEILING" >&2
+    exit 1
+  fi
+  echo "ok   glibc requirement $worst <= $GLIBC_CEILING"
+fi
+
 "$LAUNCH" --version
 "$LAUNCH" fakesrc num-buffers=1 ! fakesink
 "$ROOT/bin/gst-device-monitor-1.0" --version

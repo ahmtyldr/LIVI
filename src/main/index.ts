@@ -16,6 +16,7 @@ import {
   startSystemVolumeMonitor,
   stopSystemVolumeMonitor
 } from '@main/services/audio/SystemVolume'
+import { ensureWireplumberBtRoles } from '@main/services/audio/wireplumberBtRoles'
 import { checkAndInstallGvfsGuard, startPhoneSuppression } from '@main/services/gvfsPhoneGuard'
 import { checkMissingPackages } from '@main/services/packageCheck'
 import { checkAndInstallHelperSudoers } from '@main/services/projection/driver/helper/helperSudoers'
@@ -182,6 +183,7 @@ app.whenReady().then(async () => {
   if (win && process.platform === 'linux') {
     await checkAndInstallGvfsGuard(win)
     startPhoneSuppression()
+    ensureWireplumberBtRoles()
   }
 
   if (win && process.platform === 'linux') {

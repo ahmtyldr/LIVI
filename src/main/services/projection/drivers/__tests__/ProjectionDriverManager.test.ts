@@ -288,6 +288,25 @@ describe('ProjectionDriverManager', () => {
     expect(spies.onAaReleased).toHaveBeenCalledWith(session)
   })
 
+  test('every supervisor reconnect cycle closes its session again', () => {
+    const { deps, spies } = buildDeps()
+    const mgr = new ProjectionDriverManager(deps)
+    mgr.ensureAaManager()
+    const session = spawnSession()
+
+    session.emit('connected')
+    session.emit('disconnected')
+    expect(spies.onAaDisconnected).toHaveBeenCalledTimes(1)
+
+    // Second cycle: the session closes again and metadata still flows.
+    session.emit('connected')
+    session.emit('message', new MediaData())
+    expect(spies.handlers.onMetaMessage).toHaveBeenCalled()
+    session.emit('disconnected')
+    expect(spies.onAaConnected).toHaveBeenCalledTimes(2)
+    expect(spies.onAaDisconnected).toHaveBeenCalledTimes(2)
+  })
+
   test('a spawned session is held until routed; meta messages still flow', () => {
     const { deps, spies } = buildDeps()
     const mgr = new ProjectionDriverManager(deps)

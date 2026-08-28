@@ -8,6 +8,7 @@ pub mod events;
 pub mod file_transfer;
 pub mod framing;
 pub mod hfp;
+pub mod sco;
 pub mod ident;
 pub mod livi_sock;
 pub mod net;

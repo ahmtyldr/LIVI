@@ -392,6 +392,28 @@ describe('Session — post-TLS dispatch (control channel)', () => {
     expect(handleMessage).toHaveBeenCalledWith(0xabcd, Buffer.from([1]))
   })
 
+  test('CH.BLUETOOTH pairing decode error is swallowed without DEBUG', () => {
+    const { session } = makeSession()
+    const sendAA = vi.fn()
+    ;(session as unknown as { _sendAA: Mock })._sendAA = sendAA
+    ;(session as unknown as { _proto: unknown })._proto = {
+      BluetoothPairingRequest: {
+        decode: () => {
+          throw new Error('bad payload')
+        }
+      },
+      BluetoothPairingResponse: {
+        verify: () => null,
+        create: (f: unknown) => f,
+        encode: () => ({ finish: () => new Uint8Array([1]) })
+      }
+    }
+    ;(
+      session as unknown as { _handleDecryptedMessage: (...args: unknown[]) => void }
+    )._handleDecryptedMessage(CH.BLUETOOTH, 0, 0x8001, Buffer.alloc(0))
+    expect(sendAA).toHaveBeenCalledWith(CH.BLUETOOTH, expect.any(Number), 0x8002, expect.anything())
+  })
+
   test('CHANNEL_OPEN_REQUEST on a service channel triggers an encrypted response', async () => {
     const { session } = makeSession()
     const sent = captureEncrypted(session)

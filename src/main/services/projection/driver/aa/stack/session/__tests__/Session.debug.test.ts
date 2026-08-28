@@ -1,4 +1,5 @@
 import { EventEmitter } from 'node:events'
+import { setDebugLogging } from '@main/constants'
 import type { Mock } from 'vitest'
 
 class MockSocket extends EventEmitter {
@@ -72,7 +73,9 @@ function protoStub(): Record<string, unknown> {
     AuthCompleteIndication: codec,
     ServiceDiscoveryResponse: codec,
     PingRequest: codec,
-    PhoneStatus: codec
+    PhoneStatus: codec,
+    BluetoothPairingRequest: codec,
+    BluetoothPairingResponse: codec
   }
 }
 
@@ -399,5 +402,47 @@ describe('Session under DEBUG + TRACE', () => {
     await vi.advanceTimersByTimeAsync(2000)
     await p
     vi.useRealTimers()
+  })
+
+  test('CH.BLUETOOTH pairing request is answered with an already-paired response', () => {
+    const { session } = make()
+    ;(session as unknown as { _proto: unknown })._proto = protoStub()
+    const sendAA = vi.fn()
+    ;(session as unknown as { _sendAA: Mock })._sendAA = sendAA
+    run(session)(C.CH.BLUETOOTH, 0, 0x8001, Buffer.alloc(0))
+    expect(sendAA).toHaveBeenCalledWith(
+      C.CH.BLUETOOTH,
+      expect.any(Number),
+      0x8002,
+      expect.anything()
+    )
+  })
+
+  test('CH.BLUETOOTH ignores non-pairing message ids', () => {
+    const { session } = make()
+    ;(session as unknown as { _proto: unknown })._proto = protoStub()
+    const sendAA = vi.fn()
+    ;(session as unknown as { _sendAA: Mock })._sendAA = sendAA
+    run(session)(C.CH.BLUETOOTH, 0, 0x9999, Buffer.alloc(0))
+    expect(sendAA).not.toHaveBeenCalled()
+  })
+
+  test('CH.BLUETOOTH pairing still answers when the request fails to decode', () => {
+    setDebugLogging(true)
+    const { session } = make()
+    const proto = protoStub()
+    ;(proto.BluetoothPairingRequest as { decode: unknown }).decode = () => {
+      throw new Error('bad payload')
+    }
+    ;(session as unknown as { _proto: unknown })._proto = proto
+    const sendAA = vi.fn()
+    ;(session as unknown as { _sendAA: Mock })._sendAA = sendAA
+    run(session)(C.CH.BLUETOOTH, 0, 0x8001, Buffer.alloc(0))
+    expect(sendAA).toHaveBeenCalledWith(
+      C.CH.BLUETOOTH,
+      expect.any(Number),
+      0x8002,
+      expect.anything()
+    )
   })
 })

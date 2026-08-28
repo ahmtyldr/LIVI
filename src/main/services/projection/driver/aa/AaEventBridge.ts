@@ -71,7 +71,7 @@ function audioLifecycleCommand(channel: AudioChannelType, starting: boolean): Au
     case 'speech':
       return starting ? AudioCommand.AudioNaviStart : AudioCommand.AudioNaviStop
     case 'phone':
-      return starting ? AudioCommand.AudioOutputStart : AudioCommand.AudioOutputStop
+      return starting ? AudioCommand.AudioPhonecallStart : AudioCommand.AudioPhonecallStop
   }
 }
 

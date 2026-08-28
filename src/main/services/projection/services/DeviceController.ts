@@ -23,12 +23,12 @@ export type DeviceControllerDeps = {
 
 // The phone's iAP service UUID, used as the CarPlay reconnect ConnectProfile target.
 const IAP_PROFILE_UUID = '00000000-deca-fade-deca-deafdecacafe'
-const HSP_AG_UUID = '00001112-0000-1000-8000-00805f9b34fb'
+const HFP_AG_UUID = '0000111f-0000-1000-8000-00805f9b34fb'
 
 /** The profile a phone of this protocol is woken on. */
 function wakeUuid(protocol: string | undefined): string | null {
   if (protocol === 'carplay') return IAP_PROFILE_UUID
-  if (protocol === 'androidauto') return HSP_AG_UUID
+  if (protocol === 'androidauto') return HFP_AG_UUID
   return null
 }
 
@@ -62,6 +62,9 @@ export class DeviceController {
       void (s.driver.disconnectPhone?.() ?? s.driver.send(new SendDisconnectPhone())).catch((err) =>
         console.warn(`[DeviceController] forget ${id} goodbye failed: ${(err as Error).message}`)
       )
+      // The goodbye is best-effort
+      const index = s.index
+      setTimeout(() => this.deps.sessions().close(index), 1500)
     }
 
     const mac = e.btMac
