@@ -363,7 +363,7 @@ function load(): GstAddon | null {
   }
   try {
     prepareMacRuntime()
-    addon = require('gst-video') as GstAddon
+    addon = require('livi-gst-video') as GstAddon
     logGstRuntime(addon.version())
   } catch (e) {
     loadFailed = true

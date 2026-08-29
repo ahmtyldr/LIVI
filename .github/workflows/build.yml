@@ -213,8 +213,9 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             native/livi-helperd/target
-            native/gst-video/rust/target
-          key: cargo-linux-x64-${{ hashFiles('native/livi-helperd/**/Cargo.toml', 'native/gst-video/rust/**/Cargo.toml') }}
+            native/livi-crypto/rust/target
+            native/livi-gst-video/rust/target
+          key: cargo-linux-x64-${{ hashFiles('native/livi-helperd/**/Cargo.toml', 'native/livi-crypto/rust/Cargo.toml', 'native/livi-gst-video/rust/**/Cargo.toml') }}
           restore-keys: cargo-linux-x64-
 
       - name: Install deps (pnpm) [linux-x64]
@@ -267,8 +268,9 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             native/livi-helperd/target
-            native/gst-video/rust/target
-          key: cargo-linux-arm64-${{ hashFiles('native/livi-helperd/**/Cargo.toml', 'native/gst-video/rust/**/Cargo.toml') }}
+            native/livi-crypto/rust/target
+            native/livi-gst-video/rust/target
+          key: cargo-linux-arm64-${{ hashFiles('native/livi-helperd/**/Cargo.toml', 'native/livi-crypto/rust/Cargo.toml', 'native/livi-gst-video/rust/**/Cargo.toml') }}
           restore-keys: cargo-linux-arm64-
 
       - name: Install deps (pnpm) [linux-arm64]
@@ -365,8 +367,9 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             native/livi-helperd/target
-            native/gst-video/rust/target
-          key: cargo-macos-${{ matrix.arch }}-${{ hashFiles('native/livi-helperd/**/Cargo.toml', 'native/gst-video/rust/**/Cargo.toml') }}
+            native/livi-crypto/rust/target
+            native/livi-gst-video/rust/target
+          key: cargo-macos-${{ matrix.arch }}-${{ hashFiles('native/livi-helperd/**/Cargo.toml', 'native/livi-crypto/rust/Cargo.toml', 'native/livi-gst-video/rust/**/Cargo.toml') }}
           restore-keys: cargo-macos-${{ matrix.arch }}-
 
       - name: Build for macOS (arm64 native, x64 cross-compiled)

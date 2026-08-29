@@ -7,7 +7,6 @@ members = [
     "crates/iap2-runtime",
     "crates/iap2-usbmux",
     "crates/iap2-wired",
-    "crates/livi-crypto-node",
     "crates/livi-aa",
     "bin/mfi-probe",
     "bin/livi-helperd",

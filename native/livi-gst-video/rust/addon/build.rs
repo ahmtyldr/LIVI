@@ -1,7 +1,8 @@
 // Compiles the gst_video C/C++ sources into the cdylib: per-OS source lists,
 // GStreamer via pkg-config, N-API headers vendored in ../napi-headers. The C++
 // archive is linked +whole-archive so the module entry points survive, and the
-// GStreamer link flags are emitted after the archives.
+// GStreamer link flags are emitted after the archives — GNU ld resolves left to
+// right and would otherwise drop the shared libs under --as-needed.
 
 const GST_PKGS: [&str; 3] = ["gstreamer-1.0", "gstreamer-app-1.0", "gstreamer-video-1.0"];
 
@@ -29,13 +30,14 @@ fn emit_gst_link_flags() {
 
 fn main() {
     println!("cargo:rerun-if-changed=../../src");
-    println!("cargo:rerun-if-changed=../../../crypto");
     napi_build::setup();
 
     let includes = gst_includes();
     let mut cpp = cc::Build::new();
     cpp.cpp(true)
         .std("c++17")
+        // napi callbacks legitimately ignore their info parameter
+        .flag_if_supported("-Wno-unused-parameter")
         .define("NAPI_VERSION", "8")
         .define("BUILDING_NODE_EXTENSION", None)
         .define("NODE_GYP_MODULE_NAME", "gst_video")
@@ -55,16 +57,12 @@ fn main() {
         println!("cargo:rustc-link-lib=framework=Cocoa");
         println!("cargo:rustc-link-lib=framework=QuartzCore");
     } else {
-        // linux: screen receiver + AEAD ride along, C sources compiled as C.
-        cpp.include("../../../crypto")
-            .file("../../src/cp_screen_receiver.cc")
-            .compile("gst_video_cpp");
+        // linux: the screen receiver rides along; its AEAD comes from the
+        // livi-crypto-node dependency (C ABI).
+        cpp.file("../../src/cp_screen_receiver.cc").compile("gst_video_cpp");
         let mut c = cc::Build::new();
         c.includes(&includes)
-            .include("../../../crypto")
             .file("../../src/cp_video_nal.c")
-            .file("../../../crypto/livi_aead.c")
-            .file("../../../crypto/monocypher.c")
             .compile("gst_video_c");
     }
 

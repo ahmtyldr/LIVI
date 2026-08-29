@@ -8,10 +8,10 @@
 extern "C" {
 #endif
 
-// RFC 8439 ChaCha20-Poly1305 (12-byte nonce) open, built on Monocypher's IETF
-// ChaCha20 and Poly1305 primitives. `in` is ciphertext followed by the 16-byte
-// tag; `out` must hold in_len - 16 bytes. Returns 0 and sets *out_len on a valid
-// tag, -1 on authentication failure or an input shorter than the tag.
+// RFC 8439 ChaCha20-Poly1305 (12-byte nonce), provided by the livi-crypto-node
+// Rust crate (aws-lc-rs). `in` is ciphertext followed by the 16-byte tag; `out`
+// must hold in_len - 16 bytes. Returns 0 and sets *out_len on a valid tag, -1
+// on authentication failure or an input shorter than the tag.
 int livi_chacha20poly1305_open(uint8_t *out, size_t *out_len,
                                const uint8_t key[32], const uint8_t nonce[12],
                                const uint8_t *aad, size_t aad_len,

@@ -1,9 +1,14 @@
 //! Link shell for the gst_video N-API addon. All behavior lives in the C++
-//! sources compiled by build.rs. The entry points below hand the module
+//! sources compiled by build.rs; the entry points below hand the module
 //! registration to the C++ side (renamed there, since rustc trims cdylib
 //! exports to Rust-declared symbols).
 
 use std::ffi::c_void;
+
+// The screen receiver's AEAD symbols live in this crate; the reference keeps
+// rustc from dropping the otherwise-unused dependency at link time.
+#[cfg(target_os = "linux")]
+use livi_crypto_node as _;
 
 extern "C" {
     fn livi_gst_register_module_v1(env: *mut c_void, exports: *mut c_void) -> *mut c_void;

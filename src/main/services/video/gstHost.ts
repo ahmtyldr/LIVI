@@ -59,10 +59,10 @@ class GstHost {
       // require.resolve gives the logical app.asar path; the real files are unpacked (asarUnpack),
       // and spawn plus the child need the physical path.
       addonPath = require
-        .resolve('gst-video')
+        .resolve('livi-gst-video')
         .replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`)
     } catch (e) {
-      console.error('[gstHost] cannot resolve gst-video:', (e as Error).message)
+      console.error('[gstHost] cannot resolve livi-gst-video:', (e as Error).message)
       this.starting = false
       return
     }
@@ -234,7 +234,7 @@ export const gstHost = new GstHost()
 function resolveHostBinary(): string | null {
   try {
     const addonPath = require
-      .resolve('gst-video')
+      .resolve('livi-gst-video')
       .replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`)
     return path.join(path.dirname(addonPath), 'build', 'Release', 'livi-gst-host')
   } catch {

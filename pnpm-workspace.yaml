@@ -1,6 +1,6 @@
 packages:
-  - native/gst-video
-  - native/crypto
+  - native/livi-gst-video
+  - native/livi-crypto
 allowBuilds:
   electron-winstaller: true
   esbuild: true

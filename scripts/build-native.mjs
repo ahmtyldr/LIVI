@@ -1,8 +1,8 @@
 // Builds the native cargo targets and places the artifacts where their loaders
 // expect them:
-//   livi-crypto-node  -> native/crypto/build/Release/livi_crypto.node
-//   gst-video-addon   -> native/gst-video/build/Release/gst_video.node
-//   gst-video-host    -> native/gst-video/build/Release/livi-gst-host (linux)
+//   livi-crypto-node  -> native/livi-crypto/build/Release/livi_crypto.node
+//   gst-video-addon   -> native/livi-gst-video/build/Release/gst_video.node
+//   gst-video-host    -> native/livi-gst-video/build/Release/livi-gst-host (linux)
 //
 // Usage: node scripts/build-native.mjs [--arch=x64|arm64] [--only=crypto]
 // Linux runners are arch-native; only macOS cross-compiles (arm64 host -> x64 app).
@@ -37,16 +37,16 @@ function place(src, destDir, destName) {
   console.log(`[build-native] ${destName} <- ${src}`)
 }
 
-const cryptoOut = cargoBuild(join(root, 'native', 'livi-helperd', 'Cargo.toml'), 'livi-crypto-node')
+const cryptoOut = cargoBuild(join(root, 'native', 'livi-crypto', 'rust', 'Cargo.toml'), 'livi-crypto-node')
 place(
   join(cryptoOut, dylib('livi_crypto_node')),
-  join(root, 'native', 'crypto', 'build', 'Release'),
+  join(root, 'native', 'livi-crypto', 'build', 'Release'),
   'livi_crypto.node'
 )
 
 if (only !== 'crypto') {
-  const gstManifest = join(root, 'native', 'gst-video', 'rust', 'Cargo.toml')
-  const gstDest = join(root, 'native', 'gst-video', 'build', 'Release')
+  const gstManifest = join(root, 'native', 'livi-gst-video', 'rust', 'Cargo.toml')
+  const gstDest = join(root, 'native', 'livi-gst-video', 'build', 'Release')
   const addonOut = cargoBuild(gstManifest, 'gst-video-addon')
   place(join(addonOut, dylib('gst_video_addon')), gstDest, 'gst_video.node')
   if (process.platform === 'linux') {

@@ -90,7 +90,7 @@ const originalLoad = M._load
 
 beforeAll(() => {
   M._load = function (request: unknown, ...rest: unknown[]) {
-    if (request === 'gst-video') {
+    if (request === 'livi-gst-video') {
       if (loadState.fail) throw new Error('addon unavailable')
       return addon
     }

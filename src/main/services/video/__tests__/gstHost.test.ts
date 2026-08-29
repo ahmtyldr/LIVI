@@ -107,7 +107,7 @@ function blockGstVideoResolve(): () => void {
   const M = Module as unknown as Resolver
   const orig = M._resolveFilename
   M._resolveFilename = function (request: unknown, ...rest: unknown[]) {
-    if (request === 'gst-video') throw new Error('module not found')
+    if (request === 'livi-gst-video') throw new Error('module not found')
     return orig.call(this, request, ...rest)
   }
   return () => {
@@ -330,7 +330,10 @@ describe('gstHost framing + transport', () => {
 
     expect(createServerMock).not.toHaveBeenCalled()
     expect(spawnMock).not.toHaveBeenCalled()
-    expect(errSpy).toHaveBeenCalledWith('[gstHost] cannot resolve gst-video:', 'module not found')
+    expect(errSpy).toHaveBeenCalledWith(
+      '[gstHost] cannot resolve livi-gst-video:',
+      'module not found'
+    )
 
     restore()
     gstHost.createPlayer(1, 'h264')

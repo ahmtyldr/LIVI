@@ -9,6 +9,9 @@ edition.workspace = true
 name = "livi-gst-host"
 path = "src/main.rs"
 
+[target.'cfg(target_os = "linux")'.dependencies]
+livi-crypto-node = { path = "../../../livi-crypto/rust", default-features = false }
+
 [build-dependencies]
 cc = "1"
 pkg-config = "0.3"

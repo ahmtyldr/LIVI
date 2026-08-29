@@ -298,7 +298,7 @@ Make sure the following packages and tools are installed on your system before b
 - **Rust** (stable, ≥ 1.88 — via [rustup](https://rustup.rs)): builds `livi-helperd` and all native addons (`livi-crypto`, `gst-video`, `livi-gst-host`)
 - **Python 3.x** (Linux build tooling only: the wlroots compositor is built with `meson`, a Python tool installed from pip — LIVI itself runs no Python, and the Node addons build without it)
 - **build-essential** (Linux: includes `gcc`, `g++`, `make`, etc.)
-- **libgstreamer1.0-dev** + **libgstreamer-plugins-base1.0-dev** (required to build the `gst-video` addon and the `livi-gst-host` binary)
+- **libgstreamer1.0-dev** + **libgstreamer-plugins-base1.0-dev** (required to build the `livi-gst-video` addon and the `livi-gst-host` binary)
 - **meson** (≥ 1.4), **ninja**, **pkg-config**, **bison**, **cmake** and the wlroots/EGL stack: **libwayland-dev**, **wayland-protocols**, **libxkbcommon-dev** (≥ 1.8.0), **libpixman-1-dev**, **libcairo2-dev**, **libegl-dev** / **libgles-dev** / **libgbm-dev** / **libffi-dev** / **libexpat1-dev** (Linux only: to build the embedded wlroots compositor)
 - **fuse3** (required to run AppImages)
 - runtime packages for native CarPlay and wireless Android Auto: **bluez**, **libspa-0.2-bluetooth**, **hostapd**, **dnsmasq-base**, **iw**, **rfkill**, **avahi-daemon**, **avahi-utils**, **pulseaudio-utils**
@@ -345,7 +345,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 
 Fedora has no `rfkill` package, the command comes with `util-linux`. `libspa-0.2-bluetooth` is a Debian name too: it holds PipeWire's Bluetooth plugin, which Fedora ships inside `pipewire-libs`. Wireless Android Auto needs that plugin because the phone will only start a session over an HFP connection, and PipeWire is what puts HFP into the adapter's service record. LIVI's package check probes for the plugin's directory rather than a package name, so it reports the gap on any distro. Everything else, including wireless CarPlay, works the same.
 
-On macOS, the `gst-video` addon links against the **GStreamer.framework**. Install
+On macOS, the `livi-gst-video` addon links against the **GStreamer.framework**. Install
 both the runtime and development packages (matching versions) from
 [gstreamer.freedesktop.org](https://gstreamer.freedesktop.org/download/#macos)
 before building. The cargo build discovers it via `pkg-config` under

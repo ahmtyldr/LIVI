@@ -11,19 +11,19 @@ const BUILD_RUN = process.env.GITHUB_RUN_NUMBER || process.env.BUILD_RUN || ''
 const BUILD_BRANCH = process.env.BUILD_BRANCH || ''
 
 function copyAaResourcesPlugin(): Plugin {
-  const aaRoot = resolve(__dirname, 'src/main/services/projection/driver/aa')
-  const cpRoot = resolve(__dirname, 'src/main/services/projection/driver/cp')
+  const aaRoot = resolve(import.meta.dirname, 'src/main/services/projection/driver/aa')
+  const cpRoot = resolve(import.meta.dirname, 'src/main/services/projection/driver/cp')
   const protosSrc = path.join(aaRoot, 'protos')
   const cpIap2Src = path.join(cpRoot, 'iap2')
-  const sharedSrc = resolve(__dirname, 'src/main/services/projection/driver/shared')
-  const btSrc = resolve(__dirname, 'src/main/services/projection/driver/bt')
-  const helperSrc = resolve(__dirname, 'src/main/services/projection/driver/helper')
-  const protosDst = resolve(__dirname, 'out/main/protos')
-  const driverDst = resolve(__dirname, 'out/main/driver')
-  const btDst = resolve(__dirname, 'out/main/driver/bt')
-  const cpIap2Dst = resolve(__dirname, 'out/main/driver/cp/iap2')
-  const sharedDst = resolve(__dirname, 'out/main/driver/shared')
-  const helperDst = resolve(__dirname, 'out/main/driver/helper')
+  const sharedSrc = resolve(import.meta.dirname, 'src/main/services/projection/driver/shared')
+  const btSrc = resolve(import.meta.dirname, 'src/main/services/projection/driver/bt')
+  const helperSrc = resolve(import.meta.dirname, 'src/main/services/projection/driver/helper')
+  const protosDst = resolve(import.meta.dirname, 'out/main/protos')
+  const driverDst = resolve(import.meta.dirname, 'out/main/driver')
+  const btDst = resolve(import.meta.dirname, 'out/main/driver/bt')
+  const cpIap2Dst = resolve(import.meta.dirname, 'out/main/driver/cp/iap2')
+  const sharedDst = resolve(import.meta.dirname, 'out/main/driver/shared')
+  const helperDst = resolve(import.meta.dirname, 'out/main/driver/helper')
 
   // Skip Python build droppings; the live process will recreate __pycache__.
   const filter = (src: string): boolean => !/[\\/]__pycache__([\\/]|$)/.test(src)
@@ -71,34 +71,34 @@ function copyAaResourcesPlugin(): Plugin {
 }
 
 const mainAlias = {
-  '@projection/messages': resolve(__dirname, 'src/main/services/projection/messages'),
-  '@projection': resolve(__dirname, 'src/main/services/projection'),
-  '@main': path.resolve(__dirname, 'src/main'),
-  '@shared': path.resolve(__dirname, 'src/main/shared'),
-  '@audio': path.resolve(__dirname, 'src/main/audio')
+  '@projection/messages': resolve(import.meta.dirname, 'src/main/services/projection/messages'),
+  '@projection': resolve(import.meta.dirname, 'src/main/services/projection'),
+  '@main': path.resolve(import.meta.dirname, 'src/main'),
+  '@shared': path.resolve(import.meta.dirname, 'src/main/shared'),
+  '@audio': path.resolve(import.meta.dirname, 'src/main/audio')
 }
 
 const rendererAlias = {
-  '@pkg': resolve(__dirname, 'package.json'),
-  '@settings': resolve(__dirname, 'src/renderer/src/components/pages/settings'),
-  '@renderer': resolve(__dirname, 'src/renderer/src'),
-  '@worker': path.resolve(__dirname, 'src/renderer/src/components/worker'),
-  '@store': path.resolve(__dirname, 'src/renderer/src/store'),
-  '@utils': path.resolve(__dirname, 'src/renderer/src/utils'),
-  '@shared': path.resolve(__dirname, 'src/main/shared')
+  '@pkg': resolve(import.meta.dirname, 'package.json'),
+  '@settings': resolve(import.meta.dirname, 'src/renderer/src/components/pages/settings'),
+  '@renderer': resolve(import.meta.dirname, 'src/renderer/src'),
+  '@worker': path.resolve(import.meta.dirname, 'src/renderer/src/components/worker'),
+  '@store': path.resolve(import.meta.dirname, 'src/renderer/src/store'),
+  '@utils': path.resolve(import.meta.dirname, 'src/renderer/src/utils'),
+  '@shared': path.resolve(import.meta.dirname, 'src/main/shared')
 }
 
 export default defineConfig({
-  root: resolve(__dirname, 'src/renderer'),
+  root: resolve(import.meta.dirname, 'src/renderer'),
   base: './',
 
   plugins: [
     react({}),
     electron({
       main: {
-        entry: resolve(__dirname, 'src/main/index.ts'),
+        entry: resolve(import.meta.dirname, 'src/main/index.ts'),
         onstart({ startup }) {
-          startup(['.', '--no-sandbox'], { cwd: __dirname })
+          startup(['.', '--no-sandbox'], { cwd: import.meta.dirname })
         },
         vite: {
           plugins: [copyAaResourcesPlugin()],
@@ -106,19 +106,19 @@ export default defineConfig({
             alias: mainAlias
           },
           build: {
-            outDir: resolve(__dirname, 'out/main'),
+            outDir: resolve(import.meta.dirname, 'out/main'),
             emptyOutDir: false,
             rolldownOptions: {
               external: [
                 'electron',
                 'usb',
-                'gst-video',
+                'livi-gst-video',
                 'livi-crypto',
                 'node-gyp-build',
                 ...NODE_BUILTINS
               ],
               input: {
-                main: resolve(__dirname, 'src/main/index.ts')
+                main: resolve(import.meta.dirname, 'src/main/index.ts')
               },
               output: {
                 format: 'cjs',
@@ -130,13 +130,13 @@ export default defineConfig({
       },
 
       preload: {
-        input: resolve(__dirname, 'src/preload/index.ts'),
+        input: resolve(import.meta.dirname, 'src/preload/index.ts'),
         vite: {
           resolve: {
             alias: mainAlias
           },
           build: {
-            outDir: resolve(__dirname, 'out/preload'),
+            outDir: resolve(import.meta.dirname, 'out/preload'),
             emptyOutDir: false,
             rolldownOptions: {
               external: ['electron', ...NODE_BUILTINS],
@@ -157,15 +157,15 @@ export default defineConfig({
     __BUILD_BRANCH__: JSON.stringify(BUILD_BRANCH)
   },
 
-  publicDir: resolve(__dirname, 'src/public'),
+  publicDir: resolve(import.meta.dirname, 'src/public'),
 
   build: {
-    outDir: resolve(__dirname, 'out/renderer'),
+    outDir: resolve(import.meta.dirname, 'out/renderer'),
     emptyOutDir: true,
     chunkSizeWarningLimit: 1000,
     rollupOptions: {
       input: {
-        index: resolve(__dirname, 'src/renderer/index.html')
+        index: resolve(import.meta.dirname, 'src/renderer/index.html')
       },
       output: {
         entryFileNames: 'index.js',

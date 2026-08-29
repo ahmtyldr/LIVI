@@ -23,7 +23,7 @@ files:
 asarUnpack:
   - resources/**
   - node_modules/usb/**
-  - node_modules/gst-video/**
+  - node_modules/livi-gst-video/**
   - node_modules/livi-crypto/**
 
 linux:
