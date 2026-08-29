@@ -4,11 +4,11 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::UnixStream;
 
 use iap2_csm::messages::wifi::SecurityType;
-use iap2_runtime::bringup::CpConfig;
-use iap2_runtime::ident::{Identity, Transport};
-use iap2_runtime::livi_sock::{serve, Broadcaster, LiviSockConfig};
-use iap2_runtime::state::HelperState;
-use iap2_runtime::AsyncAuth;
+use livi_runtime::bringup::CpConfig;
+use livi_runtime::ident::{Identity, Transport};
+use livi_runtime::livi_sock::{serve, Broadcaster, LiviSockConfig};
+use livi_runtime::state::HelperState;
+use livi_runtime::AsyncAuth;
 use std::sync::Arc;
 
 #[derive(Clone)]

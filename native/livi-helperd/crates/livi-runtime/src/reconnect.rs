@@ -30,7 +30,7 @@ pub async fn run(conn: Connection, adapter: String, state: Arc<HelperState>) {
         let startup = started.elapsed() < STARTUP_WINDOW;
         tokio::time::sleep(if startup { STARTUP_INTERVAL } else { INTERVAL }).await;
         let targets = state.reconnect_targets();
-        stale_since.retain(|mac, _| targets.contains_key(mac));
+        stale_since.retain(|mac, _| targets.iter().any(|(m, _)| m == mac));
         if targets.is_empty() {
             continue;
         }

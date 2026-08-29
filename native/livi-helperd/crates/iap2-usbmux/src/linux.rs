@@ -63,11 +63,10 @@ pub fn ensure_carplay_config(serial: &str) -> Result<IPhoneDev, String> {
         let deadline = Instant::now() + Duration::from_secs(5);
         loop {
             sleep(Duration::from_millis(200));
-            if let Some(d) = find_by_serial(serial) {
-                if d.num_configs >= CP_CONFIG {
+            if let Some(d) = find_by_serial(serial)
+                && d.num_configs >= CP_CONFIG {
                     break;
                 }
-            }
             if Instant::now() >= deadline {
                 return Err(format!("iphone {} did not expose CarPlay configs", &serial[..8.min(serial.len())]));
             }

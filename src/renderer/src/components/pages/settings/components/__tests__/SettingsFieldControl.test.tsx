@@ -56,10 +56,10 @@ vi.mock('../selectOptionsCache', () => ({
 
 vi.mock('../numberSpinner/numberSpinner', () => ({
   __esModule: true,
-  default: ({ onValueChange }: { onValueChange: (n: number) => void }) => (
+  default: ({ onValueCommitted }: { onValueCommitted: (n: number) => void }) => (
     <div>
-      <button data-testid="spinner-ok" onClick={() => onValueChange(42.9)} />
-      <button data-testid="spinner-bad" onClick={() => onValueChange(Number.NaN)} />
+      <button data-testid="spinner-ok" onClick={() => onValueCommitted(42.9)} />
+      <button data-testid="spinner-bad" onClick={() => onValueCommitted(Number.NaN)} />
     </div>
   )
 }))

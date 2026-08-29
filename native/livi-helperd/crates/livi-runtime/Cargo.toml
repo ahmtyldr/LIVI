@@ -1,5 +1,5 @@
 [package]
-name = "iap2-runtime"
+name = "livi-runtime"
 version = "0.1.0"
 edition.workspace = true
 

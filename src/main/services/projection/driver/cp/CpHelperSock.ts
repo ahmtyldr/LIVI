@@ -135,7 +135,7 @@ export class CpHelperSock implements MfiSigner {
     if (!res.ok) throw new CpHelperSockError(res.error)
   }
 
-  async sendReconnectTargets(targets: Record<string, string | null>): Promise<void> {
+  async sendReconnectTargets(targets: Array<[string, string | null]>): Promise<void> {
     await this.request(`reconnect-targets ${JSON.stringify(targets)}`)
   }
 

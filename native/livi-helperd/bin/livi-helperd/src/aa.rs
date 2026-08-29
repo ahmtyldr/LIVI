@@ -7,9 +7,9 @@ use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::UnixStream;
 
-use iap2_runtime::bt::IncomingConn;
-use iap2_runtime::livi_sock::Broadcaster;
-use iap2_runtime::net;
+use livi_runtime::bt::IncomingConn;
+use livi_runtime::livi_sock::Broadcaster;
+use livi_runtime::net;
 use livi_aa::wpp;
 
 const VERSION_TIMEOUT: Duration = Duration::from_secs(10);
@@ -45,7 +45,7 @@ pub async fn watch(
     cfg: AaConfig,
     bcast: Broadcaster,
     wired: WiredPhones,
-    hfp: iap2_runtime::hfp::Hfp,
+    hfp: livi_runtime::hfp::Hfp,
 ) {
     while let Some(conn) = incoming.recv().await {
         println!("[aa] phone connected mac={}", conn.peer_mac);

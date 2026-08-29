@@ -5,4 +5,4 @@ resolver = "2"
 members = ["addon", "host"]
 
 [workspace.package]
-edition = "2021"
+edition = "2024"

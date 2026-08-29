@@ -3,6 +3,7 @@
 //   livi-crypto-node  -> native/livi-crypto/build/Release/livi_crypto.node
 //   gst-video-addon   -> native/livi-gst-video/build/Release/gst_video.node
 //   gst-video-host    -> native/livi-gst-video/build/Release/livi-gst-host (linux)
+//   livi-compositor   -> out/compositor/livi-compositor (linux)
 //
 // Usage: node scripts/build-native.mjs [--arch=x64|arm64] [--only=crypto]
 // Linux runners are arch-native; only macOS cross-compiles (arm64 host -> x64 app).
@@ -52,5 +53,9 @@ if (only !== 'crypto') {
   if (process.platform === 'linux') {
     const hostOut = cargoBuild(gstManifest, 'gst-video-host')
     place(join(hostOut, 'livi-gst-host'), gstDest, 'livi-gst-host')
+
+    const compManifest = join(root, 'native', 'livi-compositor', 'rust', 'Cargo.toml')
+    const compOut = cargoBuild(compManifest, 'livi-compositor')
+    place(join(compOut, 'livi-compositor'), join(root, 'out', 'compositor'), 'livi-compositor')
   }
 }

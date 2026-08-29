@@ -4,6 +4,7 @@ import type { DeviceEntry, DeviceRegistry } from '../DeviceRegistry'
 import type { ProjectionSession, SessionManager } from '../SessionManager'
 
 const IAP = '00000000-deca-fade-deca-deafdecacafe'
+const AAP = '0000111f-0000-1000-8000-00805f9b34fb'
 const HSP = '0000111f-0000-1000-8000-00805f9b34fb'
 
 type SessionsApi = {
@@ -281,10 +282,10 @@ describe('DeviceController', () => {
       ctl.emitDevices()
 
       expect(deps.pushReconnectTargets).toHaveBeenCalledTimes(1)
-      expect(deps.pushReconnectTargets).toHaveBeenCalledWith({
-        'AA:BB:CC:DD:EE:01': IAP,
-        'AA:BB:CC:DD:EE:02': null
-      })
+      expect(deps.pushReconnectTargets).toHaveBeenCalledWith([
+        ['AA:BB:CC:DD:EE:01', IAP],
+        ['AA:BB:CC:DD:EE:02', null]
+      ])
 
       ctl.emitDevices()
       expect(deps.pushReconnectTargets).toHaveBeenCalledTimes(1)
@@ -292,6 +293,23 @@ describe('DeviceController', () => {
       ctl.resendReconnectTargets()
       expect(deps.pushReconnectTargets).toHaveBeenCalledTimes(2)
       expect(deps.pushWiredPhones).toHaveBeenCalledTimes(1)
+    })
+
+    test('pages the most recently seen phone first', () => {
+      const { ctl, deps } = mkCtl()
+      deps.deviceRegistry.list.mockReturnValue([
+        mkEntry({ btMac: 'aa:bb:cc:dd:ee:01', protocol: 'androidauto', lastSeen: 100 }),
+        mkEntry({ btMac: 'aa:bb:cc:dd:ee:02', protocol: 'carplay', lastSeen: 900 }),
+        mkEntry({ btMac: 'aa:bb:cc:dd:ee:03', protocol: 'carplay' })
+      ])
+
+      ctl.resendReconnectTargets()
+
+      expect(deps.pushReconnectTargets).toHaveBeenCalledWith([
+        ['AA:BB:CC:DD:EE:02', IAP],
+        ['AA:BB:CC:DD:EE:01', AAP],
+        ['AA:BB:CC:DD:EE:03', IAP]
+      ])
     })
 
     test('pushes no reconnect targets with autoconnect off', () => {
@@ -302,7 +320,7 @@ describe('DeviceController', () => {
 
       ctl.resendReconnectTargets()
 
-      expect(deps.pushReconnectTargets).toHaveBeenCalledWith({})
+      expect(deps.pushReconnectTargets).toHaveBeenCalledWith([])
     })
 
     test('reports wired android phones by every known id, skipping wireless and carplay', () => {

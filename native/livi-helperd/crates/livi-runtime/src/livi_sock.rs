@@ -186,13 +186,20 @@ where
     }
 }
 
-fn parse_reconnect_targets(arg: &str) -> Result<std::collections::HashMap<String, Option<String>>, String> {
+// [["MAC", "uuid" | null], ...]. The array order is the paging order.
+fn parse_reconnect_targets(arg: &str) -> Result<Vec<(String, Option<String>)>, String> {
     let value: serde_json::Value = serde_json::from_str(arg).map_err(|e| e.to_string())?;
-    let obj = value.as_object().ok_or("reconnect-targets expects a JSON object")?;
-    Ok(obj
-        .iter()
-        .map(|(mac, v)| (mac.clone(), v.as_str().map(str::to_string)))
-        .collect())
+    let list = value.as_array().ok_or("reconnect-targets expects a JSON array")?;
+    list.iter()
+        .map(|pair| {
+            let mac = pair
+                .get(0)
+                .and_then(|v| v.as_str())
+                .ok_or("reconnect-targets entries are [mac, uuid] pairs")?;
+            let uuid = pair.get(1).and_then(|v| v.as_str()).map(str::to_string);
+            Ok((mac.to_string(), uuid))
+        })
+        .collect()
 }
 
 fn err_json(msg: &str) -> String {
@@ -272,12 +279,11 @@ pub async fn pump_events_for(
     while let Some(event) = rx.recv().await {
         match event {
             BringupEvent::Incoming { frame, .. } => {
-                if !time_synced {
-                    if let Some(secs) = events::device_time(&frame) {
+                if !time_synced
+                    && let Some(secs) = events::device_time(&frame) {
                         time_synced = true;
                         crate::clock::step_to(secs);
                     }
-                }
                 let tagged = {
                     let mut t = ident.lock().unwrap();
                     t.learn(&frame);

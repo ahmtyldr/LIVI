@@ -87,11 +87,10 @@ fn kernel_ncm_iface(sysfs: &Path) -> Option<String> {
         if driver.file_name().and_then(|n| n.to_str()) != Some("cdc_ncm") {
             continue;
         }
-        if let Ok(dev) = e.path().join("device").canonicalize() {
-            if dev.starts_with(&root) {
+        if let Ok(dev) = e.path().join("device").canonicalize()
+            && dev.starts_with(&root) {
                 return e.file_name().into_string().ok();
             }
-        }
     }
     None
 }
@@ -225,12 +224,11 @@ fn spawn_tap_to_usb(mut ep_out: Endpoint<Bulk, Out>, tap: Arc<OwnedFd>, run: Arc
             let mut out = Buffer::new(ntb.len());
             out.extend_from_slice(&ntb);
             let completion = ep_out.transfer_blocking(out, Duration::from_millis(3000));
-            if let Err(e) = completion.status {
-                if run.load(Ordering::SeqCst) && !is_timeout(&e) {
+            if let Err(e) = completion.status
+                && run.load(Ordering::SeqCst) && !is_timeout(&e) {
                     eprintln!("[ncm] usb write ended: {e}");
                     return;
                 }
-            }
         }
     });
 }

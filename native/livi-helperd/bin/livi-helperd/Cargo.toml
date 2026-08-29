@@ -8,7 +8,7 @@ name = "livi-helperd"
 path = "src/main.rs"
 
 [dependencies]
-iap2-runtime = { path = "../../crates/iap2-runtime" }
+livi-runtime = { path = "../../crates/livi-runtime" }
 iap2-csm = { path = "../../crates/iap2-csm" }
 iap2-mfi = { path = "../../crates/iap2-mfi" }
 iap2-link = { path = "../../crates/iap2-link" }

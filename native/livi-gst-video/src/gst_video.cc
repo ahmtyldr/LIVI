@@ -695,6 +695,7 @@ struct LiviHost {
 
 #ifdef __linux__
 #define CLUSTER_RECV_ID 0x7a000010u
+#define RECV_CACHE_MAX 240
 #define CLUSTER_PLANE_MIN 0x7a000011u
 #define CLUSTER_PLANE_MAX 0x7a000013u
 static bool is_cluster_plane_id(guint32 id) {
@@ -706,9 +707,12 @@ struct HostReceiver {
   LiviHost* h;
   guint32 id;        // unique per session-screen (reverse port reply + setActiveFeeder + teardown)
   guint32 plane_id;  // shared role id (main / cluster-recv), carried on reverse config/started
+  guint64 stat_in, stat_dropped, stat_pushed;  // 5s window counters for the log
+  guint stats_timer;
   CpCodec codec;
   bool have_codec;
   bool awaiting_keyframe;
+  bool cache_valid;  // the pending queue holds the current GOP from its keyframe on
   bool is_cluster;
   bool active;  // only the active feeder for a plane pushes + forwards config/started
   GByteArray* config;  // last config atom, re-forwarded on activation
@@ -780,7 +784,19 @@ static bool recv_has_target(HostReceiver* hr) {
   return g_hash_table_lookup(hr->h->players, GUINT_TO_POINTER(hr->plane_id)) != nullptr;
 }
 
+static gboolean recv_stats_tick(gpointer user) {
+  HostReceiver* hr = (HostReceiver*)user;
+  if (hr->stat_in || hr->stat_dropped || hr->stat_pushed) {
+    g_printerr("[cp_screen] recv 0x%x: in=%llu dropped=%llu pushed=%llu awaiting_kf=%d active=%d\n",
+      hr->plane_id, (unsigned long long)hr->stat_in, (unsigned long long)hr->stat_dropped,
+      (unsigned long long)hr->stat_pushed, hr->awaiting_keyframe ? 1 : 0, hr->active ? 1 : 0);
+    hr->stat_in = hr->stat_dropped = hr->stat_pushed = 0;
+  }
+  return TRUE;
+}
+
 static void recv_push_targets(HostReceiver* hr, const guint8* nal, size_t len) {
+  hr->stat_pushed++;
   if (hr->is_cluster) {
     for (guint32 id = CLUSTER_PLANE_MIN; id <= CLUSTER_PLANE_MAX; id++) {
       Player* p = (Player*)g_hash_table_lookup(hr->h->players, GUINT_TO_POINTER(id));
@@ -792,32 +808,45 @@ static void recv_push_targets(HostReceiver* hr, const guint8* nal, size_t len) {
   }
 }
 
+// Feeds a newly created player the current GOP, so it decodes from the last
+// keyframe instead of waiting for the next one. The cache is left intact for
+// further players on the same stream.
+static void recv_prime_player(HostReceiver* hr, Player* p) {
+  if (!p || !hr->cache_valid) return;
+  for (GList* l = hr->pending->head; l; l = l->next) {
+    gsize sz = 0;
+    const void* d = g_bytes_get_data((GBytes*)l->data, &sz);
+    livi_push_player(p, (const guint8*)d, sz);
+  }
+}
+
 static void recv_on_frame(const guint8* nal, size_t len, void* user) {
   HostReceiver* hr = (HostReceiver*)user;
+  hr->stat_in++;
   if (!hr->active) return;
+  if (!hr->have_codec) {
+    hr->stat_dropped++;
+    return;
+  }
+  CpNalKind kind = cp_classify_nal(nal, len, hr->codec);
   if (hr->awaiting_keyframe) {
-    if (!hr->have_codec) return;
-    CpNalKind kind = cp_classify_nal(nal, len, hr->codec);
+    hr->stat_dropped++;
     if (kind == CP_NAL_DELTA) return;
     if (kind == CP_NAL_KEYFRAME) hr->awaiting_keyframe = false;
   }
-  if (!recv_has_target(hr)) {
-    if (g_queue_get_length(hr->pending) >= 240) {
+  if (kind == CP_NAL_KEYFRAME) {
+    recv_pending_clear(hr);
+    hr->cache_valid = true;
+  }
+  if (hr->cache_valid) {
+    if (g_queue_get_length(hr->pending) >= RECV_CACHE_MAX) {
       recv_pending_clear(hr);
-      hr->awaiting_keyframe = true;
-      return;
+      hr->cache_valid = false;
+    } else {
+      g_queue_push_tail(hr->pending, g_bytes_new(nal, len));
     }
-    g_queue_push_tail(hr->pending, g_bytes_new(nal, len));
-    return;
   }
-  GBytes* b;
-  while ((b = (GBytes*)g_queue_pop_head(hr->pending))) {
-    gsize sz = 0;
-    const void* d = g_bytes_get_data(b, &sz);
-    recv_push_targets(hr, (const guint8*)d, sz);
-    g_bytes_unref(b);
-  }
-  recv_push_targets(hr, nal, len);
+  if (recv_has_target(hr)) recv_push_targets(hr, nal, len);
 }
 
 static void recv_on_started(void* user) {
@@ -828,6 +857,7 @@ static void recv_on_started(void* user) {
 
 static void host_receiver_free(HostReceiver* hr) {
   if (!hr) return;
+  if (hr->stats_timer) g_source_remove(hr->stats_timer);
   cp_screen_receiver_free(hr->r);
   if (hr->pending) {
     recv_pending_clear(hr);
@@ -856,15 +886,16 @@ static void livi_host_dispatch(LiviHost* h, guint8 op, guint32 id, const guint8*
       livi_free_player(old);
     }
     Player* p = livi_create_player(codec, 0, codec_data, codec_data_len);
+    if (!p) {
+      g_printerr("livi: create player 0x%x (codec %s) FAILED\n", id, codec);
+    }
     if (p) {
       gst_element_set_state(p->pipeline, GST_STATE_PLAYING);
       g_hash_table_insert(h->players, key, p);
 #ifdef __linux__
       guint32 plane_key = is_cluster_plane_id(id) ? CLUSTER_RECV_ID : id;
-      HostReceiver* rearm = find_active_feeder(h, plane_key);
-      if (rearm && g_queue_get_length(rearm->pending) == 0) {
-        rearm->awaiting_keyframe = true;
-      }
+      HostReceiver* feeder = find_active_feeder(h, plane_key);
+      if (feeder) recv_prime_player(feeder, p);
 #endif
     }
   } else if (op == 2) {
@@ -875,14 +906,6 @@ static void livi_host_dispatch(LiviHost* h, guint8 op, guint32 id, const guint8*
       g_hash_table_remove(h->players, key);
       livi_free_player(p);
     }
-#ifdef __linux__
-    guint32 plane_key = is_cluster_plane_id(id) ? CLUSTER_RECV_ID : id;
-    HostReceiver* rearm = find_active_feeder(h, plane_key);
-    if (rearm) {
-      rearm->awaiting_keyframe = true;
-      recv_pending_clear(rearm);
-    }
-#endif
   } else if (op == 4) {
     Player* p = (Player*)g_hash_table_lookup(h->players, key);
     if (p && rlen >= 5 * sizeof(double)) {
@@ -902,6 +925,7 @@ static void livi_host_dispatch(LiviHost* h, guint8 op, guint32 id, const guint8*
     hr->awaiting_keyframe = true;
     hr->active = false;
     hr->config = g_byte_array_new();
+    hr->stats_timer = g_timeout_add_seconds(5, recv_stats_tick, hr);
     hr->pending = g_queue_new();
     CpScreenCallbacks cb;
     cb.on_config = recv_on_config;
@@ -949,6 +973,7 @@ static void livi_host_dispatch(LiviHost* h, guint8 op, guint32 id, const guint8*
       }
       hr->active = true;
       hr->awaiting_keyframe = true;
+      hr->cache_valid = false;
       recv_pending_clear(hr);
       recv_forward_config(hr);
     } else {

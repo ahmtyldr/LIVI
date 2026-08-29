@@ -672,22 +672,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "iap2-runtime"
-version = "0.1.0"
-dependencies = [
- "base64",
- "futures-util",
- "iap2-csm",
- "iap2-link",
- "iap2-mfi",
- "libc",
- "serde_json",
- "socket2 0.5.10",
- "tokio",
- "zbus",
-]
-
-[[package]]
 name = "iap2-usbmux"
 version = "0.1.0"
 dependencies = [
@@ -822,12 +806,28 @@ dependencies = [
  "iap2-csm",
  "iap2-link",
  "iap2-mfi",
- "iap2-runtime",
  "iap2-usbmux",
  "iap2-wired",
  "livi-aa",
+ "livi-runtime",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "livi-runtime"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "futures-util",
+ "iap2-csm",
+ "iap2-link",
+ "iap2-mfi",
+ "libc",
+ "serde_json",
+ "socket2 0.5.10",
+ "tokio",
+ "zbus",
 ]
 
 [[package]]

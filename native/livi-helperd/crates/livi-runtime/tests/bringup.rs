@@ -6,10 +6,10 @@ use iap2_csm::messages::now_playing::*;
 use iap2_csm::messages::power::PowerSourceUpdate;
 use iap2_csm::CsmMessage;
 use iap2_csm::messages::wifi::SecurityType;
-use iap2_runtime::bringup::{run_accessory, BringupEvent, CpConfig};
-use iap2_runtime::framing::frame_msg_id;
-use iap2_runtime::ident::{Identity, Transport};
-use iap2_runtime::{AsyncAuth, ChannelError, ControlChannel};
+use livi_runtime::bringup::{run_accessory, BringupEvent, CpConfig};
+use livi_runtime::framing::frame_msg_id;
+use livi_runtime::ident::{Identity, Transport};
+use livi_runtime::{AsyncAuth, ChannelError, ControlChannel};
 
 struct PairChannel {
     tx: mpsc::UnboundedSender<Vec<u8>>,

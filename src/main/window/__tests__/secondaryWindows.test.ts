@@ -331,6 +331,26 @@ describe('secondaryWindows — bounds + ready-to-show', () => {
     expect(win.__opts.height).toBe(480)
   })
 
+  test('spawn bounds an oversized config value to the maximum', () => {
+    const rt = baseState({
+      dashScreenActive: true,
+      dashScreenWidth: 2213123132132,
+      dashScreenHeight: 999999
+    })
+    syncSecondaryWindows(rt)
+    const win = lastWindows[0]
+    expect(win.__opts.width).toBe(4096)
+    expect(win.__opts.height).toBe(2160)
+  })
+
+  test('spawn lifts an undersized config value to the minimum', () => {
+    const rt = baseState({ dashScreenActive: true, dashScreenWidth: 12, dashScreenHeight: 7 })
+    syncSecondaryWindows(rt)
+    const win = lastWindows[0]
+    expect(win.__opts.width).toBe(300)
+    expect(win.__opts.height).toBe(200)
+  })
+
   test('spawned window denies popups and filters permissions', () => {
     const rt = baseState({ dashScreenActive: true })
     syncSecondaryWindows(rt)

@@ -187,14 +187,10 @@ jobs:
           set -euo pipefail
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-              build-essential python3 python3-dev python3-pip \
-              pkg-config libudev1 ca-certificates \
+              build-essential pkg-config libudev1 ca-certificates \
               libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
-              ninja-build bison cmake \
-              libegl-dev libgles-dev libgbm-dev libcairo2-dev \
-              libffi-dev libexpat1-dev
+              cmake libwayland-dev libxkbcommon-dev
           sudo rm -rf /var/lib/apt/lists/*
-          sudo pip3 install --break-system-packages --upgrade 'meson>=1.4'
 
       - name: Setup Rust [linux-x64]
         if: matrix.os == 'linux' && matrix.arch == 'x64'
@@ -213,9 +209,10 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             native/livi-helperd/target
+            native/livi-compositor/rust/target
             native/livi-crypto/rust/target
             native/livi-gst-video/rust/target
-          key: cargo-linux-x64-${{ hashFiles('native/livi-helperd/**/Cargo.toml', 'native/livi-crypto/rust/Cargo.toml', 'native/livi-gst-video/rust/**/Cargo.toml') }}
+          key: cargo-linux-x64-${{ hashFiles('native/livi-helperd/**/Cargo.toml', 'native/livi-compositor/rust/Cargo.toml', 'native/livi-crypto/rust/Cargo.toml', 'native/livi-gst-video/rust/**/Cargo.toml') }}
           restore-keys: cargo-linux-x64-
 
       - name: Install deps (pnpm) [linux-x64]
@@ -242,14 +239,10 @@ jobs:
           set -euo pipefail
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-              build-essential python3 python3-dev python3-pip \
-              pkg-config libudev1 ca-certificates \
+              build-essential pkg-config libudev1 ca-certificates \
               libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
-              ninja-build bison cmake \
-              libegl-dev libgles-dev libgbm-dev libcairo2-dev \
-              libffi-dev libexpat1-dev
+              cmake libwayland-dev libxkbcommon-dev
           sudo rm -rf /var/lib/apt/lists/*
-          sudo pip3 install --break-system-packages --upgrade 'meson>=1.4'
 
       - name: Setup Rust [linux-arm64]
         if: matrix.os == 'linux' && matrix.arch == 'arm64'
@@ -268,9 +261,10 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             native/livi-helperd/target
+            native/livi-compositor/rust/target
             native/livi-crypto/rust/target
             native/livi-gst-video/rust/target
-          key: cargo-linux-arm64-${{ hashFiles('native/livi-helperd/**/Cargo.toml', 'native/livi-crypto/rust/Cargo.toml', 'native/livi-gst-video/rust/**/Cargo.toml') }}
+          key: cargo-linux-arm64-${{ hashFiles('native/livi-helperd/**/Cargo.toml', 'native/livi-compositor/rust/Cargo.toml', 'native/livi-crypto/rust/Cargo.toml', 'native/livi-gst-video/rust/**/Cargo.toml') }}
           restore-keys: cargo-linux-arm64-
 
       - name: Install deps (pnpm) [linux-arm64]
@@ -367,9 +361,10 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             native/livi-helperd/target
+            native/livi-compositor/rust/target
             native/livi-crypto/rust/target
             native/livi-gst-video/rust/target
-          key: cargo-macos-${{ matrix.arch }}-${{ hashFiles('native/livi-helperd/**/Cargo.toml', 'native/livi-crypto/rust/Cargo.toml', 'native/livi-gst-video/rust/**/Cargo.toml') }}
+          key: cargo-macos-${{ matrix.arch }}-${{ hashFiles('native/livi-helperd/**/Cargo.toml', 'native/livi-compositor/rust/Cargo.toml', 'native/livi-crypto/rust/Cargo.toml', 'native/livi-gst-video/rust/**/Cargo.toml') }}
           restore-keys: cargo-macos-${{ matrix.arch }}-
 
       - name: Build for macOS (arm64 native, x64 cross-compiled)

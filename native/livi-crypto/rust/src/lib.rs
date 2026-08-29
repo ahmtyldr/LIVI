@@ -73,7 +73,7 @@ pub mod cabi {
     /// `out` must hold `in_len - 16` bytes; key/nonce/aad/in must be valid
     /// for their stated lengths. Returns 0 and sets `*out_len` on a valid
     /// tag, -1 on authentication failure or an input shorter than the tag.
-    #[no_mangle]
+    #[unsafe(no_mangle)]
     pub unsafe extern "C" fn livi_chacha20poly1305_open(
         out: *mut u8,
         out_len: *mut usize,
@@ -83,7 +83,7 @@ pub mod cabi {
         aad_len: usize,
         input: *const u8,
         in_len: usize,
-    ) -> i32 {
+    ) -> i32 { unsafe {
         if in_len < TAG_LEN {
             return -1;
         }
@@ -103,12 +103,12 @@ pub mod cabi {
             }
             None => -1,
         }
-    }
+    }}
 
     /// # Safety
     /// `out` must hold `pt_len + 16` bytes; key/nonce/aad/pt must be valid
     /// for their stated lengths.
-    #[no_mangle]
+    #[unsafe(no_mangle)]
     pub unsafe extern "C" fn livi_chacha20poly1305_seal(
         out: *mut u8,
         key: *const u8,
@@ -117,7 +117,7 @@ pub mod cabi {
         aad_len: usize,
         pt: *const u8,
         pt_len: usize,
-    ) {
+    ) { unsafe {
         let key = std::slice::from_raw_parts(key, 32);
         let nonce = std::slice::from_raw_parts(nonce, 12);
         let aad = if aad.is_null() || aad_len == 0 {
@@ -129,7 +129,7 @@ pub mod cabi {
         if let Some(ct) = seal_impl(key, nonce, pt, aad) {
             std::ptr::copy_nonoverlapping(ct.as_ptr(), out, ct.len());
         }
-    }
+    }}
 }
 
 #[cfg(test)]

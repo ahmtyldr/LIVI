@@ -126,8 +126,8 @@ fn query_lockdown(dev: &iap2_usbmux::MuxDevice) -> Result<(usize, String), Strin
                 if expect.is_none() && buf.len() >= 4 {
                     expect = Some(u32::from_be_bytes(buf[0..4].try_into().unwrap()) as usize);
                 }
-                if let Some(n) = expect {
-                    if buf.len() >= 4 + n {
+                if let Some(n) = expect
+                    && buf.len() >= 4 + n {
                         let text = String::from_utf8_lossy(&buf[4..4 + n]);
                         let typ = text
                             .split("<string>")
@@ -138,7 +138,6 @@ fn query_lockdown(dev: &iap2_usbmux::MuxDevice) -> Result<(usize, String), Strin
                         conn.close();
                         return Ok((n, typ));
                     }
-                }
             }
             Some(_) => {
                 conn.close();

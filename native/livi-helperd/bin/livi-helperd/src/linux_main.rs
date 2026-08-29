@@ -5,15 +5,15 @@ use iap2_link::LinkConfig;
 use iap2_mfi::I2cCoprocessor;
 use std::sync::Arc;
 
-use iap2_runtime::bonjour::Bonjour;
-use iap2_runtime::bringup::{run_accessory, CpConfig};
-use iap2_runtime::bt;
-use iap2_runtime::driver::spawn_link;
-use iap2_runtime::ident::{Identity, Transport};
-use iap2_runtime::livi_sock::{self, pump_artwork, pump_events_for, Broadcaster, LiviSockConfig, SharedTag};
-use iap2_runtime::mfi_async::SharedCoprocessor;
-use iap2_runtime::reconnect;
-use iap2_runtime::state::HelperState;
+use livi_runtime::bonjour::Bonjour;
+use livi_runtime::bringup::{run_accessory, CpConfig};
+use livi_runtime::bt;
+use livi_runtime::driver::spawn_link;
+use livi_runtime::ident::{Identity, Transport};
+use livi_runtime::livi_sock::{self, pump_artwork, pump_events_for, Broadcaster, LiviSockConfig, SharedTag};
+use livi_runtime::mfi_async::SharedCoprocessor;
+use livi_runtime::reconnect;
+use livi_runtime::state::HelperState;
 
 fn env_or<T: std::str::FromStr>(key: &str, default: T) -> T {
     std::env::var(key).ok().and_then(|v| v.parse().ok()).unwrap_or(default)
@@ -46,20 +46,18 @@ impl DeviceConfig {
 
     // config.json wins, then env, then default — mirroring the previous helper.
     pub fn string(&self, json_key: &str, env_key: &str, default: &str) -> String {
-        if let Some(s) = self.json.get(json_key).and_then(|v| v.as_str()) {
-            if !s.is_empty() {
+        if let Some(s) = self.json.get(json_key).and_then(|v| v.as_str())
+            && !s.is_empty() {
                 return s.to_string();
             }
-        }
         std::env::var(env_key).ok().filter(|s| !s.is_empty()).unwrap_or_else(|| default.to_string())
     }
 
     pub fn int<T: std::str::FromStr + std::convert::TryFrom<i64>>(&self, json_key: &str, env_key: &str, default: T) -> T {
-        if let Some(n) = self.json.get(json_key).and_then(|v| v.as_i64()) {
-            if let Ok(v) = T::try_from(n) {
+        if let Some(n) = self.json.get(json_key).and_then(|v| v.as_i64())
+            && let Ok(v) = T::try_from(n) {
                 return v;
             }
-        }
         env_or(env_key, default)
     }
 }
@@ -67,7 +65,7 @@ impl DeviceConfig {
 /// `--wifi-ap`: dedicated early-boot AP mode (hostapd + dnsmasq ownership).
 pub fn run_wifi_ap() -> ExitCode {
     let dc = DeviceConfig::load();
-    let cfg = iap2_runtime::wifi_ap::ApConfig {
+    let cfg = livi_runtime::wifi_ap::ApConfig {
         iface: dc.string("wifiInterface", "LIVI_WIFI_IFACE", "wlan0"),
         ssid: dc.string("carName", "LIVI_CP_NAME", "LIVI"),
         passphrase: dc.string("wifiPassword", "LIVI_PASSPHRASE", "12345678"),
@@ -76,7 +74,7 @@ pub fn run_wifi_ap() -> ExitCode {
         country: dc.string("country", "LIVI_COUNTRY", "DE"),
         ap_ip: std::env::var("LIVI_AP_IP").unwrap_or_else(|_| "10.10.0.1".into()),
     };
-    iap2_runtime::wifi_ap::run(cfg)
+    livi_runtime::wifi_ap::run(cfg)
 }
 
 pub fn run() -> ExitCode {
@@ -130,7 +128,7 @@ async fn serve() -> Result<(), Box<dyn std::error::Error>> {
     let state = Arc::new(HelperState::default());
     let wired_phones = crate::aa::WiredPhones::default();
 
-    iap2_runtime::bluetoothd::setup();
+    livi_runtime::bluetoothd::setup();
     println!("[helperd] starting BlueZ profile on {adapter}");
     let (conn, mut incoming) = bt::start(&adapter, &name, true).await?;
     let bt_mac = bt::adapter_address(&conn, &adapter).await?;
@@ -169,12 +167,12 @@ async fn serve() -> Result<(), Box<dyn std::error::Error>> {
                     ap_ip: std::env::var("LIVI_AP_IP").unwrap_or_else(|_| "10.10.0.1".into()),
                     port: env_or("LIVI_PORT", 5277u16),
                 };
-                let hfp = iap2_runtime::hfp::Hfp::default();
+                let hfp = livi_runtime::hfp::Hfp::default();
                 hfp.set_events(aa_events.clone());
                 if let Err(e) = bt::start_hfp(&conn, hfp.clone()).await {
                     eprintln!("[hfp] profile registration failed: {e}");
                 }
-                iap2_runtime::sco::serve(aa_events.clone());
+                livi_runtime::sco::serve(aa_events.clone());
                 if let Err(e) = bt::start_ble_ad(&conn, &adapter, &identity.name).await {
                     eprintln!("[aa] BLE advertisement failed: {e}");
                 }
@@ -195,7 +193,7 @@ async fn serve() -> Result<(), Box<dyn std::error::Error>> {
     {
         let bus = conn.clone();
         let wired = wired_phones.clone();
-        let deps = iap2_runtime::aa_sock::AaSockDeps {
+        let deps = livi_runtime::aa_sock::AaSockDeps {
             adapter: adapter.clone(),
             wifi_iface: wifi_iface.clone(),
             set_wired_phones: Box::new(move |ids| wired.set(ids)),
@@ -211,7 +209,7 @@ async fn serve() -> Result<(), Box<dyn std::error::Error>> {
             }),
         };
         tokio::spawn(async move {
-            if let Err(e) = iap2_runtime::aa_sock::serve(bus, deps).await {
+            if let Err(e) = livi_runtime::aa_sock::serve(bus, deps).await {
                 eprintln!("[aa-sock] ended: {e}");
             }
         });
@@ -233,7 +231,7 @@ async fn serve() -> Result<(), Box<dyn std::error::Error>> {
         println!("[helperd] wired CarPlay watcher started");
     }
 
-    let wlan_mac = iap2_runtime::net::wlan_mac(&wifi_iface).unwrap_or_else(|| format_mac(&bt_mac));
+    let wlan_mac = livi_runtime::net::wlan_mac(&wifi_iface).unwrap_or_else(|| format_mac(&bt_mac));
     let _bonjour = match Bonjour::start(wlan_mac, cp.airplay_port as u16, cp.source_version.clone(), pk, pi, bcast.clone()) {
         Ok(b) => Some(b),
         Err(e) => {

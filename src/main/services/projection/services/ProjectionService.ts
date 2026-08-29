@@ -2,7 +2,7 @@ import { execFile } from 'node:child_process'
 import { configEvents } from '@main/ipc/utils'
 import { SystemSound } from '@main/services/audio'
 import { broadcastToSecondaryRenderers } from '@main/window/broadcast'
-import { getSecondaryWindow } from '@main/window/secondaryWindows'
+import { getSecondaryWindow, secondaryWindowEvents } from '@main/window/secondaryWindows'
 import { ICON_120_B64, ICON_180_B64, ICON_256_B64 } from '@shared/assets/carIcons'
 import type { Config, DevListEntry } from '@shared/types'
 import { PhoneWorkMode } from '@shared/types'
@@ -17,7 +17,7 @@ import {
   startAudioDeviceMonitor
 } from '../../audio/AudioDeviceEnumerator'
 import { StatusFileWriter } from '../../status/StatusFileWriter'
-import { type GstVideoCodec, probeGstCodecs } from '../../video/GstVideo'
+import { type GstVideoCodec, probeGstCodecs, setOnPlayerCreated } from '../../video/GstVideo'
 import { gstHost, VIDEO_PLANE_CLUSTER_RECV, VIDEO_PLANE_MAIN } from '../../video/gstHost'
 import { BluezDeviceClient } from '../bt/BluezDeviceClient'
 import { BtPairedRegistry } from '../bt/BtPairedRegistry'
@@ -958,8 +958,7 @@ export class ProjectionService {
     if (id !== VIDEO_PLANE_MAIN) return
     const wc = this.webContents
     if (!wc || wc.isDestroyed?.()) return
-    const created = this.planes.prepareMain(codec, atom)
-    if (created) this.driver.requestKeyframe?.()
+    this.planes.prepareMain(codec, atom)
 
     const w = this.config.projectionWidth || 1920
     const h = this.config.projectionHeight || 1080
@@ -1001,8 +1000,7 @@ export class ProjectionService {
   private onNativeClusterConfig(codec: GstVideoCodec, atom: Buffer): void {
     this.lastClusterVideoWidth = this.config.clusterWidth || 1280
     this.lastClusterVideoHeight = this.config.clusterHeight || 720
-    const created = this.planes.prepareClusters(codec, atom)
-    if (created) this.driver.requestKeyframe?.()
+    this.planes.prepareClusters(codec, atom)
   }
 
   private attachCodecCapture(d: IPhoneDriver): void {
@@ -1143,6 +1141,12 @@ export class ProjectionService {
 
     gstHost.onVideoReceiverConfig(this.onNativeVideoConfig)
     gstHost.onVideoReceiverStarted(this.onNativeVideoStarted)
+    // A cluster screen window that opens mid-session needs its plane created.
+    secondaryWindowEvents.on('ready', () => {
+      this.planes.ensureClusterPlanes()
+    })
+    // A new player starts mid-stream, so the phone is asked for a keyframe.
+    setOnPlayerCreated(() => this.driver.requestKeyframe?.())
 
     const dongle = this.drivers.getDongle()
     dongle.on('phone-connected', () => this.onDonglePhoneConnected())

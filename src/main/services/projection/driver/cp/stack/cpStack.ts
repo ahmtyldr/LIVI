@@ -1145,13 +1145,23 @@ export class CpStack extends EventEmitter {
 
   forceMainKeyframe(): void {
     const s = this._active
-    if (!s || !s.mainStreamReady) return
+    if (!s || !s.mainStreamReady) {
+      console.log('[cpStack] forceMainKeyframe skipped (stream not ready)')
+      return
+    }
+    console.log('[cpStack] forceKeyFrame -> main')
     this._sendEventCommand(s, encodeBplist({ type: 'forceKeyFrame', params: { uuid: MAIN_UUID } }))
   }
 
   forceClusterKeyframe(): void {
     const s = this._active
-    if (!s || !s.mainStreamReady || !this._clusterWantActive) return
+    if (!s || !s.mainStreamReady || !this._clusterWantActive) {
+      console.log(
+        `[cpStack] forceClusterKeyframe skipped (ready=${!!s?.mainStreamReady} wantActive=${this._clusterWantActive})`
+      )
+      return
+    }
+    console.log('[cpStack] forceKeyFrame -> cluster')
     this._sendEventCommand(s, encodeBplist({ type: 'forceKeyFrame', params: { uuid: ALT_UUID } }))
   }
 

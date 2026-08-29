@@ -331,6 +331,16 @@ describe('GstVideo — linux host-process path', () => {
     expect(sockets[0].write).toHaveBeenCalledWith('claim main\n')
   })
 
+  test('notifies the player-created hook once the claim completes', async () => {
+    const m = await loadModule('linux', '/sock')
+    const created = vi.fn()
+    m.setOnPlayerCreated(created)
+    const v = new m.GstVideo({} as never, 'main', 'main')
+    v.push('h264', Buffer.from([1]))
+    expect(created).toHaveBeenCalledTimes(1)
+    m.setOnPlayerCreated(null)
+  })
+
   test('an explicit player id is forwarded to the host', async () => {
     const m = await loadModule('linux', undefined)
     const v = new m.GstVideo({} as never, 'main', 'main', 42)
@@ -551,6 +561,16 @@ describe('GstVideo — darwin in-process addon path', () => {
     v.push('h264', Buffer.from([2]))
     expect(addon.createPlayer).toHaveBeenCalledTimes(1)
     expect(addon.pushBuffer).toHaveBeenCalledTimes(2)
+  })
+
+  test('notifies the player-created hook after an addon create', async () => {
+    const m = await loadModule('darwin')
+    const created = vi.fn()
+    m.setOnPlayerCreated(created)
+    const v = new m.GstVideo({} as never)
+    v.push('h264', Buffer.from([1]))
+    expect(created).toHaveBeenCalledTimes(1)
+    m.setOnPlayerCreated(null)
   })
 
   test('switching codecs recreates the in-process player', async () => {

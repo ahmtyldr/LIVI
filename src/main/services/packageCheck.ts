@@ -50,8 +50,11 @@ export function readManifest(): PackageEntry[] {
   }
 }
 
-/** True when a desktop session is absent, which is what the lite packages backfill. */
+/** True when a desktop session is absent, which is what the lite packages backfill.
+ * A display server in the environment counts as a session: labwc and friends do
+ * not export XDG_CURRENT_DESKTOP, but any session hands us its display. */
 function isLiteHost(): boolean {
+  if (process.env.WAYLAND_DISPLAY || process.env.DISPLAY) return false
   return !process.env.XDG_CURRENT_DESKTOP && !existsSync('/usr/bin/gnome-session')
 }
 

@@ -67,14 +67,13 @@ impl I2cCoprocessor {
         let deadline = Instant::now() + PROBE_TIMEOUT;
         while Instant::now() < deadline {
             for cand in DEV_ADDR_CANDIDATES {
-                if let Ok(mut dev) = LinuxI2CDevice::new(bus_path, cand) {
-                    if dev.write(&[REG_DEVICE_VERSION]).is_ok() {
+                if let Ok(mut dev) = LinuxI2CDevice::new(bus_path, cand)
+                    && dev.write(&[REG_DEVICE_VERSION]).is_ok() {
                         let mut buf = [0u8; 1];
                         if dev.read(&mut buf).is_ok() {
                             return Ok(cand);
                         }
                     }
-                }
             }
             sleep(BUSY_RETRY);
         }
@@ -143,11 +142,10 @@ impl AuthCoprocessor for I2cCoprocessor {
         sleep(Duration::from_millis(10));
         let deadline = Instant::now() + AUTH_TIMEOUT;
         loop {
-            if let Ok(status) = self.read_reg(REG_AUTH_CONTROL_STATUS, 1) {
-                if status[0] == AUTH_DONE {
+            if let Ok(status) = self.read_reg(REG_AUTH_CONTROL_STATUS, 1)
+                && status[0] == AUTH_DONE {
                     break;
                 }
-            }
             if Instant::now() >= deadline {
                 let error_code = self.read_reg(REG_ERROR_CODE, 1).ok().map(|v| v[0]);
                 return Err(MfiError::AuthFailed { error_code });

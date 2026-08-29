@@ -65,19 +65,37 @@ describe('the shipped manifest', () => {
 
 describe('requiredPackages', () => {
   const entries = parseManifest('core|a|cmd:a|x\nlite|b|cmd:b|y')
+  const SESSION_VARS = ['XDG_CURRENT_DESKTOP', 'WAYLAND_DISPLAY', 'DISPLAY'] as const
+  let saved: Record<string, string | undefined>
+
+  beforeEach(() => {
+    saved = Object.fromEntries(SESSION_VARS.map((v) => [v, process.env[v]]))
+    for (const v of SESSION_VARS) delete process.env[v]
+  })
+
+  afterEach(() => {
+    for (const v of SESSION_VARS) {
+      if (saved[v] === undefined) delete process.env[v]
+      else process.env[v] = saved[v]
+    }
+  })
 
   it('takes core plus lite when there is no desktop session', () => {
-    const prev = process.env.XDG_CURRENT_DESKTOP
-    delete process.env.XDG_CURRENT_DESKTOP
     expect(requiredPackages(entries).map((e) => e.name)).toEqual(['a', 'b'])
-    if (prev !== undefined) process.env.XDG_CURRENT_DESKTOP = prev
   })
 
   it('takes core only on a desktop host', () => {
-    const prev = process.env.XDG_CURRENT_DESKTOP
     process.env.XDG_CURRENT_DESKTOP = 'GNOME'
     expect(requiredPackages(entries).map((e) => e.name)).toEqual(['a'])
-    if (prev === undefined) delete process.env.XDG_CURRENT_DESKTOP
-    else process.env.XDG_CURRENT_DESKTOP = prev
+  })
+
+  it('a wayland session counts as a desktop even without XDG_CURRENT_DESKTOP', () => {
+    process.env.WAYLAND_DISPLAY = 'wayland-0'
+    expect(requiredPackages(entries).map((e) => e.name)).toEqual(['a'])
+  })
+
+  it('an x11 session counts as a desktop too', () => {
+    process.env.DISPLAY = ':0'
+    expect(requiredPackages(entries).map((e) => e.name)).toEqual(['a'])
   })
 })

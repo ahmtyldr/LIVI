@@ -17,7 +17,7 @@ export type DeviceControllerDeps = {
   getDongleDevList: () => DevListEntry[]
   emit: (payload: ProjectionEvent) => void
   autoConnect: () => boolean
-  pushReconnectTargets: (targets: Record<string, string | null>) => void
+  pushReconnectTargets: (targets: Array<[string, string | null]>) => void
   pushWiredPhones: (ids: string[]) => void
 }
 
@@ -151,10 +151,12 @@ export class DeviceController {
     this.deps.pushWiredPhones(list)
   }
 
+  // Ordered by recency: the helper pages one phone at a time, top of the list first.
   private reconcileReconnectTargets(force = false): void {
     const reg = this.deps.deviceRegistry
-    const targets: Record<string, string | null> = {}
-    for (const e of this.deps.autoConnect() ? reg.list() : []) {
+    const candidates = this.deps.autoConnect() ? reg.list() : []
+    const targets: Array<[string, string | null]> = []
+    for (const e of [...candidates].sort((a, b) => (b.lastSeen ?? 0) - (a.lastSeen ?? 0))) {
       if (!e.btMac || !(e.protocol || e.name)) continue
       const sess = this.deps.sessions().byDevice({
         btMac: e.btMac,
@@ -164,12 +166,9 @@ export class DeviceController {
         ip: e.currentIp
       })
       if (sess) continue
-      targets[e.btMac.toUpperCase()] = wakeUuid(e.protocol)
+      targets.push([e.btMac.toUpperCase(), wakeUuid(e.protocol)])
     }
-    const sig = Object.keys(targets)
-      .sort()
-      .map((m) => `${m}=${targets[m] ?? ''}`)
-      .join(',')
+    const sig = targets.map(([m, u]) => `${m}=${u ?? ''}`).join(',')
     if (!force && sig === this.lastReconnectSig) return
     this.lastReconnectSig = sig
     this.deps.pushReconnectTargets(targets)

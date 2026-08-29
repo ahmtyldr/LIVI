@@ -11,8 +11,10 @@ fn gst_includes() -> Vec<std::path::PathBuf> {
         // The GStreamer.framework ships its own pkgconfig dir; make it win.
         let fw = "/Library/Frameworks/GStreamer.framework/Versions/1.0/lib/pkgconfig";
         let prev = std::env::var("PKG_CONFIG_PATH").unwrap_or_default();
-        std::env::set_var("PKG_CONFIG_PATH", format!("{fw}:{prev}"));
-        std::env::set_var("PKG_CONFIG_ALLOW_CROSS", "1");
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("PKG_CONFIG_PATH", format!("{fw}:{prev}")) };
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("PKG_CONFIG_ALLOW_CROSS", "1") };
     }
     let mut includes = Vec::new();
     for pkg in GST_PKGS {

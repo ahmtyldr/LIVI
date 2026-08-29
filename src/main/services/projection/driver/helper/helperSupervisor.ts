@@ -32,16 +32,20 @@ function stageHelperBin(src: string): string {
   return dest
 }
 
-// A python-era helper left running holds the RFCOMM channel and the MFi bus.
-function killStalePythonHelper(): void {
+// A leftover helper (crashed LIVI, killed session) runs as root and keeps the
+// MFi GPIO, the RFCOMM channel and the BT sockets claimed; only root can end it.
+// The end anchor spares the AP service, which runs the same binary as --wifi-ap.
+function killStaleHelpers(): void {
   if (process.platform !== 'linux') return
-  try {
-    const out = execFileSync('pgrep', ['-f', 'livi-helper\\.py'], { encoding: 'utf8' }).trim()
-    if (!out) return
-    console.warn('[helper] stopping a leftover python helper from an older release')
-    execFileSync('sudo', ['-n', 'pkill', '-f', 'livi-helper\\.py'], { stdio: 'ignore' })
-  } catch {
-    /* nothing to clean up, or no passwordless sudo for it */
+  for (const pattern of ['livi-helper\\.py', 'driver/livi-helperd$']) {
+    try {
+      const out = execFileSync('pgrep', ['-f', pattern], { encoding: 'utf8' }).trim()
+      if (!out) continue
+      console.warn(`[helper] stopping a stale helper instance (${pattern})`)
+      execFileSync('sudo', ['-n', 'pkill', '-f', pattern], { stdio: 'ignore' })
+    } catch {
+      /* nothing to clean up, or no passwordless sudo for it */
+    }
   }
 }
 
@@ -145,7 +149,7 @@ export class HelperSupervisor extends EventEmitter {
 
   private _spawn(): void {
     if (!this._cfg) return
-    killStalePythonHelper()
+    killStaleHelpers()
     const bin = resolveHelperBin()
 
     if (!existsSync(bin)) {

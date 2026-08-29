@@ -139,6 +139,14 @@ export class VideoPlaneManager {
     return created
   }
 
+  /** Re-run native cluster plane creation from the stored codec state, for a
+   * screen window that appeared after the receiver was configured. */
+  ensureClusterPlanes(): boolean {
+    const atom = this.gstVideoClusterCodecData
+    if (!atom) return false
+    return this.prepareClusters(this.gstVideoClusterCodec, atom)
+  }
+
   pushMain(nal: Buffer): void {
     const wc = this.deps.getWebContents()
     if (!wc || wc.isDestroyed?.()) return
@@ -170,13 +178,14 @@ export class VideoPlaneManager {
       if (kind === 'delta') return
       if (kind === 'keyframe') this.clusterAwaitingKeyframe = false
     }
-    // one plane per configured screen, all fed the same cluster stream
+    // One plane per configured screen. The fixed per-screen id is what the
+    // native receiver's fan-out addresses.
     for (const screen of clusterTargetScreens(this.deps.getConfig())) {
       let plane = this.gstVideoClusters.get(screen)
       if (!plane) {
         const wc = this.clusterScreenWebContents(screen)
         if (!wc || wc.isDestroyed?.()) continue
-        plane = new GstVideo(wc, `cluster-${screen}`, screen)
+        plane = new GstVideo(wc, `cluster-${screen}`, screen, clusterPlaneId(screen))
         plane.setVisible(this.clusterPlaneVisible(screen))
         if (this.gstVideoClusterCodecData) plane.setCodecData(this.gstVideoClusterCodecData)
         this.applyClusterCrop(plane) // fit to the configured cluster-stream AR

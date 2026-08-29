@@ -1,22 +1,22 @@
-use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use crate::livi_sock::SharedTag;
 
 /// Shared helper state: reconnect targets, plus the tags of the carkit iAP2 sessions.
+/// Targets stay in the order LIVI sent them: most recently seen phone first.
 #[derive(Default)]
 pub struct HelperState {
-    reconnect_targets: Mutex<HashMap<String, Option<String>>>,
+    reconnect_targets: Mutex<Vec<(String, Option<String>)>>,
     carkit: Mutex<Vec<SharedTag>>,
 }
 
 impl HelperState {
-    pub fn set_reconnect_targets(&self, targets: HashMap<String, Option<String>>) {
+    pub fn set_reconnect_targets(&self, targets: Vec<(String, Option<String>)>) {
         let normalized = targets.into_iter().map(|(m, u)| (m.to_uppercase(), u)).collect();
         *self.reconnect_targets.lock().unwrap() = normalized;
     }
 
-    pub fn reconnect_targets(&self) -> HashMap<String, Option<String>> {
+    pub fn reconnect_targets(&self) -> Vec<(String, Option<String>)> {
         self.reconnect_targets.lock().unwrap().clone()
     }
 

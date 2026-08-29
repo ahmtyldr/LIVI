@@ -299,7 +299,7 @@ Make sure the following packages and tools are installed on your system before b
 - **Python 3.x** (Linux build tooling only: the wlroots compositor is built with `meson`, a Python tool installed from pip — LIVI itself runs no Python, and the Node addons build without it)
 - **build-essential** (Linux: includes `gcc`, `g++`, `make`, etc.)
 - **libgstreamer1.0-dev** + **libgstreamer-plugins-base1.0-dev** (required to build the `livi-gst-video` addon and the `livi-gst-host` binary)
-- **meson** (≥ 1.4), **ninja**, **pkg-config**, **bison**, **cmake** and the wlroots/EGL stack: **libwayland-dev**, **wayland-protocols**, **libxkbcommon-dev** (≥ 1.8.0), **libpixman-1-dev**, **libcairo2-dev**, **libegl-dev** / **libgles-dev** / **libgbm-dev** / **libffi-dev** / **libexpat1-dev** (Linux only: to build the embedded wlroots compositor)
+- **pkg-config**, **cmake** (AWS-LC build), **libwayland-dev** + **libxkbcommon-dev** (Linux only: the embedded compositor links them)
 - **fuse3** (required to run AppImages)
 - runtime packages for native CarPlay and wireless Android Auto: **bluez**, **libspa-0.2-bluetooth**, **hostapd**, **dnsmasq-base**, **iw**, **rfkill**, **avahi-daemon**, **avahi-utils**, **pulseaudio-utils**
 
@@ -307,14 +307,12 @@ On Debian/Ubuntu/Raspberry Pi OS, install everything with:
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y git build-essential python3 python3-pip \
-  pkg-config bison ninja-build cmake \
+sudo apt-get install -y git build-essential \
+  pkg-config cmake \
   libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
-  libegl-dev libgles-dev libgbm-dev libffi-dev libexpat1-dev \
-  libwayland-dev wayland-protocols libxkbcommon-dev libpixman-1-dev libcairo2-dev \
+  libwayland-dev libxkbcommon-dev \
   fuse3 bluez libspa-0.2-bluetooth hostapd dnsmasq-base iw rfkill avahi-daemon avahi-utils \
   pulseaudio-utils
-pip3 install --user --break-system-packages 'meson>=1.4'
 curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
 sudo apt-get install -y nodejs
 sudo corepack enable
@@ -327,16 +325,12 @@ i2c and gpio character devices, so no extra package is needed for either.
 On Fedora, install everything with:
 
 ```bash
-sudo dnf install -y git gcc gcc-c++ make python3 python3-pip \
-  pkgconf-pkg-config systemd-devel \
+sudo dnf install -y git gcc gcc-c++ make \
+  pkgconf-pkg-config systemd-devel cmake \
   gstreamer1-devel gstreamer1-plugins-base-devel \
-  meson ninja-build bison cmake \
-  wlroots-devel wayland-devel wayland-protocols-devel libxkbcommon-devel \
-  pixman-devel cairo-devel \
-  mesa-libEGL-devel mesa-libGLES-devel mesa-libgbm-devel libffi-devel expat-devel \
+  wayland-devel libxkbcommon-devel \
   fuse3 fuse3-libs \
   bluez hostapd dnsmasq iw avahi avahi-tools pulseaudio-utils
-pip3 install --user meson
 curl -fsSL https://rpm.nodesource.com/setup_24.x | sudo bash -
 sudo dnf install -y nodejs
 sudo corepack enable

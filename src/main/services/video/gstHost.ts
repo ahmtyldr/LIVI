@@ -1,6 +1,6 @@
 import { type ChildProcess, execFileSync, spawn } from 'node:child_process'
 import { EventEmitter } from 'node:events'
-import { chmodSync, existsSync, readFileSync, unlinkSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, openSync, readFileSync, unlinkSync } from 'node:fs'
 import net from 'node:net'
 import os from 'node:os'
 import path from 'node:path'
@@ -99,10 +99,17 @@ class GstHost {
       if (process.env.LIVI_GST_PRELOAD) env.LD_PRELOAD = process.env.LIVI_GST_PRELOAD
       env.GST_GL_WINDOW = 'surfaceless'
       env.GST_GL_PLATFORM = 'egl'
-      this.child = spawn(hostBin, [sockPath, crashPath], {
-        env,
-        stdio: ['ignore', 'inherit', 'inherit']
-      })
+      // A silent pipeline failure must be diagnosable from the log.
+      let stdio: ('ignore' | 'inherit' | number)[] = ['ignore', 'inherit', 'inherit']
+      try {
+        const logDir = path.join(os.homedir(), '.config', 'LIVI', 'log')
+        mkdirSync(logDir, { recursive: true })
+        const fd = openSync(path.join(logDir, 'gst-host.log'), 'w')
+        stdio = ['ignore', fd, fd]
+      } catch {
+        // no log dir: keep the inherited stdio
+      }
+      this.child = spawn(hostBin, [sockPath, crashPath], { env, stdio })
       this.child.on('exit', (code, signal) => {
         console.error('[gstHost] child exited:', code, signal ?? '')
         if (signal && existsSync(crashPath)) {

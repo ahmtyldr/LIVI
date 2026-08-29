@@ -178,6 +178,12 @@ const { configEventsMock } = vi.hoisted(() => ({
 }))
 vi.mock('@main/ipc/utils', () => ({ configEvents: configEventsMock }))
 
+const playerCreatedHook: { cb: (() => void) | null } = { cb: null }
+vi.mock('../../../video/GstVideo', async (importOriginal) => {
+  const orig = await importOriginal<typeof import('../../../video/GstVideo')>()
+  return { ...orig, setOnPlayerCreated: (cb: (() => void) | null) => (playerCreatedHook.cb = cb) }
+})
+
 vi.mock('@shared/assets/carIcons', () => ({
   ICON_120_B64: 'QUFBQQ==',
   ICON_180_B64: 'QkJCQg==',
@@ -196,7 +202,8 @@ vi.mock('usb', () => ({
 }))
 
 vi.mock('@main/window/secondaryWindows', () => ({
-  getSecondaryWindow: vi.fn(() => null)
+  getSecondaryWindow: vi.fn(() => null),
+  secondaryWindowEvents: new (require('node:events').EventEmitter)()
 }))
 
 import { getSecondaryWindow } from '@main/window/secondaryWindows'
@@ -697,11 +704,17 @@ describe('ProjectionService video handling', () => {
     const svc = makeSvc()
     svc.config = { clusterWidth: 800, clusterHeight: 480 }
     svc.planes.prepareClusters = vi.fn(() => true)
-    svc.drivers.getDongle().requestKeyframe = vi.fn()
     svc.onNativeClusterConfig('h264', Buffer.from([1]))
     expect(svc.lastClusterVideoWidth).toBe(800)
     expect(svc.planes.prepareClusters).toHaveBeenCalled()
-    expect(svc.drivers.getDongle().requestKeyframe).toHaveBeenCalled()
+  })
+
+  test('a created player asks the active driver for a keyframe', () => {
+    const svc = makeSvc()
+    const requestKeyframe = vi.fn()
+    svc.drivers.getActive = vi.fn(() => ({ requestKeyframe }))
+    playerCreatedHook.cb?.()
+    expect(requestKeyframe).toHaveBeenCalledTimes(1)
   })
 
   test('syncVideoActiveFeeder toggles the active feeder when the driver changes', () => {
@@ -1891,7 +1904,7 @@ describe('ProjectionService constructor wiring closures', () => {
     expect(svc.deviceController.deps.getDongleConnectedMac()).toBe('CC:DD')
     expect(svc.deviceController.deps.getDongleDevList()).toEqual([])
     expect(svc.deviceController.deps.autoConnect()).toBe(true)
-    svc.deviceController.deps.pushReconnectTargets([{ mac: 'x' }])
+    svc.deviceController.deps.pushReconnectTargets([['AA:BB', null]])
     svc.deviceController.deps.pushWiredPhones(['id1'])
 
     expect(svc.emitProjectionEvent).toHaveBeenCalled()
@@ -2988,7 +3001,7 @@ describe('ProjectionService error-lambda and small-branch coverage', () => {
     svc.drivers.getCpManager = vi.fn(() => ({
       helper: { sendReconnectTargets: vi.fn(() => Promise.reject(new Error('send boom'))) }
     }))
-    expect(() => svc.deviceController.deps.pushReconnectTargets([{ mac: 'x' }])).not.toThrow()
+    expect(() => svc.deviceController.deps.pushReconnectTargets([['AA:BB', null]])).not.toThrow()
   })
 
   test('shutdownWirelessSessions swallows a rejected supervisor stop', async () => {

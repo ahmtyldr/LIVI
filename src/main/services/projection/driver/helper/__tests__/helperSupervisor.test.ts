@@ -140,20 +140,25 @@ describe('spawning', () => {
     expect(sup.running).toBe(false)
   })
 
-  test('kills a leftover python helper from an older release before spawning', async () => {
+  test('kills stale helpers (python-era and rust) before spawning, sparing the AP unit', async () => {
     devBinOnly()
     const mockedExec = execFileSync as Mock
-    mockedExec.mockReturnValueOnce('1234\n')
+    mockedExec.mockReturnValue('1234\n')
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const { HelperSupervisor } = await load(false)
     const sup = new HelperSupervisor()
     sup.start(CONFIG)
-    expect(mockedExec).toHaveBeenCalledWith('pgrep', ['-f', 'livi-helper\\.py'], expect.anything())
-    expect(mockedExec).toHaveBeenCalledWith('sudo', ['-n', 'pkill', '-f', 'livi-helper\\.py'], {
-      stdio: 'ignore'
-    })
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining('older release'))
+    for (const pattern of ['livi-helper\\.py', 'driver/livi-helperd$']) {
+      expect(mockedExec).toHaveBeenCalledWith('pgrep', ['-f', pattern], expect.anything())
+      expect(mockedExec).toHaveBeenCalledWith('sudo', ['-n', 'pkill', '-f', pattern], {
+        stdio: 'ignore'
+      })
+    }
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('stale helper'))
     warn.mockRestore()
+    // execFileSync is module-mocked and not reset per test; restore its default.
+    mockedExec.mockReset()
+    mockedExec.mockImplementation(() => '')
   })
 
   test('spawns via sudo on linux with the wireless env from the config', async () => {

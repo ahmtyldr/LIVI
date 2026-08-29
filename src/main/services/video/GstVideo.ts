@@ -397,6 +397,12 @@ export function probeGstCodecs(): GstCodecProbe {
   }
 }
 
+// Fires after a player is created, once the compositor claim has completed.
+let onPlayerCreated: (() => void) | null = null
+export function setOnPlayerCreated(cb: (() => void) | null): void {
+  onPlayerCreated = cb
+}
+
 // GStreamer video player. On Linux the pipeline lives in the gstHost child process and this only
 // holds an id for it; on mac/Windows it drives the in-process addon directly.
 export class GstVideo {
@@ -466,6 +472,7 @@ export class GstVideo {
         this.applyGamma()
         for (const b of this.pendingBuffers) gstHost.pushBuffer(this.id, b)
         this.pendingBuffers = []
+        onPlayerCreated?.()
       })
       return
     }
@@ -483,6 +490,7 @@ export class GstVideo {
       a.setVisible(this.player, this.visible)
       if (this.region) this.applyRegion(a)
       this.applyGamma()
+      onPlayerCreated?.()
     }
   }
 

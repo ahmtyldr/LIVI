@@ -140,8 +140,8 @@ export const SettingsFieldControl = <T,>({
           min={min}
           max={max}
           step={step}
-          onValueChange={(v) => {
-            // ignore "in-progress" values
+          // Committed, not per keystroke
+          onValueCommitted={(v) => {
             if (typeof v !== 'number' || !Number.isFinite(v)) return
 
             const next = clampInt(v, min, max, step)

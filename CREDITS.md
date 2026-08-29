@@ -37,14 +37,13 @@ licensed under the **BSD-3-Clause** and other compatible licenses.
 
 https://www.electronjs.org/
 
-### wlroots
+### Smithay
 
-This application bundles a **modified** build of **wlroots** (0.20). LIVI carries
-local patches for host-output control and multi-output touch in the Wayland backend.
+This application bundles smithay.
 
-wlroots is licensed under the **MIT License**.
+Smithay is licensed under the **MIT License**.
 
-https://gitlab.freedesktop.org/wlroots/wlroots
+https://github.com/Smithay/smithay
 
 ### GStreamer
 
