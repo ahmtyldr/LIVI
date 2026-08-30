@@ -498,6 +498,37 @@ describe('UsbAoapBridge — non-accessory boot (mode switch + re-enumerate)', ()
     onConnect({ device: acc })
   }
 
+  test('an unreadable device on the hotplug event is skipped, the accessory still resolves', async () => {
+    ;(usb.addEventListener as Mock).mockClear()
+    isAccessoryModeMock.mockReturnValue(false)
+    const dev = new MockDevice()
+    createServer.mockImplementationOnce(() => new MockServer())
+    const bridge = new UsbAoapBridge(dev as unknown as Device)
+    const ready = vi.fn()
+    bridge.on('ready', ready)
+
+    const startP = bridge.start()
+    for (let i = 0; i < 50 && (usb.addEventListener as Mock).mock.calls.length === 0; i++) {
+      await flush()
+    }
+    const onConnect = (usb.addEventListener as Mock).mock.calls.at(-1)![1] as (e: {
+      device: unknown
+    }) => void
+
+    const busy = {
+      get vendorId(): number {
+        throw new Error('The same native value cannot be borrowed mutably')
+      }
+    }
+    expect(() => onConnect({ device: busy })).not.toThrow()
+
+    const acc = new MockDevice()
+    acc.productId = ACCESSORY_PID
+    onConnect({ device: acc })
+    await startP
+    expect(ready).toHaveBeenCalled()
+  })
+
   test('opens the normal-mode device, runs the AOAP handshake, then opens the accessory', async () => {
     ;(usb.addEventListener as Mock).mockClear()
     isAccessoryModeMock.mockReturnValue(false)

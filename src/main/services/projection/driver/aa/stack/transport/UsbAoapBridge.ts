@@ -404,10 +404,15 @@ function waitForAccessoryAttach(timeoutMs: number): Promise<Device> {
   return new Promise((resolve, reject) => {
     const onConnect = (ev: USBConnectionEvent): void => {
       const dev = ev.device as Device
-      if (
-        dev.vendorId === GOOGLE_VID &&
-        (ACCESSORY_PIDS as readonly number[]).includes(dev.productId)
-      ) {
+      let vendorId: number
+      let productId: number
+      try {
+        vendorId = dev.vendorId
+        productId = dev.productId
+      } catch {
+        return
+      }
+      if (vendorId === GOOGLE_VID && (ACCESSORY_PIDS as readonly number[]).includes(productId)) {
         cleanup()
         resolve(dev)
       }
