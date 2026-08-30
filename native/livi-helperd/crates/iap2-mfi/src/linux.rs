@@ -14,23 +14,37 @@ pub struct I2cCoprocessor {
 }
 
 struct PowerLine {
-    _req: gpiocdev::Request,
+    req: gpiocdev::Request,
     gpio: u32,
 }
 
+// The chip only leaves a wedged state on a real power cycle
+const POWER_OFF_SETTLE: Duration = Duration::from_millis(50);
+const POWER_ON_SETTLE: Duration = Duration::from_millis(100);
+
 fn power_on(gpio: i32) -> Result<Option<PowerLine>, MfiError> {
     if gpio < 0 {
+        println!("[mfi] no power pin configured, expecting an externally powered chip");
         return Ok(None);
     }
     let gpio = gpio as u32;
     let req = gpiocdev::Request::builder()
         .on_chip("/dev/gpiochip0")
         .with_line(gpio)
-        .as_output(gpiocdev::line::Value::Active)
+        .as_output(gpiocdev::line::Value::Inactive)
         .request()
         .map_err(|e| MfiError::Io(format!("claim gpio {gpio}: {e}")))?;
-    sleep(Duration::from_millis(100));
-    Ok(Some(PowerLine { _req: req, gpio }))
+    sleep(POWER_OFF_SETTLE);
+    req.set_value(gpio, gpiocdev::line::Value::Active)
+        .map_err(|e| MfiError::Io(format!("power gpio {gpio}: {e}")))?;
+    sleep(POWER_ON_SETTLE);
+    Ok(Some(PowerLine { req, gpio }))
+}
+
+impl Drop for PowerLine {
+    fn drop(&mut self) {
+        let _ = self.req.set_value(self.gpio, gpiocdev::line::Value::Inactive);
+    }
 }
 
 impl PowerLine {
