@@ -295,12 +295,10 @@ After this, the app will launch normally and future updates will work without ad
 Make sure the following packages and tools are installed on your system before building. The lists below cover both building and running, including everything native CarPlay needs:
 
 - **Node.js 24.x** (with `corepack` for `pnpm`)
-- **Rust** (stable, ≥ 1.88 — via [rustup](https://rustup.rs)): builds `livi-helperd` and all native addons (`livi-crypto`, `gst-video`, `livi-gst-host`)
-- **Python 3.x** (Linux build tooling only: the wlroots compositor is built with `meson`, a Python tool installed from pip — LIVI itself runs no Python, and the Node addons build without it)
+- **Rust** (stable, ≥ 1.88 — via [rustup](https://rustup.rs)): builds everything native — `livi-helperd`, `livi-compositor`, and the addons `livi-crypto`, `livi-gst-video` and `livi-gst-host`.
 - **build-essential** (Linux: includes `gcc`, `g++`, `make`, etc.)
 - **libgstreamer1.0-dev** + **libgstreamer-plugins-base1.0-dev** (required to build the `livi-gst-video` addon and the `livi-gst-host` binary)
-- **pkg-config**, **cmake** (AWS-LC build), **libwayland-dev** + **libxkbcommon-dev** (Linux only: the embedded compositor links them)
-- **fuse3** (required to run AppImages)
+- **pkg-config**, **cmake** (AWS-LC build), **libwayland-dev** + **libxkbcommon-dev** (Linux only: the embedded Wayland compositor links both)
 - runtime packages for native CarPlay and wireless Android Auto: **bluez**, **libspa-0.2-bluetooth**, **hostapd**, **dnsmasq-base**, **iw**, **rfkill**, **avahi-daemon**, **avahi-utils**, **pulseaudio-utils**
 
 On Debian/Ubuntu/Raspberry Pi OS, install everything with:
