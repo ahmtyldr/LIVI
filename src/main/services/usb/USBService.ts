@@ -29,10 +29,20 @@ const PHONE_REENUM_SUPPRESS_MS = 2_500
 
 const APPLE_VENDOR_ID = 0x05ac
 
+type PhoneIds = { vendorId: number; productId: number; serialNumber?: string }
+
+function phoneIds(device: Device): PhoneIds {
+  return {
+    vendorId: device.vendorId,
+    productId: device.productId,
+    serialNumber: device.serialNumber || undefined
+  }
+}
+
 export class USBService {
   private lastDongleState: boolean = false
   private lastPhoneState: boolean = false
-  private connectedPhoneDevice: Device | null = null
+  private connectedPhoneIds: PhoneIds | null = null
   private phoneSuspendUntil = 0
   private stopped = false
   private resetInProgress = false
@@ -142,7 +152,7 @@ export class USBService {
           console.log(
             `[USBService] Accessory-mode re-attach during re-enumeration window — bridge owns it (${inSuspend ? 'suspend' : 'reset'})`
           )
-          this.connectedPhoneDevice = device
+          this.connectedPhoneIds = phoneIds(device)
           this.projection.markPhoneConnected(true, device)
           return
         }
@@ -214,14 +224,14 @@ export class USBService {
 
   private markPhoneAttached(device: Device): void {
     this.lastPhoneState = true
-    this.connectedPhoneDevice = device
+    this.connectedPhoneIds = phoneIds(device)
     this.phoneSuspendUntil = Date.now() + PHONE_REENUM_SUPPRESS_MS
     this.projection.markPhoneConnected(true, device)
   }
 
   private markPhoneDetached(_device: Device): void {
     this.lastPhoneState = false
-    this.connectedPhoneDevice = null
+    this.connectedPhoneIds = null
     this.phoneSuspendUntil = 0
     this.projection.markPhoneConnected(false)
   }
@@ -252,8 +262,10 @@ export class USBService {
   }
 
   private isSamePhoneDevice(device: Device): boolean {
-    const cur = this.connectedPhoneDevice
+    const cur = this.connectedPhoneIds
     if (!cur) return false
+    const serial = device.serialNumber || undefined
+    if (serial && cur.serialNumber) return serial === cur.serialNumber
     return device.vendorId === cur.vendorId && device.productId === cur.productId
   }
 
@@ -371,8 +383,8 @@ export class USBService {
       }
 
       // Direct-USB AA path: phone in accessory mode without a dongle.
-      if (this.lastPhoneState && this.connectedPhoneDevice) {
-        const dev = this.connectedPhoneDevice
+      if (this.lastPhoneState && this.connectedPhoneIds) {
+        const dev = this.connectedPhoneIds
         return {
           type: 'plugged',
           device: {

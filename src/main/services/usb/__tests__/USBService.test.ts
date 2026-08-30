@@ -586,7 +586,7 @@ describe('USBService', () => {
   test('usb-last-event reports connected phone when no dongle is tracked', async () => {
     const s = new USBService(projection) as any
     s.lastPhoneState = true
-    s.connectedPhoneDevice = mkDevice(0x18d1, 0x4ee1)
+    s.connectedPhoneIds = { vendorId: 0x18d1, productId: 0x4ee1 }
 
     const h = getHandler<() => Promise<any>>('usb-last-event')
 
@@ -645,5 +645,37 @@ describe('USBService', () => {
       type: 'plugged',
       device: { vendorId: null, productId: null, deviceName: '' }
     })
+  })
+  test('detaching one of two identical phones leaves the tracked one connected', async () => {
+    const s = new USBService(projection) as any
+    const active = mkDevice(0x18d1, 0x4ee1)
+    active.serialNumber = 'AAAA1111'
+    s.lastPhoneState = true
+    s.connectedPhoneIds = {
+      vendorId: active.vendorId,
+      productId: active.productId,
+      serialNumber: active.serialNumber
+    }
+
+    const twin = mkDevice(0x18d1, 0x4ee1)
+    twin.serialNumber = 'BBBB2222'
+    getDisconnectCb()(evt(twin))
+
+    expect(projection.markPhoneConnected).not.toHaveBeenCalled()
+    expect(s.lastPhoneState).toBe(true)
+
+    getDisconnectCb()(evt(active))
+    expect(projection.markPhoneConnected).toHaveBeenCalledWith(false)
+    expect(s.lastPhoneState).toBe(false)
+  })
+
+  test('phones without a serial still match on vendor and product id', async () => {
+    const s = new USBService(projection) as any
+    s.lastPhoneState = true
+    s.connectedPhoneIds = { vendorId: 0x18d1, productId: 0x4ee1 }
+
+    getDisconnectCb()(evt(mkDevice(0x18d1, 0x4ee1)))
+
+    expect(projection.markPhoneConnected).toHaveBeenCalledWith(false)
   })
 })
