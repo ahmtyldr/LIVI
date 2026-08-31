@@ -25,8 +25,21 @@ fn gst_includes() -> Vec<std::path::PathBuf> {
 }
 
 fn emit_gst_link_flags() {
-    for pkg in GST_PKGS {
-        pkg_config::Config::new().probe(pkg).unwrap();
+    // Every probe re-emits the package's ld args, and all three carry the same rpath
+    let first = pkg_config::Config::new().probe(GST_PKGS[0]).unwrap();
+    let mut seen: std::collections::HashSet<std::path::PathBuf> =
+        first.link_paths.iter().cloned().collect();
+
+    for pkg in &GST_PKGS[1..] {
+        let lib = pkg_config::Config::new().cargo_metadata(false).probe(pkg).unwrap();
+        for path in &lib.link_paths {
+            if seen.insert(path.clone()) {
+                println!("cargo:rustc-link-search=native={}", path.display());
+            }
+        }
+        for name in &lib.libs {
+            println!("cargo:rustc-link-lib={name}");
+        }
     }
 }
 
