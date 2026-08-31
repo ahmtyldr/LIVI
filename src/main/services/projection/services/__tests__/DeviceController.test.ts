@@ -58,7 +58,8 @@ function mkCtl(over: Partial<Record<keyof DeviceControllerDeps, unknown>> = {}):
     all: vi.fn(() => []),
     byDevice: vi.fn(() => null),
     stateForDevice: vi.fn(() => null),
-    activate: vi.fn()
+    activate: vi.fn(),
+    close: vi.fn()
   }
   const deps = {
     deviceRegistry: {
@@ -144,6 +145,26 @@ describe('DeviceController', () => {
 
       expect(ctl.forgetDevice('aa:bb:cc:dd:ee:ff')).toEqual({ ok: true })
       expect(disconnectPhone).toHaveBeenCalled()
+    })
+
+    test('closes the session once the goodbye had its window', () => {
+      vi.useFakeTimers()
+      try {
+        const { ctl, deps, sessionsApi } = mkCtl()
+        deps.deviceRegistry.forget.mockReturnValue(mkEntry({ btMac: 'aa:bb:cc:dd:ee:ff' }))
+        ;(sessionsApi.byDevice as ReturnType<typeof vi.fn>).mockReturnValue({
+          index: 3,
+          driver: { disconnectPhone: vi.fn(() => Promise.resolve()) }
+        })
+
+        ctl.forgetDevice('aa:bb:cc:dd:ee:ff')
+        expect(sessionsApi.close).not.toHaveBeenCalled()
+
+        vi.advanceTimersByTime(1500)
+        expect(sessionsApi.close).toHaveBeenCalledWith(3)
+      } finally {
+        vi.useRealTimers()
+      }
     })
 
     test('falls back to SendDisconnectPhone and logs a failing goodbye', async () => {

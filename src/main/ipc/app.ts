@@ -106,6 +106,10 @@ export function registerAppIpc(runtimeState: runtimeStateProps, services: Servic
   registerIpcHandle('app:restartApp', () => restartApp(runtimeState, services))
 
   // User activity (touch/click)
+  registerIpcOn('ui:path', (_evt, path: string) => {
+    services.projectionService.setUiPath(String(path ?? ''))
+  })
+
   registerIpcOn('app:user-activity', () => {
     restoreKioskAfterWmExit(runtimeState)
   })

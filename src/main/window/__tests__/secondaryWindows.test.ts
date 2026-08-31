@@ -8,6 +8,7 @@ class MockSession {
 class MockWebContents {
   session = new MockSession()
   setWindowOpenHandler = vi.fn()
+  once = vi.fn()
 }
 
 class MockBrowserWindow extends EventEmitter {
@@ -74,6 +75,7 @@ import { shell } from 'electron'
 import {
   closeAllSecondaryWindows,
   getSecondaryWindow,
+  secondaryWindowEvents,
   setupSecondaryWindows,
   syncSecondaryWindows
 } from '../secondaryWindows'
@@ -349,6 +351,20 @@ describe('secondaryWindows — bounds + ready-to-show', () => {
     const win = lastWindows[0]
     expect(win.__opts.width).toBe(300)
     expect(win.__opts.height).toBe(200)
+  })
+
+  test('a loaded window announces itself as ready', () => {
+    const rt = baseState({ dashScreenActive: true })
+    syncSecondaryWindows(rt)
+    const win = lastWindows[0]
+    const ready = vi.fn()
+    secondaryWindowEvents.once('ready', ready)
+
+    const [event, handler] = win.webContents.once.mock.calls[0]
+    expect(event).toBe('did-finish-load')
+    handler()
+
+    expect(ready).toHaveBeenCalledWith('dash')
   })
 
   test('spawned window denies popups and filters permissions', () => {

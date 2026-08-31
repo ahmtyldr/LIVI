@@ -182,6 +182,7 @@ declare global {
       platform: NodeJS.Platform
       compositor: boolean
       notifyUserActivity(): void
+      reportPath(path: string): void
       quitApp(): Promise<void>
       restartApp(): Promise<void>
       getVersion(): Promise<string>

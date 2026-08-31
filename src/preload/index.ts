@@ -272,6 +272,10 @@ const appApi = {
     ipcRenderer.send('app:user-activity')
   },
 
+  reportPath: (path: string): void => {
+    ipcRenderer.send('ui:path', path)
+  },
+
   broadcastMediaKey: (command: string): void => {
     ipcRenderer.send('app:media-key', command)
   },

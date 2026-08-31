@@ -57,6 +57,10 @@ function AppInner() {
   const prevPathRef = useRef<string>(location.pathname)
   const cameFromSettingsSubRef = useRef(false)
 
+  useEffect(() => {
+    window.app?.reportPath?.(location.pathname)
+  }, [location.pathname])
+
   // Subscribe to main-process media key broadcasts
   useEffect(() => {
     return window.app?.onMediaKey?.((command) => {

@@ -1394,15 +1394,17 @@ export class ProjectionService {
 
   public markDongleConnected(connected: boolean): void {
     this.arbiter.markDongleConnected(connected)
-    this.statusFile.setUsbState(this.arbiter.isPhoneConnected(), connected)
     if (connected) void this.dongleDriver.bringUp(this.config, this.pendingStartupConnectTarget)
     else void this.dongleDriver.close()
+  }
+
+  public setUiPath(path: string): void {
+    this.statusFile.setPath(path)
   }
 
   public markPhoneConnected(connected: boolean, device?: Device): void {
     if (connected) this.startRetryAttempt = 0
     this.arbiter.markPhoneConnected(connected, device)
-    this.statusFile.setUsbState(connected, this.arbiter.getSnapshot().dongleDetected)
   }
 
   public getWiredPhoneDevice(): Device | null {

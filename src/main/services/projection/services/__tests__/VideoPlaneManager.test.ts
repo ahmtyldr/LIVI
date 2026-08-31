@@ -240,6 +240,24 @@ describe('VideoPlaneManager', () => {
       expect(gstMock).toHaveBeenCalledTimes(2)
     })
 
+    test('ensureClusterPlanes adds a plane for a screen that appears later', () => {
+      const { mgr } = mkMgr({ getConfig: vi.fn(() => CLUSTER_CFG) })
+      const atom = Buffer.from('atom')
+
+      expect(mgr.ensureClusterPlanes()).toBe(false)
+
+      secondaryMock.mockReturnValue(null as never)
+      expect(mgr.prepareClusters('h265', atom)).toBe(true)
+      const before = gstMock.mock.calls.length
+
+      secondaryMock.mockReturnValue(mkSecondary() as never)
+      expect(mgr.ensureClusterPlanes()).toBe(true)
+      expect(gstMock.mock.calls.length).toBe(before + 1)
+      expect(planes().at(-1)?.prepare).toHaveBeenCalledWith('h265', atom)
+
+      expect(mgr.ensureClusterPlanes()).toBe(false)
+    })
+
     test('prepareClusters skips screens without a live window', () => {
       const { mgr } = mkMgr({
         getWebContents: vi.fn(() => null),

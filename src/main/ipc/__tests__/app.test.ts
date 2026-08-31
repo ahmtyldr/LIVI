@@ -239,6 +239,22 @@ describe('registerAppIpc', () => {
     expect(restoreKioskAfterWmExit).toHaveBeenCalledWith(runtimeState)
   })
 
+  test('ui:path forwards the router path to the projection service', () => {
+    const runtimeState = {} as never
+    const setUiPath = vi.fn()
+    const services = { usbService: {}, projectionService: { setUiPath } } as never
+
+    registerAppIpc(runtimeState, services)
+    const listener = getOn('ui:path') as ((evt: unknown, path: string) => void) | undefined
+
+    expect(listener).toBeDefined()
+    listener?.({}, '/settings/general/display')
+    expect(setUiPath).toHaveBeenCalledWith('/settings/general/display')
+
+    listener?.({}, undefined)
+    expect(setUiPath).toHaveBeenCalledWith('')
+  })
+
   test('app:restartApp shuts down usb service, relaunches and quits', async () => {
     vi.spyOn(global, 'setTimeout').mockImplementation(function (fn: TimerHandler) {
       if (typeof fn === 'function') fn()

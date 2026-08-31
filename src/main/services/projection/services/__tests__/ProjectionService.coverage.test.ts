@@ -206,7 +206,7 @@ vi.mock('@main/window/secondaryWindows', () => ({
   secondaryWindowEvents: new (require('node:events').EventEmitter)()
 }))
 
-import { getSecondaryWindow } from '@main/window/secondaryWindows'
+import { getSecondaryWindow, secondaryWindowEvents } from '@main/window/secondaryWindows'
 
 vi.mock('@main/window/broadcast', () => ({
   broadcastToSecondaryRenderers: vi.fn()
@@ -648,6 +648,20 @@ describe('ProjectionService video handling', () => {
     svc.markFirstFrame()
     svc.markFirstFrame()
     expect(svc.statusFile.setStreaming).toHaveBeenCalledTimes(1)
+  })
+
+  test('setUiPath writes the router path to the status file', () => {
+    const svc = makeSvc()
+    svc.statusFile.setPath = vi.fn()
+    svc.setUiPath('/settings/general/display')
+    expect(svc.statusFile.setPath).toHaveBeenCalledWith('/settings/general/display')
+  })
+
+  test('a secondary window becoming ready rebuilds the cluster planes', () => {
+    const svc = makeSvc()
+    svc.planes.ensureClusterPlanes = vi.fn(() => true)
+    secondaryWindowEvents.emit('ready', 'aux')
+    expect(svc.planes.ensureClusterPlanes).toHaveBeenCalled()
   })
 
   test('onNativeVideoStarted marks first frame only for the main plane', () => {
@@ -3764,6 +3778,68 @@ describe('HFP keeper, SCO and battery wiring', () => {
     expect(bluezMock.connect).not.toHaveBeenCalled()
     for (const t of svc.hfpKeepers.values()) clearInterval(t)
     if (realPlatform) Object.defineProperty(process, 'platform', realPlatform)
+  })
+
+  test('ensureAaPhoneHfp stays quiet when the paired list cannot be read', async () => {
+    const realPlatform = Object.getOwnPropertyDescriptor(process, 'platform')
+    Object.defineProperty(process, 'platform', { value: 'linux', configurable: true })
+    try {
+      const svc = makeSvc()
+      bluezMock.listPaired.mockRejectedValueOnce(new Error('bluez down'))
+
+      svc.ensureAaPhoneHfp()
+      await new Promise((r) => setTimeout(r, 5))
+
+      expect(svc.aaBtMacByInstance.size).toBe(0)
+    } finally {
+      if (realPlatform) Object.defineProperty(process, 'platform', realPlatform)
+    }
+  })
+
+  test('watchPhoneHfp nudges on even when dropping the old profile fails', async () => {
+    const svc = makeSvc()
+    svc.aaBtMacByInstance.set('inst', 'AA:BB:CC:DD:EE:FF')
+    svc.helperHfpUp = false
+    svc.hfpScoActive = vi.fn(async () => false)
+    bluezMock.disconnectProfile.mockRejectedValueOnce(new Error('not connected'))
+    bluezMock.connect.mockClear()
+
+    await svc.watchPhoneHfp('aa:bb:cc:dd:ee:ff')
+    expect(bluezMock.connect).toHaveBeenCalled()
+  })
+
+  test('the hfp keeper re-checks on its interval and swallows a failing check', () => {
+    const realPlatform = Object.getOwnPropertyDescriptor(process, 'platform')
+    Object.defineProperty(process, 'platform', { value: 'linux', configurable: true })
+    vi.useFakeTimers()
+    try {
+      const svc = makeSvc()
+      svc.watchPhoneHfp = vi.fn(async () => {
+        throw new Error('bluez gone')
+      })
+
+      svc.ensurePhoneHfp('AA:BB:CC:DD:EE:FF')
+      expect(svc.watchPhoneHfp).toHaveBeenCalledTimes(1)
+
+      vi.advanceTimersByTime(30000)
+      expect(svc.watchPhoneHfp).toHaveBeenCalledTimes(2)
+
+      for (const t of svc.hfpKeepers.values()) clearInterval(t)
+    } finally {
+      vi.useRealTimers()
+      if (realPlatform) Object.defineProperty(process, 'platform', realPlatform)
+    }
+  })
+
+  test('watchPhoneHfp reports a rejected reconnect instead of throwing', async () => {
+    const svc = makeSvc()
+    svc.aaBtMacByInstance.set('inst', 'AA:BB:CC:DD:EE:FF')
+    svc.helperHfpUp = false
+    svc.hfpScoActive = vi.fn(async () => false)
+    bluezMock.connect.mockRejectedValueOnce(new Error('no route'))
+
+    await expect(svc.watchPhoneHfp('aa:bb:cc:dd:ee:ff')).resolves.toBeUndefined()
+    expect(bluezMock.connect).toHaveBeenCalled()
   })
 
   test('ensureAaPhoneHfp adopts the single connected phone when the aa-device event was lost', async () => {

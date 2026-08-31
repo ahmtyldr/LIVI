@@ -440,6 +440,12 @@ describe('preload api bridge', () => {
       app.notifyUserActivity()
       expect(ipcRendererMock.send).toHaveBeenCalledWith('app:user-activity')
     })
+
+    test('reportPath sends ui:path', async () => {
+      const { app } = await loadPreload()
+      app.reportPath('/settings/general/display')
+      expect(ipcRendererMock.send).toHaveBeenCalledWith('ui:path', '/settings/general/display')
+    })
   })
 
   describe('projection ipc wrappers — additional', () => {
