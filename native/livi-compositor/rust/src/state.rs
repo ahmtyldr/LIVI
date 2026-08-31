@@ -59,6 +59,9 @@ pub struct TopLevel {
     pub kind: Kind,
     pub screen_idx: usize,
     pub tag: String,
+    /// A video plane whose window arrived before its claim. The next claim
+    /// takes it.
+    pub awaiting_claim: bool,
     pub visible: bool,
     pub has_crop: bool,
     pub crop_l: f64,
@@ -131,7 +134,7 @@ pub struct LiviState {
     pub ctrl_client: Option<std::os::unix::net::UnixStream>,
     /// Carries an incomplete trailing line between polls.
     pub ctrl_buf: String,
-    /// Lines waiting to reach the host; retried until written.
+    /// Lines waiting to reach the host, retried until written.
     pub ctrl_out: Vec<u8>,
     pub ctrl_path: Option<String>,
 

@@ -59,10 +59,10 @@ impl CompositorHandler for LiviState {
     }
 }
 
-/// The LIVI routing decision, made once the surface has told us who it is:
-/// waylandsink planes carry app_id "livi-video" and take the oldest claim tag;
-/// everything else is UI, routed by its "livi:<role>" title (untitled -> main);
-/// a UI window with a foreign app_id is a centered overlay dialog.
+/// The LIVI routing decision, made once the surface has told us who it is.
+/// waylandsink planes carry app_id "livi-video" and take the oldest claim tag.
+/// Everything else is UI, routed by its "livi:<role>" title (untitled -> main).
+/// A UI window with a foreign app_id is a centered overlay dialog.
 fn classify_on_initial_commit(state: &mut LiviState, idx: usize) {
     if state.toplevels[idx].kind != Kind::Pending {
         return;
@@ -94,18 +94,13 @@ fn classify_on_initial_commit(state: &mut LiviState, idx: usize) {
             state.toplevels[idx].tag = tag.clone();
             log::info!("bound '{tag}' (pending left: {:?})", state.pending_video_tags);
             crate::ctrl::send(state, &format!("bound {tag}\n"));
-            // A stale plane with the same tag goes dark; the new one owns it.
-            for (i, t) in state.toplevels.iter_mut().enumerate() {
-                if i != idx && t.kind == Kind::Video && t.tag == tag {
-                    t.tag.clear();
-                    t.visible = false;
-                }
-            }
+            drop_stale_planes(state, idx, &tag);
         }
         state.toplevels[idx].screen_idx = 0;
         if state.toplevels[idx].tag.is_empty() {
             state.toplevels[idx].visible = false;
-            log::warn!("video plane appeared without a pending claim, keeping it hidden");
+            state.toplevels[idx].awaiting_claim = true;
+            log::warn!("video plane arrived before its claim, waiting for one");
         }
         // within the video layer: the main stream sits above secondary streams
         if state.toplevels[idx].tag == "main" {
@@ -146,6 +141,45 @@ fn classify_on_initial_commit(state: &mut LiviState, idx: usize) {
     }
 }
 
+/// A plane still carrying `tag` is a leftover of the stream being replaced. It
+/// goes dark so the new one owns the tag alone.
+fn drop_stale_planes(state: &mut LiviState, keep: usize, tag: &str) {
+    for (i, t) in state.toplevels.iter_mut().enumerate() {
+        if i != keep && t.kind == Kind::Video && t.tag == tag {
+            t.tag.clear();
+            t.visible = false;
+        }
+    }
+}
+
+/// Gives `tag` to a video plane whose window arrived before the claim did, and
+/// answers whether one was there. The two travel over different sockets, so
+/// either order reaches us.
+pub fn bind_waiting_plane(state: &mut LiviState, tag: &str) -> bool {
+    let Some(idx) = state
+        .toplevels
+        .iter()
+        .rposition(|t| t.kind == Kind::Video && t.awaiting_claim)
+    else {
+        return false;
+    };
+
+    state.toplevels[idx].tag = tag.to_string();
+    state.toplevels[idx].awaiting_claim = false;
+    drop_stale_planes(state, idx, tag);
+
+    state.video_order.retain(|&i| i != idx);
+    if tag == "main" {
+        state.video_order.push(idx);
+    } else {
+        state.video_order.insert(0, idx);
+    }
+
+    crate::ctrl::send(state, &format!("bound {tag}\n"));
+    crate::layout::apply_cfg_to_video(state, tag, idx);
+    true
+}
+
 impl LiviState {
     pub fn center_dialog_by_surface(&mut self, surface: &WlSurface) {
         if let Some(idx) = self
@@ -184,6 +218,7 @@ impl XdgShellHandler for LiviState {
             kind: Kind::Pending,
             screen_idx: 0,
             tag: String::new(),
+            awaiting_claim: false,
             visible: true,
             has_crop: false,
             crop_l: 0.0,
@@ -234,7 +269,7 @@ impl XdgShellHandler for LiviState {
                 *i -= 1;
             }
         }
-        // The main UI quit -> the app is closing; on "restart" main() re-execs us.
+        // The main UI quit -> the app is closing. On "restart" main() re-execs us.
         if was == Kind::Ui && screen_idx == 0 {
             log::info!("main UI toplevel gone -> shutting down");
             self.running = false;
@@ -243,7 +278,7 @@ impl XdgShellHandler for LiviState {
     }
 
     fn move_request(&mut self, _surface: ToplevelSurface, _seat: WlSeat, _serial: Serial) {
-        // clients never move themselves; the host window moves, we reflow
+        // the host window moves, we reflow
     }
 
     fn resize_request(
@@ -313,7 +348,8 @@ impl XdgShellHandler for LiviState {
 
 impl XdgDecorationHandler for LiviState {
     fn new_decoration(&mut self, toplevel: ToplevelSurface) {
-        // Force server-side so Electron skips its crash-prone GTK client-side path.
+        // Server-side decorations for every client. Electron's GTK client-side
+        // path crashes.
         toplevel.with_pending_state(|st| {
             st.decoration_mode = Some(DecoMode::ServerSide);
         });
@@ -380,8 +416,8 @@ impl DmabufHandler for LiviState {
         dmabuf: smithay::backend::allocator::dmabuf::Dmabuf,
         notifier: ImportNotifier,
     ) {
-        // Validate the import against the renderer so waylandsink gets an
-        // honest answer; the texture import happens at render time.
+        // Validate the import against the renderer, the texture import happens
+        // at render time.
         if crate::host::import_dmabuf(self, &dmabuf) {
             let _ = notifier.successful::<LiviState>();
         } else {

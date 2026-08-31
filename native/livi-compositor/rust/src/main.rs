@@ -1,4 +1,4 @@
-//! livi-compositor — a nested Wayland compositor for LIVI.
+//! livi-compositor, a nested Wayland compositor for LIVI.
 //!
 //! One screen per role (LIVI_SCREENS), each a host window with a transparent
 //! Electron UI on top and tagged GStreamer waylandsink video planes below,
@@ -43,7 +43,7 @@ fn main() {
         } else {
             log::LevelFilter::Info
         })
-        // smithay instruments per-frame spans; as log records they are pure noise
+        // smithay instruments per-frame spans, as log records they are noise
         .filter_module("tracing::span", log::LevelFilter::Off)
         .init();
 

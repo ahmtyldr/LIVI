@@ -78,7 +78,7 @@ pub fn apply_cfg_to_video(state: &mut LiviState, tag: &str, idx: usize) {
     crate::host::damage_all(state);
 }
 
-/// Place the UI plane and titlebar of a screen; ask the client for our size.
+/// Place the UI plane and titlebar of a screen, ask the client for our size.
 pub fn apply_ui_layout(state: &mut LiviState, screen_idx: usize) {
     let s = &state.screens[screen_idx];
     let (ow, oh) = (s.width, s.height);

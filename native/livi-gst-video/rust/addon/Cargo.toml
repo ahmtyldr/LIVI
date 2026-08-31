@@ -3,14 +3,15 @@ name = "gst-video-addon"
 version = "0.1.0"
 edition.workspace = true
 
-# N-API addon behind require('livi-gst-video'): compiles ../src/gst_video.cc and the
-# platform companions unchanged. The cdylib is copied to
+# N-API addon behind require('livi-gst-video'). The cdylib is copied to
 # native/livi-gst-video/build/Release/gst_video.node by scripts/build-native.mjs.
 [lib]
 crate-type = ["cdylib"]
 
-[target.'cfg(target_os = "linux")'.dependencies]
-livi-crypto-node = { path = "../../../livi-crypto/rust", default-features = false }
+[dependencies]
+livi-video-player = { path = "../player" }
+napi = { version = "2", default-features = false, features = ["napi8"] }
+napi-derive = "2"
 
 [build-dependencies]
 cc = "1"

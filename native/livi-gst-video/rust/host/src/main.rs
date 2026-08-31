@@ -1,14 +1,23 @@
-//! Entry shell for livi-gst-host. On Linux the process entry is the C++ main()
-//! from the whole-archive gst_video objects; elsewhere the binary is a stub.
-#![cfg_attr(target_os = "linux", no_main)]
+//! The livi-gst-host binary. `--probe` prints the codec support the main
+//! process picks from. Otherwise it takes the socket path and where to drop a
+//! crash backtrace.
 
-// The screen receiver's AEAD symbols live in this crate; the reference keeps
-// rustc from dropping the otherwise-unused dependency at link time.
-#[cfg(target_os = "linux")]
-use livi_crypto_node as _;
-
-#[cfg(not(target_os = "linux"))]
 fn main() {
-    eprintln!("livi-gst-host runs on Linux only");
-    std::process::exit(1);
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.first().is_some_and(|a| a == "--probe") {
+        println!("{}", gst_video_host::gst::probe_json());
+        return;
+    }
+
+    #[cfg(target_os = "linux")]
+    gst_video_host::process::run(
+        args.first().map_or("", String::as_str),
+        args.get(1).map_or("", String::as_str),
+    );
+
+    #[cfg(not(target_os = "linux"))]
+    {
+        eprintln!("livi-gst-host runs on Linux only");
+        std::process::exit(1);
+    }
 }

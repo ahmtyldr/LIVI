@@ -26,8 +26,8 @@ pub enum BtnSym {
 
 #[allow(clippy::all)]
 fn to_buffer(pixmap: &Pixmap) -> MemoryRenderBuffer {
-    // tiny-skia is RGBA premultiplied; the renderer wants ARGB8888 little-endian
-    // (i.e. BGRA byte order), so swap R and B.
+    // tiny-skia is RGBA premultiplied, the renderer wants ARGB8888
+    // little-endian (BGRA byte order), so swap R and B.
     let mut data = pixmap.data().to_vec();
     for px in data.chunks_exact_mut(4) {
         px.swap(0, 2);

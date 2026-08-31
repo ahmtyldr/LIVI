@@ -64,74 +64,6 @@ pub fn open(key: Buffer, nonce: Buffer, ct: Buffer, aad: Option<Buffer>) -> Opti
     open_impl(&key, &nonce, &ct, aad.as_deref().unwrap_or(&[])).map(Buffer::from)
 }
 
-/// C ABI for native consumers (the gst-video screen receiver): the RFC 8439
-/// open/seal pair declared in native/livi-gst-video/src/livi_aead.h.
-pub mod cabi {
-    use super::{open_impl, seal_impl, TAG_LEN};
-
-    /// # Safety
-    /// `out` must hold `in_len - 16` bytes; key/nonce/aad/in must be valid
-    /// for their stated lengths. Returns 0 and sets `*out_len` on a valid
-    /// tag, -1 on authentication failure or an input shorter than the tag.
-    #[unsafe(no_mangle)]
-    pub unsafe extern "C" fn livi_chacha20poly1305_open(
-        out: *mut u8,
-        out_len: *mut usize,
-        key: *const u8,
-        nonce: *const u8,
-        aad: *const u8,
-        aad_len: usize,
-        input: *const u8,
-        in_len: usize,
-    ) -> i32 { unsafe {
-        if in_len < TAG_LEN {
-            return -1;
-        }
-        let key = std::slice::from_raw_parts(key, 32);
-        let nonce = std::slice::from_raw_parts(nonce, 12);
-        let aad = if aad.is_null() || aad_len == 0 {
-            &[][..]
-        } else {
-            std::slice::from_raw_parts(aad, aad_len)
-        };
-        let input = std::slice::from_raw_parts(input, in_len);
-        match open_impl(key, nonce, input, aad) {
-            Some(pt) => {
-                std::ptr::copy_nonoverlapping(pt.as_ptr(), out, pt.len());
-                *out_len = pt.len();
-                0
-            }
-            None => -1,
-        }
-    }}
-
-    /// # Safety
-    /// `out` must hold `pt_len + 16` bytes; key/nonce/aad/pt must be valid
-    /// for their stated lengths.
-    #[unsafe(no_mangle)]
-    pub unsafe extern "C" fn livi_chacha20poly1305_seal(
-        out: *mut u8,
-        key: *const u8,
-        nonce: *const u8,
-        aad: *const u8,
-        aad_len: usize,
-        pt: *const u8,
-        pt_len: usize,
-    ) { unsafe {
-        let key = std::slice::from_raw_parts(key, 32);
-        let nonce = std::slice::from_raw_parts(nonce, 12);
-        let aad = if aad.is_null() || aad_len == 0 {
-            &[][..]
-        } else {
-            std::slice::from_raw_parts(aad, aad_len)
-        };
-        let pt = std::slice::from_raw_parts(pt, pt_len);
-        if let Some(ct) = seal_impl(key, nonce, pt, aad) {
-            std::ptr::copy_nonoverlapping(ct.as_ptr(), out, ct.len());
-        }
-    }}
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -193,41 +125,6 @@ fab324e4fad675945585808b4831d7bc3ff4def08e4b7a9de576d26586cec64b61161ae10b594f09
         assert!(seal_impl(&[0u8; 16], &[0u8; 12], b"x", &[]).is_none());
         assert!(seal_impl(&[0u8; 32], &[0u8; 8], b"x", &[]).is_none());
         assert!(open_impl(&[0u8; 32], &[0u8; 12], &[0u8; 8], &[]).is_none());
-    }
-
-    #[test]
-    fn cabi_round_trip() {
-        let key = [7u8; 32];
-        let nonce = [3u8; 12];
-        let pt = b"cabi";
-        let mut ct = vec![0u8; pt.len() + TAG_LEN];
-        unsafe {
-            super::cabi::livi_chacha20poly1305_seal(
-                ct.as_mut_ptr(),
-                key.as_ptr(),
-                nonce.as_ptr(),
-                std::ptr::null(),
-                0,
-                pt.as_ptr(),
-                pt.len(),
-            );
-        }
-        let mut out = vec![0u8; pt.len()];
-        let mut out_len = 0usize;
-        let rc = unsafe {
-            super::cabi::livi_chacha20poly1305_open(
-                out.as_mut_ptr(),
-                &mut out_len,
-                key.as_ptr(),
-                nonce.as_ptr(),
-                std::ptr::null(),
-                0,
-                ct.as_ptr(),
-                ct.len(),
-            )
-        };
-        assert_eq!(rc, 0);
-        assert_eq!(&out[..out_len], pt);
     }
 
     #[test]

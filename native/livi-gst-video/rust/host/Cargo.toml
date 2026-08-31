@@ -3,15 +3,18 @@ name = "gst-video-host"
 version = "0.1.0"
 edition.workspace = true
 
-# The standalone livi-gst-host binary (Linux): the same C++ sources with
-# LIVI_GST_HOST_STANDALONE, whose main() is the process entry point.
+# The standalone livi-gst-host binary the main process spawns on Linux.
 [[bin]]
 name = "livi-gst-host"
 path = "src/main.rs"
 
-[target.'cfg(target_os = "linux")'.dependencies]
-livi-crypto-node = { path = "../../../livi-crypto/rust", default-features = false }
+[dependencies]
+livi-host-proto = { path = "../hostproto" }
+livi-screen-stream = { path = "../screen" }
+livi-video-fanout = { path = "../fanout" }
+livi-video-nal = { path = "../nal" }
+livi-video-player = { path = "../player" }
 
-[build-dependencies]
-cc = "1"
-pkg-config = "0.3"
+[target.'cfg(target_os = "linux")'.dependencies]
+glib = "0.21"
+libc = "0.2"

@@ -1,6 +1,6 @@
-//! Input routing: host pointer/touch/keyboard into the inner seat, with the
-//! compositor decoration (titlebar buttons, move/resize borders) hit-tested
-//! first and never forwarded.
+//! Input routing: host pointer/touch/keyboard into the inner seat. The
+//! compositor decoration (titlebar buttons, move/resize borders) is hit-tested
+//! first and handled there.
 
 use smithay::backend::input::{ButtonState, KeyState};
 use smithay::input::keyboard::{FilterResult, ModifiersState};
@@ -191,7 +191,7 @@ pub fn pointer_button(state: &mut LiviState, time: u32, button: u32, pressed: bo
 }
 
 fn focus_surface(state: &mut LiviState, surface: &WlSurface) {
-    // Videos never take focus.
+    // Focus skips video planes.
     if state
         .toplevels
         .iter()
@@ -318,8 +318,8 @@ pub fn touch_up(state: &mut LiviState, time: u32, id: i32) {
     }
 }
 
-/// The host cancels every touch point it still holds when it takes the input
-/// away; ending them here keeps the seat from carrying fingers that never lift.
+/// Ends every touch point the seat still holds when the host takes the input
+/// away.
 pub fn touch_cancel(state: &mut LiviState) {
     state.host.touch_positions.clear();
     if let Some(touch) = state.seat.get_touch() {

@@ -1,6 +1,5 @@
 //! Host side: one xdg-shell window of the outer session per open screen, its
-//! EGL surface, and the outer seat's pointer/touch/keyboard routed into our
-//! seat. What the wlroots wayland backend was, in-tree.
+//! EGL surface, and the outer seat's pointer/touch/keyboard routed into our seat.
 
 use std::time::Duration;
 
@@ -233,7 +232,7 @@ pub fn init(state: &mut LiviState, handle: &LoopHandle<'static, LiviState>) {
     state.host.egl_context = Some(egl_context);
     state.host.renderer = Some(renderer);
 
-    // The nested main screen exists from the start; secondaries open on demand.
+    // The nested main screen exists from the start, secondaries open on demand.
     open_screen(state, 0);
 }
 
@@ -744,7 +743,7 @@ impl TouchHandler for LiviState {
         id: i32,
         position: (f64, f64),
     ) {
-        // Motion comes without a surface; it stays on the down surface's screen.
+        // Motion comes without a surface, it stays on the down surface's screen.
         crate::input::touch_motion(self, time, id, position.0, position.1);
     }
 

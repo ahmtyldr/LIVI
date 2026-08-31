@@ -102,7 +102,7 @@ fn poll_client(state: &mut LiviState) {
 }
 
 /// The socket is non-blocking, so writes are queued and retried on the next
-/// poll; a dropped `bound` ack would stall the host's claim handshake.
+/// poll. The host's claim handshake waits for the `bound` ack.
 pub fn send(state: &mut LiviState, line: &str) {
     state.ctrl_out.extend_from_slice(line.as_bytes());
     flush_out(state);
@@ -194,11 +194,14 @@ fn handle_line(state: &mut LiviState, line: &str) {
             }
         }
         Some("claim") => {
-            if let Some(tag) = parts.next()
-                && state.pending_video_tags.len() < 16 {
+            if let Some(tag) = parts.next() {
+                if crate::shell::bind_waiting_plane(state, tag) {
+                    log::info!("ctrl < claim {tag} (took the plane already waiting)");
+                } else if state.pending_video_tags.len() < 16 {
                     state.pending_video_tags.push_back(tag.to_string());
                     log::info!("ctrl < claim {tag} (pending: {:?})", state.pending_video_tags);
                 }
+            }
         }
         Some("unclaim") => {
             if let Some(tag) = parts.next() {

@@ -117,8 +117,8 @@ pub fn surface_under(
                 .get::<smithay::wayland::compositor::SubsurfaceCachedState>()
                 .current()
                 .location;
-            // states is already locked by the traversal; a with_states re-entry
-            // here deadlocks, so read the renderer state off the data_map directly.
+            // the traversal already holds the states lock and a with_states
+            // re-entry here deadlocks, so read the state off the data_map
             let size = states
                 .data_map
                 .get::<smithay::backend::renderer::utils::RendererSurfaceStateUserData>()
@@ -364,13 +364,13 @@ fn render_calibrated(
     let mut tex: GlesTexture =
         renderer.create_buffer(Fourcc::Abgr8888, smithay::utils::Size::from((w, h)))?;
     {
-        // Offscreen texture target: no flip here...
+        // Offscreen texture target, unflipped
         let mut offscreen_tracker =
             OutputDamageTracker::new((w, h), 1.0, Transform::Normal);
         let mut fb = renderer.bind(&mut tex)?;
         offscreen_tracker.render_output::<LiviElement, _>(renderer, &mut fb, 0, elements, clear)?;
     }
-    // ...the flip happens on the window blit.
+    // the flip happens on the window blit
     let mut fb = renderer.bind(egl_surface)?;
     let mut frame =
         renderer.render(&mut fb, smithay::utils::Size::from((w, h)), Transform::Flipped180)?;
