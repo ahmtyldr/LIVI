@@ -125,8 +125,8 @@ const applyTelemetryControls = (payload: unknown) => {
   }
 
   // Momentary navigation request
-  if (typeof msg.view === 'string') {
-    useStatusStore.getState().requestView(msg.view)
+  if (typeof msg.path === 'string') {
+    useStatusStore.getState().requestPath(msg.path)
   }
 }
 
@@ -523,8 +523,7 @@ export interface StatusStore {
   isStreaming: boolean
   cameraFound: boolean
   clusterDashActive: boolean
-  requestedView: string | null
-  requestedViewNonce: number
+  requestedPath: string | null
 
   setCameraFound: (found: boolean) => void
   setActiveProtocol: (protocol: ActiveProtocol) => void
@@ -533,7 +532,8 @@ export interface StatusStore {
   setReverse: (reverse: boolean) => void
   setLights: (lights: boolean) => void
   setClusterDashActive: (active: boolean) => void
-  requestView: (view: string) => void
+  requestPath: (path: string) => void
+  clearRequestedPath: () => void
 }
 
 export const useStatusStore = create<StatusStore>((set, get) => ({
@@ -544,8 +544,7 @@ export const useStatusStore = create<StatusStore>((set, get) => ({
   isStreaming: false,
   cameraFound: false,
   clusterDashActive: false,
-  requestedView: null,
-  requestedViewNonce: 0,
+  requestedPath: null,
 
   setCameraFound: (found) => set({ cameraFound: found }),
   setActiveProtocol: (protocol) => {
@@ -564,8 +563,8 @@ export const useStatusStore = create<StatusStore>((set, get) => ({
   setReverse: (reverse) => set({ reverse }),
   setLights: (lights) => set({ lights }),
   setClusterDashActive: (active) => set({ clusterDashActive: active }),
-  requestView: (view) =>
-    set((s) => ({ requestedView: view, requestedViewNonce: s.requestedViewNonce + 1 }))
+  requestPath: (path) => set({ requestedPath: path }),
+  clearRequestedPath: () => set({ requestedPath: null })
 }))
 
 export const useProjectionActive = (): boolean =>

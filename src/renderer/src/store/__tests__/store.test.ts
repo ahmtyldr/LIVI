@@ -1805,7 +1805,7 @@ describe('store', () => {
     expect(useStatusStore.getState().clusterDashActive).toBe(true)
   })
 
-  test('telemetry view request updates the requested view and bumps its nonce', async () => {
+  test('telemetry path request parks the path until it is consumed', async () => {
     let telemetryHandler: ((payload: unknown) => void) | undefined
 
     const projection = makeProjectionApi({
@@ -1824,10 +1824,10 @@ describe('store', () => {
 
     await waitForStoreSettings(useLiviStore)
 
-    const before = useStatusStore.getState().requestedViewNonce
-    telemetryHandler?.({ view: 'camera' })
+    telemetryHandler?.({ path: '/camera' })
+    expect(useStatusStore.getState().requestedPath).toBe('/camera')
 
-    expect(useStatusStore.getState().requestedView).toBe('camera')
-    expect(useStatusStore.getState().requestedViewNonce).toBe(before + 1)
+    useStatusStore.getState().clearRequestedPath()
+    expect(useStatusStore.getState().requestedPath).toBeNull()
   })
 })
