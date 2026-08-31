@@ -1,4 +1,6 @@
 import { registerIpcHandle, registerIpcOn } from '@main/ipc/register'
+import { CUSTOM_PAGE_URL, customPageExists } from '@main/protocol/appProtocol'
+import { customProxy } from '@main/services/custom/CustomProxy'
 import { hostPowerAvailable, requestPowerAction } from '@main/services/power/hostPower'
 import { compositorRestart } from '@main/services/video/GstVideo'
 import { runtimeStateProps, ServicesProps } from '@main/types'
@@ -94,6 +96,12 @@ export function registerAppIpc(runtimeState: runtimeStateProps, services: Servic
         : mainWindow?.hide()
       : app.quit()
   )
+
+  registerIpcHandle('app:customPageUrl', async () => {
+    const proxied = await customProxy.start(runtimeState.config.customUrl)
+    if (proxied) return proxied
+    return customPageExists() ? CUSTOM_PAGE_URL : null
+  })
 
   // App Quit
   registerIpcHandle('app:quitApp', () => {

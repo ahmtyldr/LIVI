@@ -10,13 +10,18 @@ installMainProcessErrorHandlers()
 import { setDebugLogging } from '@main/constants'
 import { registerIpc } from '@main/ipc'
 import { configEvents, saveSettings } from '@main/ipc/utils'
-import { registerAppProtocol } from '@main/protocol/appProtocol'
+import {
+  registerAppProtocol,
+  seedCustomPage,
+  setCustomPageConfig
+} from '@main/protocol/appProtocol'
 import {
   setSystemVolume,
   startSystemVolumeMonitor,
   stopSystemVolumeMonitor
 } from '@main/services/audio/SystemVolume'
 import { ensureWireplumberBtRoles } from '@main/services/audio/wireplumberBtRoles'
+import { customProxy } from '@main/services/custom/CustomProxy'
 import { checkAndInstallGvfsGuard, startPhoneSuppression } from '@main/services/gvfsPhoneGuard'
 import { checkMissingPackages } from '@main/services/packageCheck'
 import { checkAndInstallHelperSudoers } from '@main/services/projection/driver/helper/helperSudoers'
@@ -67,6 +72,7 @@ app.whenReady().then(async () => {
   const usbService = new USBService(projectionService)
   const telemetryStore = new TelemetryStore()
   const telemetrySocket = new TelemetrySocket(telemetryStore, 4000)
+
   const runtimeState: runtimeStateProps = {
     config: loadConfig(),
     telemetrySocket: null,
@@ -75,6 +81,13 @@ app.whenReady().then(async () => {
     wmExitedKiosk: false
   }
   setDebugLogging(runtimeState.config.debugLogging === true)
+
+  setCustomPageConfig(() => runtimeState.config)
+  seedCustomPage()
+  await customProxy.start(runtimeState.config.customUrl)
+  configEvents.on('changed', (next: Config) => {
+    void customProxy.start(next.customUrl)
+  })
 
   const carBridge = new CarBridgeService(runtimeState.config.language)
   carBridge.start()

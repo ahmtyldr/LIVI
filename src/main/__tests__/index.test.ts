@@ -23,7 +23,9 @@ vi.mock('@main/app/compositorBootstrap', () => ({
 }))
 
 vi.mock('@main/protocol/appProtocol', () => ({
-  registerAppProtocol: vi.fn()
+  registerAppProtocol: vi.fn(),
+  seedCustomPage: vi.fn(),
+  setCustomPageConfig: vi.fn()
 }))
 
 vi.mock('@main/ipc', () => ({
@@ -164,8 +166,14 @@ describe('main index bootstrap', () => {
     )
     const { USBService } = await import('../services/usb/USBService')
     const { TelemetrySocket } = await import('@main/services/Socket')
+    const { seedCustomPage, setCustomPageConfig } = await import('@main/protocol/appProtocol')
 
     await bootIndex()
+
+    expect(seedCustomPage).toHaveBeenCalled()
+    const getConfig = (setCustomPageConfig as unknown as { mock: { calls: unknown[][] } }).mock
+      .calls[0][0] as () => { language?: string }
+    expect(getConfig()).toBeTruthy()
 
     expect(app.whenReady as Mock).toHaveBeenCalledTimes(1)
 

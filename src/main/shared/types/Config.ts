@@ -198,7 +198,7 @@ export type Config = {
   autoSwitchOnReverse: boolean
 
   // LIVI UI
-  startPage: 'home' | 'media' | 'maps' | 'telemetry' | 'camera' | 'settings'
+  startPage: string
   language: string
   kiosk: WindowAssignment
   uiZoomPercent: number
@@ -221,6 +221,8 @@ export type Config = {
   cameraRotation: 0 | 90 | 180 | 270
   media: WindowAssignment
   dashboards: DashboardsConfig
+  custom: WindowAssignment
+  customUrl: string
 
   // Multi-window bounds
   mainScreenBounds?: WindowBounds

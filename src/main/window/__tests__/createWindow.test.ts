@@ -555,6 +555,26 @@ describe('createMainWindow', () => {
     })
   })
 
+  test('leaves the custom proxy answers with the headers they carry', async () => {
+    const { customProxy } = await import('@main/services/custom/CustomProxy')
+    const url = vi.spyOn(customProxy, 'url').mockReturnValue('http://127.0.0.1:5555/')
+    const runtimeState = {
+      config: { kiosk: { main: false, dash: false, aux: false }, uiZoomPercent: 100 },
+      isQuitting: false
+    } as any
+    const services = { projectionService: { attachRenderer: vi.fn() } } as any
+
+    createMainWindow(runtimeState, services)
+
+    const handler = (session.defaultSession.webRequest.onHeadersReceived as Mock).mock.calls[0][1]
+    const cb = vi.fn()
+
+    handler({ url: 'http://127.0.0.1:5555/js/app.js', responseHeaders: { Existing: ['x'] } }, cb)
+
+    expect(cb).toHaveBeenCalledWith({})
+    url.mockRestore()
+  })
+
   test('savedBounds: ready-to-show re-applies position+size', async () => {
     const runtimeState = {
       config: {

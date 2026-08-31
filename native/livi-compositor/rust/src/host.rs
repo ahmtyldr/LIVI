@@ -640,7 +640,7 @@ impl SctkSeatHandler for LiviState {
             Capability::Keyboard => {
                 self.host.keyboard = seats.get_keyboard(qh, &seat, None).ok();
                 self.seat
-                    .add_keyboard(Default::default(), 25, 600)
+                    .add_keyboard(Default::default(), 600, 25)
                     .ok();
             }
             Capability::Touch => {

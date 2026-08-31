@@ -123,10 +123,12 @@ export const useKeyDown = ({
         inMain = true
       }
 
+      const formFocused = isFormField(active)
+
       const pager = appContext?.telemetryPager
       const isTelemetryRoute = currentRoute.startsWith('/telemetry')
 
-      if (pager && isTelemetryRoute && !inNav) {
+      if (pager && isTelemetryRoute && !inNav && !formFocused) {
         if (isLeft) {
           if (pager.canPrev()) pager.prev()
           event.preventDefault()
@@ -151,13 +153,12 @@ export const useKeyDown = ({
       }
 
       const nothing = !active || active === document.body
-      const formFocused = isFormField(active)
 
       if (formFocused && !editingField && code === 'Backspace') {
         return
       }
 
-      if (settings && isCarPlayActive && mappedAction && !inNav) {
+      if (settings && isCarPlayActive && mappedAction && !inNav && !formFocused) {
         // PTT: suppress auto-repeat, release is dispatched on keyup elsewhere.
         if (mappedAction === 'voiceAssistant' && event.repeat) {
           event.preventDefault()
@@ -489,7 +490,7 @@ export const useKeyDown = ({
         code === b?.rejectPhone ||
         code === b?.voiceAssistant
 
-      if (settings && !isCarPlayActive && isTransport) {
+      if (settings && !isCarPlayActive && isTransport && !formFocused) {
         const action: KeyCommand =
           code === b?.next
             ? 'next'

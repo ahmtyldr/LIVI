@@ -45,6 +45,7 @@ export type StringNode = BaseFieldNode & {
   type: 'string'
   minLength?: number
   maxLength?: number
+  format?: 'url'
 }
 
 export type ColorNode = BaseFieldNode & {

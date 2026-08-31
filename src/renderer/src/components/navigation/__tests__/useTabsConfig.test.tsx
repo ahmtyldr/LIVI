@@ -15,7 +15,9 @@ let mockState = {
   secondaryTelemetry: false,
   secondaryMedia: false,
   secondaryCamera: false,
-  secondaryAbsentKeys: false
+  secondaryAbsentKeys: false,
+  mainCustom: false,
+  secondaryCustom: false
 }
 
 vi.mock('@mui/material/styles', () => ({
@@ -46,6 +48,9 @@ vi.mock('@store/store', () => ({
             camera: mockState.secondaryAbsentKeys
               ? { main: true }
               : { main: true, dash: mockState.secondaryCamera, aux: mockState.secondaryCamera },
+            custom: mockState.secondaryAbsentKeys
+              ? undefined
+              : { main: mockState.mainCustom, dash: mockState.secondaryCustom, aux: false },
             media: mockState.secondaryAbsentKeys
               ? { main: true }
               : {
@@ -81,7 +86,10 @@ describe('useTabsConfig', () => {
       mainMedia: true,
       secondaryTelemetry: false,
       secondaryMedia: false,
-      secondaryCamera: false
+      secondaryCamera: false,
+      secondaryAbsentKeys: false,
+      mainCustom: false,
+      secondaryCustom: false
     }
   })
 
@@ -106,6 +114,26 @@ describe('useTabsConfig', () => {
     mockState.mainMedia = false
     const { result } = renderHook(() => useTabsConfig(false))
     expect(result.current.map((t) => t.path)).toEqual(['/', '/camera', '/settings'])
+  })
+
+  test('adds the custom tab above settings when routed to main', () => {
+    mockState.mainCustom = true
+    const { result } = renderHook(() => useTabsConfig(false))
+    expect(result.current.map((t) => t.path)).toEqual([
+      '/',
+      '/media',
+      '/camera',
+      '/custom',
+      '/settings'
+    ])
+    expect(result.current.find((t) => t.path === '/custom')?.label).toBe('Custom')
+  })
+
+  test('a secondary window shows the custom tab when routed there', () => {
+    mockRole = 'dash'
+    mockState.secondaryCustom = true
+    const { result } = renderHook(() => useTabsConfig(false))
+    expect(result.current.map((t) => t.path)).toContain('/custom')
   })
 
   test('hides camera tab when camera is not found', () => {

@@ -4,6 +4,7 @@ import { SettingsNode } from '@renderer/routes'
 import type { SelectOption } from '@renderer/routes/types'
 import { useLiviStore } from '@renderer/store/store'
 import type { Config } from '@shared/types'
+import { isHttpUrlInput } from '@shared/utils'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ColorPickerControl } from './colorPicker/ColorPickerControl'
@@ -94,6 +95,72 @@ function VolumeSlider<T>({ value, onChange }: { value: T; onChange: (v: T) => vo
   )
 }
 
+//text field that commits on blur/Enter, NOT per keystroke - a per-keystroke
+//onChange writes the whole config each time (saveSettings), which thrashes the
+//store and, on the slow kiosk, races the controlled value into duplicated
+//characters. Local draft keeps typing smooth; the parent only sees the final
+//value. `format: 'url'` blocks the commit until the value is a valid URL.
+function StringField({
+  value,
+  minLength,
+  maxLength,
+  isUrl,
+  onCommit
+}: {
+  value: string
+  minLength?: number
+  maxLength?: number
+  isUrl: boolean
+  onCommit: (v: string) => void
+}) {
+  const [draft, setDraft] = useState(value)
+  const focused = useRef(false)
+
+  //follow external changes only while the user is not editing
+  useEffect(() => {
+    if (!focused.current) setDraft(value)
+  }, [value])
+
+  const tooShort = minLength !== undefined && draft.length < minLength
+  const badUrl = isUrl && !isHttpUrlInput(draft)
+  const invalid = tooShort || badUrl
+
+  const commit = () => {
+    focused.current = false
+    if (invalid) return //keep the draft visible with its error, do not write
+    const next = isUrl ? draft.trim() : draft
+    if (next !== value) onCommit(next)
+  }
+
+  return (
+    <TextField
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onFocus={() => {
+        focused.current = true
+      }}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+      }}
+      fullWidth
+      variant="outlined"
+      error={invalid}
+      helperText={badUrl ? 'invalid URL' : tooShort ? `min. ${minLength}` : undefined}
+      slotProps={{ htmlInput: { maxLength } }}
+      sx={{
+        '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
+          borderColor: 'primary.main',
+          borderWidth: '1px'
+        },
+        '& .MuiInputLabel-root.Mui-focused': {
+          color: 'primary.main'
+        }
+      }}
+    />
+  )
+}
+
 export const SettingsFieldControl = <T,>({
   node,
   value,
@@ -103,30 +170,16 @@ export const SettingsFieldControl = <T,>({
   onDone
 }: Props<T>) => {
   switch (node.type) {
-    case 'string': {
-      const text = String(value ?? '')
-      const tooShort = node.minLength !== undefined && text.length < node.minLength
+    case 'string':
       return (
-        <TextField
-          value={text}
-          onChange={(e) => onChange(e.target.value as T)}
-          fullWidth
-          variant="outlined"
-          error={tooShort}
-          helperText={tooShort ? `min. ${node.minLength}` : undefined}
-          slotProps={{ htmlInput: { maxLength: node.maxLength } }}
-          sx={{
-            '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
-              borderColor: 'primary.main',
-              borderWidth: '1px'
-            },
-            '& .MuiInputLabel-root.Mui-focused': {
-              color: 'primary.main'
-            }
-          }}
+        <StringField
+          value={String(value ?? '')}
+          minLength={node.minLength}
+          maxLength={node.maxLength}
+          isUrl={node.format === 'url'}
+          onCommit={(v) => onChange(v as T)}
         />
       )
-    }
 
     case 'number': {
       const min = node.min ?? 0

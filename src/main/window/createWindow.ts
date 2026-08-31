@@ -1,5 +1,6 @@
 import { is } from '@electron-toolkit/utils'
 import { saveSettings } from '@main/ipc/utils'
+import { customProxy } from '@main/services/custom/CustomProxy'
 import { runtimeStateProps, ServicesProps } from '@main/types'
 import { isMacPlatform, pushSettingsToRenderer } from '@main/utils'
 import type { WindowBounds } from '@shared/types'
@@ -135,7 +136,9 @@ export function createMainWindow(runtimeState: runtimeStateProps, services: Serv
 
   session.defaultSession.webRequest.onHeadersReceived(
     { urls: ['*://*/*', 'file://*/*'] },
-    (d, cb) =>
+    (d, cb) => {
+      const proxied = customProxy.url()
+      if (proxied && d.url.startsWith(proxied)) return cb({})
       cb({
         responseHeaders: {
           ...d.responseHeaders,
@@ -144,6 +147,7 @@ export function createMainWindow(runtimeState: runtimeStateProps, services: Serv
           'Cross-Origin-Resource-Policy': ['same-site']
         }
       })
+    }
   )
 
   mainWindow.once('ready-to-show', () => {

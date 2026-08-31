@@ -38,6 +38,15 @@ vi.mock('@main/services/video/GstVideo', () => ({
   compositorRestart: vi.fn(() => false)
 }))
 
+vi.mock('@main/protocol/appProtocol', () => ({
+  CUSTOM_PAGE_URL: 'app://index.html/custom/index.html',
+  customPageExists: vi.fn(() => false)
+}))
+
+vi.mock('@main/services/custom/CustomProxy', () => ({
+  customProxy: { start: vi.fn(async () => null) }
+}))
+
 vi.mock('@main/services/power/hostPower', () => ({
   hostPowerAvailable: vi.fn(() => false),
   requestPowerAction: vi.fn()
@@ -165,6 +174,40 @@ describe('registerAppIpc', () => {
     const leaveHandler = once.mock.calls[0][1] as () => void
     leaveHandler()
     expect(hide).toHaveBeenCalledTimes(1)
+  })
+
+  test('app:customPageUrl names the proxy when one runs', async () => {
+    const { customProxy } = await import('@main/services/custom/CustomProxy')
+    ;(customProxy.start as Mock).mockResolvedValue('http://127.0.0.1:5555/')
+
+    registerAppIpc({ isQuitting: false, config: { customUrl: '' } } as never, {} as never)
+    const handler = getHandle('app:customPageUrl') as () => Promise<string | null>
+
+    await expect(handler()).resolves.toBe('http://127.0.0.1:5555/')
+  })
+
+  test('app:customPageUrl names the local page when the folder holds one', async () => {
+    const { customProxy } = await import('@main/services/custom/CustomProxy')
+    const { customPageExists } = await import('@main/protocol/appProtocol')
+    ;(customProxy.start as Mock).mockResolvedValue(null)
+    ;(customPageExists as Mock).mockReturnValue(true)
+
+    registerAppIpc({ isQuitting: false, config: { customUrl: '' } } as never, {} as never)
+    const handler = getHandle('app:customPageUrl') as () => Promise<string | null>
+
+    await expect(handler()).resolves.toBe('app://index.html/custom/index.html')
+  })
+
+  test('app:customPageUrl names nothing when neither exists', async () => {
+    const { customProxy } = await import('@main/services/custom/CustomProxy')
+    const { customPageExists } = await import('@main/protocol/appProtocol')
+    ;(customProxy.start as Mock).mockResolvedValue(null)
+    ;(customPageExists as Mock).mockReturnValue(false)
+
+    registerAppIpc({ isQuitting: false, config: { customUrl: '' } } as never, {} as never)
+    const handler = getHandle('app:customPageUrl') as () => Promise<string | null>
+
+    await expect(handler()).resolves.toBeNull()
   })
 
   test('app:quitApp calls app.quit when app is not quitting', async () => {

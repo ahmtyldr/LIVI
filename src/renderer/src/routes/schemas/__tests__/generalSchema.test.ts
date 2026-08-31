@@ -164,15 +164,16 @@ describe('generalSchema', () => {
       })
     )
     expect(startPage.options).toEqual([
-      { label: 'Home', labelKey: 'settings.startPageHome', value: 'home' },
-      { label: 'Telemetry', labelKey: 'settings.startPageTelemetry', value: 'telemetry' },
-      { label: 'Media', labelKey: 'settings.startPageMedia', value: 'media' },
-      { label: 'Camera', labelKey: 'settings.startPageCamera', value: 'camera' },
-      { label: 'Settings', labelKey: 'settings.startPageSettings', value: 'settings' }
+      { label: 'Home', labelKey: 'settings.startPageHome', value: '/' },
+      { label: 'Telemetry', labelKey: 'settings.startPageTelemetry', value: '/telemetry' },
+      { label: 'Media', labelKey: 'settings.startPageMedia', value: '/media' },
+      { label: 'Camera', labelKey: 'settings.startPageCamera', value: '/camera' },
+      { label: 'Custom', labelKey: 'settings.startPageCustom', value: '/custom' },
+      { label: 'Settings', labelKey: 'settings.startPageSettings', value: '/settings' }
     ])
   })
 
-  test('window settings + tab settings live as siblings, tab settings hosts dashboards/media/camera', () => {
+  test('window settings + tab settings live as siblings, tab settings hosts dashboards/media/camera/custom', () => {
     const windowSettings = schema.children[1]
     expect(windowSettings).toEqual(
       expect.objectContaining({
@@ -194,7 +195,7 @@ describe('generalSchema', () => {
       })
     )
     const tabRoutes = tabSettings.children.map((c) => c.route)
-    expect(tabRoutes).toEqual(['dashboards', 'media', 'camera'])
+    expect(tabRoutes).toEqual(['dashboards', 'media', 'camera', 'custom'])
 
     const dashboardsRoute = tabSettings.children[0]
     expect(dashboardsRoute.children).toHaveLength(5)

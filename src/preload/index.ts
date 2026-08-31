@@ -263,6 +263,7 @@ const appApi = {
 
   beginInstall: (): Promise<void> => ipcRenderer.invoke('app:beginInstall'),
   abortUpdate: (): Promise<void> => ipcRenderer.invoke('app:abortUpdate'),
+  customPageUrl: (): Promise<string | null> => ipcRenderer.invoke('app:customPageUrl'),
   quitApp: (): Promise<void> => ipcRenderer.invoke('app:quitApp'),
   restartApp: (): Promise<void> => ipcRenderer.invoke('app:restartApp'),
   openExternal: (url: string): Promise<{ ok: boolean; error?: string }> =>

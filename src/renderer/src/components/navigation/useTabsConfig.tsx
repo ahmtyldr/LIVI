@@ -4,8 +4,10 @@ import CropPortraitOutlinedIcon from '@mui/icons-material/CropPortraitOutlined'
 import PlayCircleOutlinedIcon from '@mui/icons-material/PlayCircleOutlined'
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
 import SpeedOutlinedIcon from '@mui/icons-material/SpeedOutlined'
+import WidgetsOutlinedIcon from '@mui/icons-material/WidgetsOutlined'
 import { useTheme } from '@mui/material/styles'
-import { ROUTES, UI } from '../../constants'
+import { ROUTES } from '@shared/types'
+import { UI } from '../../constants'
 import { useLiviStore, useProjectionActive, useStatusStore } from '../../store/store'
 import { getWindowRole } from '../../utils/windowRole'
 import { TabConfig } from './types'
@@ -24,6 +26,7 @@ export const useTabsConfig: (receivingVideo: boolean) => TabConfig[] = (receivin
   const cameraOnRole = useLiviStore((s) =>
     role === 'main' ? (s.settings?.camera?.main ?? true) : (s.settings?.camera?.[role] ?? false)
   )
+  const customOnRole = useLiviStore((s) => s.settings?.custom?.[role] ?? false)
   const mediaOnRole = useLiviStore((s) =>
     role === 'main' ? (s.settings?.media?.main ?? true) : (s.settings?.media?.[role] ?? false)
   )
@@ -60,6 +63,15 @@ export const useTabsConfig: (receivingVideo: boolean) => TabConfig[] = (receivin
               label: 'Camera',
               path: ROUTES.CAMERA,
               icon: <CameraOutlinedIcon sx={{ fontSize: iconFontSize }} />
+            }
+          ]
+        : []),
+      ...(customOnRole
+        ? [
+            {
+              label: 'Custom',
+              path: ROUTES.CUSTOM,
+              icon: <WidgetsOutlinedIcon sx={{ fontSize: iconFontSize }} />
             }
           ]
         : [])
@@ -119,6 +131,15 @@ export const useTabsConfig: (receivingVideo: boolean) => TabConfig[] = (receivin
             label: 'Camera',
             path: ROUTES.CAMERA,
             icon: <CameraOutlinedIcon sx={{ fontSize: iconFontSize }} />
+          }
+        ]
+      : []),
+    ...(customOnRole
+      ? [
+          {
+            label: 'Custom',
+            path: ROUTES.CUSTOM,
+            icon: <WidgetsOutlinedIcon sx={{ fontSize: iconFontSize }} />
           }
         ]
       : []),

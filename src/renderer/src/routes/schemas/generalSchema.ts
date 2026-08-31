@@ -1,4 +1,5 @@
 import type { Config } from '@shared/types'
+import { PAGES } from '@shared/types'
 import { WIFI_PASSWORD_MAX, WIFI_PASSWORD_MIN } from '@shared/types/Config'
 import {
   MAX_HEIGHT,
@@ -602,6 +603,51 @@ export const generalSchema: SettingsNode<Config> = {
               ]
             }
           ]
+        },
+        {
+          type: 'route',
+          label: 'Custom Tab',
+          labelKey: 'settings.customTab',
+          icon: 'customTab',
+          route: 'custom',
+          path: '',
+          displayValue: true,
+          children: [
+            {
+              type: 'checkbox',
+              label: 'Main',
+              labelKey: 'settings.mainScreen',
+              icon: 'mainScreen',
+              path: 'custom.main'
+            },
+            {
+              type: 'checkbox',
+              label: 'Dash',
+              labelKey: 'settings.dashScreen',
+              icon: 'dashScreen',
+              path: 'custom.dash'
+            },
+            {
+              type: 'checkbox',
+              label: 'Aux',
+              labelKey: 'settings.auxScreen',
+              icon: 'auxScreen',
+              path: 'custom.aux'
+            },
+            {
+              type: 'string',
+              label: 'Address',
+              labelKey: 'settings.customUrl',
+              icon: 'customUrl',
+              path: 'customUrl',
+              format: 'url',
+              displayValue: true,
+              page: {
+                title: 'Address',
+                labelTitle: 'settings.customUrl'
+              }
+            }
+          ]
         }
       ]
     },
@@ -876,13 +922,7 @@ export const generalSchema: SettingsNode<Config> = {
       icon: 'startPage',
       path: 'startPage',
       displayValue: true,
-      options: [
-        { label: 'Home', labelKey: 'settings.startPageHome', value: 'home' },
-        { label: 'Telemetry', labelKey: 'settings.startPageTelemetry', value: 'telemetry' },
-        { label: 'Media', labelKey: 'settings.startPageMedia', value: 'media' },
-        { label: 'Camera', labelKey: 'settings.startPageCamera', value: 'camera' },
-        { label: 'Settings', labelKey: 'settings.startPageSettings', value: 'settings' }
-      ],
+      options: PAGES.map(({ path, label, labelKey }) => ({ label, labelKey, value: path })),
       page: {
         title: 'Start Page',
         labelTitle: 'settings.startPage'
