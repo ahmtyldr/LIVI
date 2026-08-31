@@ -1,15 +1,5 @@
 import type React from 'react'
 
-export enum RoutePath {
-  Camera = 'camera',
-  Home = 'home',
-  Cluster = 'cluster',
-  Media = 'media',
-  Devices = 'devices',
-  Settings = 'settings',
-  Telemetry = 'telemetry'
-}
-
 type BivariantCallback<T extends (...args: never[]) => unknown> = {
   __bivariant(...args: Parameters<T>): ReturnType<T>
 }['__bivariant']

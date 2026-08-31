@@ -1,11 +1,4 @@
-export enum ROUTES {
-  HOME = '/',
-  CLUSTER = '/cluster',
-  MEDIA = '/media',
-  CAMERA = '/camera',
-  DEVICES = '/devices',
-  SETTINGS = '/settings',
-  TELEMETRY = '/telemetry',
+export enum NAV_ACTIONS {
   QUIT = 'quit',
   TRANSPORT_SWITCH = 'transport-switch'
 }

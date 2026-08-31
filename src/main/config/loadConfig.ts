@@ -2,6 +2,7 @@ import { hostname } from 'node:os'
 import type { Config } from '@shared/types'
 import { DEFAULT_CONFIG } from '@shared/types'
 import { CAR_NAME_MAX, WIFI_PASSWORD_MAX, WIFI_PASSWORD_MIN } from '@shared/types/Config'
+import { isPagePath } from '@shared/types/Pages'
 import { existsSync, readFileSync, writeFileSync } from 'fs'
 import { sysfsPanelGeometry } from '../services/video/panelEdid'
 import { CONFIG_PATH } from './paths'
@@ -60,6 +61,11 @@ export function loadConfig(): Config {
         `${WIFI_PASSWORD_MIN}..${WIFI_PASSWORD_MAX}, falling back to the default`
     )
     merged.wifiPassword = DEFAULT_CONFIG.wifiPassword
+  }
+
+  if (!isPagePath(merged.startPage)) {
+    console.warn(`[config] startPage ${merged.startPage} is no page, falling back to the default`)
+    merged.startPage = DEFAULT_CONFIG.startPage
   }
 
   const needWrite =

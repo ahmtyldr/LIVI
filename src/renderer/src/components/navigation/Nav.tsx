@@ -1,8 +1,10 @@
 import type { Config } from '@shared/types'
+import { ROUTES } from '@shared/types'
 import { useLocation, useNavigate } from 'react-router'
-import { ROUTES } from '../../constants'
+import { NAV_ACTIONS } from '../../constants'
 import { useBlinkingTime } from '../../hooks/useBlinkingTime'
 import { useNetworkStatus } from '../../hooks/useNetworkStatus'
+import { devicesSchema } from '../../routes/schemas/devicesSchema'
 import { useStatusStore } from '../../store/store'
 import { NavRail, type NavRailItem } from './NavRail'
 import { useTabsConfig } from './useTabsConfig'
@@ -40,13 +42,13 @@ export const Nav = ({ receivingVideo }: NavProps) => {
     ROUTES.HOME
 
   const handleSelect = (key: string) => {
-    if (key === ROUTES.QUIT) {
+    if (key === NAV_ACTIONS.QUIT) {
       window.projection.quit().catch(console.error)
       return
     }
 
-    if (key === ROUTES.TRANSPORT_SWITCH) {
-      navigate(ROUTES.DEVICES)
+    if (key === NAV_ACTIONS.TRANSPORT_SWITCH) {
+      navigate(`${ROUTES.SETTINGS}/${devicesSchema.route}`)
       return
     }
 

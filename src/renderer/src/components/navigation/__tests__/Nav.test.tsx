@@ -1,5 +1,6 @@
+import { ROUTES } from '@shared/types'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { ROUTES, UI } from '../../../constants'
+import { NAV_ACTIONS, UI } from '../../../constants'
 import { Nav } from '../Nav'
 
 const navigateMock = vi.fn()
@@ -11,7 +12,7 @@ let mockTabs = [
   { label: 'Home', path: ROUTES.HOME, icon: <span>h</span> },
   { label: 'Media', path: ROUTES.MEDIA, icon: <span>m</span> },
   { label: 'Settings', path: ROUTES.SETTINGS, icon: <span>s</span> },
-  { label: 'Quit', path: ROUTES.QUIT, icon: <span>q</span> }
+  { label: 'Quit', path: NAV_ACTIONS.QUIT, icon: <span>q</span> }
 ]
 
 vi.mock('react-router', async () => {
@@ -93,7 +94,7 @@ describe('Nav', () => {
       { label: 'Home', path: ROUTES.HOME, icon: <span>h</span> },
       { label: 'Media', path: ROUTES.MEDIA, icon: <span>m</span> },
       { label: 'Settings', path: ROUTES.SETTINGS, icon: <span>s</span> },
-      { label: 'Quit', path: ROUTES.QUIT, icon: <span>q</span> }
+      { label: 'Quit', path: NAV_ACTIONS.QUIT, icon: <span>q</span> }
     ]
 
     Object.defineProperty(window, 'innerHeight', {
@@ -158,14 +159,14 @@ describe('Nav', () => {
   test('routes the transport switch tab to the devices page', async () => {
     mockTabs = [
       { label: 'Home', path: ROUTES.HOME, icon: <span>h</span> },
-      { label: 'Switch', path: ROUTES.TRANSPORT_SWITCH, icon: <span>x</span> }
+      { label: 'Switch', path: NAV_ACTIONS.TRANSPORT_SWITCH, icon: <span>x</span> }
     ]
 
     render(<Nav receivingVideo={false} settings={null as never} />)
 
     fireEvent.click(screen.getByLabelText('Switch'))
 
-    expect(navigateMock).toHaveBeenCalledWith(ROUTES.DEVICES)
+    expect(navigateMock).toHaveBeenCalledWith('/settings/devices')
   })
 
   test('replaces current route when clicking Settings from nested settings path', async () => {

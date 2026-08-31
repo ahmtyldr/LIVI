@@ -32,7 +32,8 @@ vi.mock('@shared/types', () => ({
     kiosk: true,
     carName: 'LIVI',
     bindings: {},
-    wifiPassword: 'livi-default-pw'
+    wifiPassword: 'livi-default-pw',
+    startPage: '/'
   }
 }))
 
@@ -52,7 +53,8 @@ describe('loadConfig', () => {
       kiosk: true,
       carName: 'test-host',
       bindings: {},
-      wifiPassword: 'livi-default-pw'
+      wifiPassword: 'livi-default-pw',
+      startPage: '/'
     })
     expect(writeFileSync).toHaveBeenCalledWith('/tmp/config.json', JSON.stringify(result, null, 2))
   })
@@ -66,7 +68,8 @@ describe('loadConfig', () => {
         kiosk: false,
         carName: 'MyCar',
         bindings: {},
-        wifiPassword: 'MyCarPass123'
+        wifiPassword: 'MyCarPass123',
+        startPage: '/'
       })
     )
 
@@ -79,7 +82,8 @@ describe('loadConfig', () => {
       kiosk: false,
       carName: 'MyCar',
       bindings: {},
-      wifiPassword: 'MyCarPass123'
+      wifiPassword: 'MyCarPass123',
+      startPage: '/'
     })
     expect(writeFileSync).not.toHaveBeenCalled()
   })
@@ -98,7 +102,8 @@ describe('loadConfig', () => {
       kiosk: true,
       carName: 'test-host',
       bindings: {},
-      wifiPassword: 'livi-default-pw'
+      wifiPassword: 'livi-default-pw',
+      startPage: '/'
     })
     expect(warnSpy).toHaveBeenCalled()
     expect(writeFileSync).toHaveBeenCalledWith('/tmp/config.json', JSON.stringify(result, null, 2))
@@ -173,7 +178,8 @@ describe('loadConfig', () => {
         kiosk: true,
         carName: 'Wohnmobil',
         bindings: {},
-        wifiPassword: 'MyCarPass123'
+        wifiPassword: 'MyCarPass123',
+        startPage: '/'
       })
     )
 
@@ -208,6 +214,24 @@ describe('loadConfig', () => {
     ;(existsSync as Mock).mockReturnValue(false)
     ;(hostname as Mock).mockReturnValueOnce('x'.repeat(CAR_NAME_MAX + 10))
     expect(loadConfig().carName).toBe('x'.repeat(CAR_NAME_MAX))
+  })
+
+  test('an unknown startPage falls back to the default', () => {
+    ;(existsSync as Mock).mockReturnValue(true)
+    ;(readFileSync as Mock).mockReturnValue(JSON.stringify({ startPage: '/nonexistent' }))
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+
+    expect(loadConfig().startPage).toBe('/')
+
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('is no page'))
+    warnSpy.mockRestore()
+  })
+
+  test('a known startPage survives', () => {
+    ;(existsSync as Mock).mockReturnValue(true)
+    ;(readFileSync as Mock).mockReturnValue(JSON.stringify({ startPage: '/media' }))
+
+    expect(loadConfig().startPage).toBe('/media')
   })
 
   test('a valid wifiPassword survives', () => {
