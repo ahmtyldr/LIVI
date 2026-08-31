@@ -1,8 +1,3 @@
-export enum NAV_ACTIONS {
-  QUIT = 'quit',
-  TRANSPORT_SWITCH = 'transport-switch'
-}
-
 export const FOCUSABLE_SELECTOR = [
   'button:not([disabled])',
   'a[href]',

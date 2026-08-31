@@ -1,5 +1,4 @@
-import { is } from '@electron-toolkit/utils'
-import { isMacPlatform, pushSettingsToRenderer } from '@main/utils'
+import { isDev, isMacPlatform, pushSettingsToRenderer } from '@main/utils'
 import { createMainWindow, getMainWindow } from '@main/window/createWindow'
 import {
   applyAspectRatioFullscreen,
@@ -72,11 +71,8 @@ vi.mock('electron', async () => {
   }
 })
 
-vi.mock('@electron-toolkit/utils', () => ({
-  is: { dev: false }
-}))
-
 vi.mock('@main/utils', () => ({
+  isDev: vi.fn(() => false),
   isMacPlatform: vi.fn(() => false),
   pushSettingsToRenderer: vi.fn()
 }))
@@ -200,7 +196,7 @@ describe('createMainWindow', () => {
   })
 
   test('ready-to-show opens devtools in dev mode', async () => {
-    ;(is as any).dev = true
+    ;(isDev as Mock).mockReturnValue(true)
 
     const runtimeState = {
       config: {
@@ -222,11 +218,11 @@ describe('createMainWindow', () => {
     readyHandler()
 
     expect(mainWin.webContents.openDevTools).toHaveBeenCalledWith({ mode: 'detach' })
-    ;(is as any).dev = false
+    ;(isDev as Mock).mockReturnValue(false)
   })
 
   test('uses ELECTRON_RENDERER_URL in dev mode', async () => {
-    ;(is as any).dev = true
+    ;(isDev as Mock).mockReturnValue(true)
     process.env.ELECTRON_RENDERER_URL = 'http://localhost:5173'
 
     const runtimeState = {
@@ -244,11 +240,11 @@ describe('createMainWindow', () => {
 
     const mainWin = browserWindowInstances[0]
     expect(mainWin.loadURL).toHaveBeenCalledWith('http://localhost:5173')
-    ;(is as any).dev = false
+    ;(isDev as Mock).mockReturnValue(false)
   })
 
   test('creates extra dev windows in dev mode', async () => {
-    ;(is as any).dev = true
+    ;(isDev as Mock).mockReturnValue(true)
     process.env.ELECTRON_RENDERER_URL = 'http://localhost:5173'
 
     const runtimeState = {
@@ -267,7 +263,7 @@ describe('createMainWindow', () => {
     expect(browserWindowInstances).toHaveLength(3)
     expect(browserWindowInstances[1].loadURL).toHaveBeenCalledWith('chrome://gpu')
     expect(browserWindowInstances[2].loadURL).toHaveBeenCalledWith('chrome://media-internals')
-    ;(is as any).dev = false
+    ;(isDev as Mock).mockReturnValue(false)
   })
 
   test('setWindowOpenHandler opens external urls and denies window creation', async () => {

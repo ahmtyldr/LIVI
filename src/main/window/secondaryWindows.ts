@@ -1,5 +1,4 @@
 import { EventEmitter } from 'node:events'
-import { is } from '@electron-toolkit/utils'
 import { COMPOSITOR_TITLEBAR_H } from '@main/app/compositorLayout'
 import {
   DEFAULT_HEIGHT,
@@ -12,6 +11,7 @@ import {
 import { configEvents, saveSettings } from '@main/ipc/utils'
 import { backdropHex, setCompositorScreen, setMacBackdrop } from '@main/services/video/GstVideo'
 import { runtimeStateProps } from '@main/types'
+import { isDev } from '@main/utils'
 import type { Config, WindowBounds } from '@shared/types'
 import { BrowserWindow, shell } from 'electron'
 import { join } from 'path'
@@ -181,7 +181,7 @@ function spawn(spec: SecondaryWindowSpec, runtimeState: runtimeStateProps) {
   )
 
   const url =
-    is.dev && process.env.ELECTRON_RENDERER_URL
+    isDev() && process.env.ELECTRON_RENDERER_URL
       ? `${process.env.ELECTRON_RENDERER_URL}?role=${spec.role}`
       : `app://index.html?role=${spec.role}`
   win.loadURL(url)

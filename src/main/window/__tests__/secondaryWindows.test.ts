@@ -35,6 +35,7 @@ class MockBrowserWindow extends EventEmitter {
 const lastWindows: MockBrowserWindow[] = []
 
 vi.mock('electron', () => ({
+  app: { isPackaged: true },
   BrowserWindow: vi.fn().mockImplementation(function (opts: Record<string, unknown>) {
     const w = new MockBrowserWindow()
     w.__opts = opts
@@ -64,14 +65,9 @@ vi.mock('@main/ipc/utils', () => ({
   saveSettings: (...a: unknown[]) => saveSettingsMock(...a)
 }))
 
-vi.mock('@electron-toolkit/utils', () => ({
-  is: { dev: false }
-}))
-
-import { is } from '@electron-toolkit/utils'
 import { COMPOSITOR_TITLEBAR_H } from '@main/app/compositorLayout'
 import type { runtimeStateProps } from '@main/types'
-import { shell } from 'electron'
+import { app, shell } from 'electron'
 import {
   closeAllSecondaryWindows,
   getSecondaryWindow,
@@ -386,12 +382,12 @@ describe('secondaryWindows — bounds + ready-to-show', () => {
 
   test('dev mode loads the renderer url with a role query', () => {
     const original = process.env.ELECTRON_RENDERER_URL
-    ;(is as { dev: boolean }).dev = true
+    ;(app as { isPackaged: boolean }).isPackaged = false
     process.env.ELECTRON_RENDERER_URL = 'http://localhost:5173'
     const rt = baseState({ dashScreenActive: true })
     syncSecondaryWindows(rt)
     expect(lastWindows[0].loadURL).toHaveBeenCalledWith('http://localhost:5173?role=dash')
-    ;(is as { dev: boolean }).dev = false
+    ;(app as { isPackaged: boolean }).isPackaged = true
     if (original === undefined) delete process.env.ELECTRON_RENDERER_URL
     else process.env.ELECTRON_RENDERER_URL = original
   })

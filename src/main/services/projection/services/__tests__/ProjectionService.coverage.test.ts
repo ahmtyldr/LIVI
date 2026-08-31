@@ -3780,6 +3780,17 @@ describe('HFP keeper, SCO and battery wiring', () => {
     if (realPlatform) Object.defineProperty(process, 'platform', realPlatform)
   })
 
+  test('ensurePhoneHfp installs no keeper off linux', () => {
+    const realPlatform = Object.getOwnPropertyDescriptor(process, 'platform')
+    Object.defineProperty(process, 'platform', { value: 'darwin', configurable: true })
+    const svc = makeSvc()
+
+    svc.ensurePhoneHfp('AA:BB:CC:DD:EE:FF')
+
+    expect(svc.hfpKeepers.size).toBe(0)
+    if (realPlatform) Object.defineProperty(process, 'platform', realPlatform)
+  })
+
   test('ensureAaPhoneHfp stays quiet when the paired list cannot be read', async () => {
     const realPlatform = Object.getOwnPropertyDescriptor(process, 'platform')
     Object.defineProperty(process, 'platform', { value: 'linux', configurable: true })
