@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'fs'
 import { homedir } from 'os'
 import { join, normalize, sep } from 'path'
 import { pathToFileURL } from 'url'
+import { EXAMPLE_ICON } from '../services/custom/exampleIcon'
 import { EXAMPLE_PAGE } from '../services/custom/examplePage'
 import { themeCss } from '../services/custom/themeCss'
 
@@ -31,6 +32,7 @@ export function seedCustomPage(): void {
     const home = homedir()
     const shown = file.startsWith(home) ? `~${file.slice(home.length)}` : file
     writeFileSync(file, EXAMPLE_PAGE.replace('{{FILE}}', shown))
+    writeFileSync(join(root, 'icon.svg'), EXAMPLE_ICON)
     console.log(`[app-protocol] example page written to ${file}`)
   } catch (e) {
     console.warn(`[app-protocol] could not seed the custom folder: ${(e as Error).message}`)
@@ -39,9 +41,16 @@ export function seedCustomPage(): void {
 
 export const CUSTOM_PAGE_URL = 'app://index.html/custom/index.html'
 
+export const CUSTOM_ICON_URL = 'app://index.html/custom/icon.svg'
+
 /** True when the user's own page lies in the custom folder. */
 export function customPageExists(): boolean {
   return existsSync(join(customRoot(), 'index.html'))
+}
+
+/** True when the custom folder names its own tab icon. */
+export function customIconExists(): boolean {
+  return existsSync(join(customRoot(), 'icon.svg'))
 }
 
 function customFile(path: string): string | null {

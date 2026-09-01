@@ -1,5 +1,10 @@
 import { registerIpcHandle, registerIpcOn } from '@main/ipc/register'
-import { CUSTOM_PAGE_URL, customPageExists } from '@main/protocol/appProtocol'
+import {
+  CUSTOM_ICON_URL,
+  CUSTOM_PAGE_URL,
+  customIconExists,
+  customPageExists
+} from '@main/protocol/appProtocol'
 import { customProxy } from '@main/services/custom/CustomProxy'
 import { hostPowerAvailable, requestPowerAction } from '@main/services/power/hostPower'
 import { compositorRestart } from '@main/services/video/GstVideo'
@@ -104,6 +109,8 @@ export function registerAppIpc(runtimeState: runtimeStateProps, services: Servic
   })
 
   // App Quit
+  registerIpcHandle('app:customIconUrl', () => (customIconExists() ? CUSTOM_ICON_URL : null))
+
   registerIpcHandle('app:quitApp', () => {
     if (runtimeState.isQuitting) return
     if (hostPowerAvailable()) requestPowerAction('poweroff')

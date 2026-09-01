@@ -40,7 +40,9 @@ vi.mock('@main/services/video/GstVideo', () => ({
 
 vi.mock('@main/protocol/appProtocol', () => ({
   CUSTOM_PAGE_URL: 'app://index.html/custom/index.html',
-  customPageExists: vi.fn(() => false)
+  CUSTOM_ICON_URL: 'app://index.html/custom/icon.svg',
+  customPageExists: vi.fn(() => false),
+  customIconExists: vi.fn(() => false)
 }))
 
 vi.mock('@main/services/custom/CustomProxy', () => ({
@@ -208,6 +210,18 @@ describe('registerAppIpc', () => {
     const handler = getHandle('app:customPageUrl') as () => Promise<string | null>
 
     await expect(handler()).resolves.toBeNull()
+  })
+
+  test('app:customIconUrl names the icon only when the folder has one', async () => {
+    const { customIconExists } = await import('@main/protocol/appProtocol')
+    registerAppIpc({ isQuitting: false, config: { customUrl: '' } } as never, {} as never)
+    const handler = getHandle('app:customIconUrl') as () => string | null
+
+    ;(customIconExists as Mock).mockReturnValue(true)
+    expect(handler()).toBe('app://index.html/custom/icon.svg')
+
+    ;(customIconExists as Mock).mockReturnValue(false)
+    expect(handler()).toBeNull()
   })
 
   test('app:quitApp calls app.quit when app is not quitting', async () => {

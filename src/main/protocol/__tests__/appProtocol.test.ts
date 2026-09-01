@@ -48,6 +48,7 @@ describe('appProtocol', () => {
       registerAppProtocol: mod.registerAppProtocol,
       seedCustomPage: mod.seedCustomPage,
       customPageExists: mod.customPageExists,
+      customIconExists: mod.customIconExists,
       setCustomPageConfig: mod.setCustomPageConfig,
       protocol,
       net,
@@ -161,6 +162,22 @@ describe('appProtocol', () => {
       expect(file).toBe('/tmp/livi-userdata/custom/index.html')
       expect(body).toContain('~/livi-userdata/custom/index.html')
       expect(body).not.toContain('{{FILE}}')
+
+      const [iconFile, icon] = writeFileSync.mock.calls[1]
+      expect(iconFile).toBe('/tmp/livi-userdata/custom/icon.svg')
+      expect(icon).toContain('<svg')
+      expect(icon).toContain('viewBox="0 0 24 24"')
+    })
+
+    test('reports whether the folder names its own tab icon', async () => {
+      const { customIconExists, existsSync } = await loadModule()
+
+      existsSync.mockReturnValue(true)
+      expect(customIconExists()).toBe(true)
+      expect(existsSync).toHaveBeenCalledWith('/tmp/livi-userdata/custom/icon.svg')
+
+      existsSync.mockReturnValue(false)
+      expect(customIconExists()).toBe(false)
     })
 
     test('names the file relative to the home directory', async () => {

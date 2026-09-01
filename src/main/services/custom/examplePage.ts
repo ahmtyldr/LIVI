@@ -38,6 +38,7 @@ export const EXAMPLE_PAGE = `<!doctype html>
     <h1>Custom tab</h1>
     <p><code>{{FILE}}</code></p>
     <p>Edit it, or set an address in the settings to load something else.</p>
+    <p>The <code>icon.svg</code> next to it is the tab icon.</p>
   </body>
 </html>
 `

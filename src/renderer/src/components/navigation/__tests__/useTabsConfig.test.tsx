@@ -1,4 +1,4 @@
-import { renderHook } from '@testing-library/react'
+import { renderHook, waitFor } from '@testing-library/react'
 import { UI } from '../../../constants'
 import { useTabsConfig } from '../useTabsConfig'
 
@@ -270,6 +270,72 @@ describe('useTabsConfig', () => {
       configurable: true,
       writable: true,
       value: originalInnerHeight
+    })
+  })
+
+  describe('the custom tab icon', () => {
+    const customIconUrl = vi.fn()
+
+    beforeEach(() => {
+      customIconUrl.mockReset()
+      ;(window as unknown as { app: unknown }).app = { customIconUrl }
+      mockRole = 'main'
+      mockState.mainCustom = true
+    })
+
+    function customTab() {
+      const { result } = renderHook(() => useTabsConfig(false))
+      return result
+    }
+
+    test('the folder icon is drawn as a mask in the current colour', async () => {
+      customIconUrl.mockResolvedValue('app://index.html/custom/icon.svg')
+      const result = customTab()
+
+      await waitFor(() => {
+        const icon = result.current.find((t) => t.label === 'Custom')?.icon as {
+          props: { className?: string; style?: Record<string, string> }
+        }
+        expect(icon.props.className).toBe('MuiSvgIcon-root')
+        expect(icon.props.style?.backgroundColor).toBe('currentColor')
+        expect(icon.props.style?.maskImage).toBe('url(app://index.html/custom/icon.svg)')
+      })
+    })
+
+    test('without one the default icon stays', async () => {
+      customIconUrl.mockResolvedValue(null)
+      const result = customTab()
+
+      await waitFor(() => expect(customIconUrl).toHaveBeenCalled())
+      const icon = result.current.find((t) => t.label === 'Custom')?.icon as {
+        props: { className?: string }
+      }
+      expect(icon.props.className).toBeUndefined()
+    })
+
+    test('a failing lookup leaves the default icon', async () => {
+      customIconUrl.mockRejectedValue(new Error('no'))
+      const result = customTab()
+
+      await waitFor(() => expect(customIconUrl).toHaveBeenCalled())
+      expect(result.current.find((t) => t.label === 'Custom')).toBeTruthy()
+    })
+
+    test('an answer landing after unmount is dropped', async () => {
+      let settle: (v: unknown) => void = () => {}
+      customIconUrl.mockReturnValue(new Promise((r) => (settle = r)))
+      const { unmount } = renderHook(() => useTabsConfig(false))
+
+      unmount()
+      settle('app://index.html/custom/icon.svg')
+      await Promise.resolve()
+    })
+
+    test('stays on the default when the bridge is missing', async () => {
+      ;(window as unknown as { app: unknown }).app = {}
+      const result = customTab()
+
+      expect(result.current.find((t) => t.label === 'Custom')).toBeTruthy()
     })
   })
 })

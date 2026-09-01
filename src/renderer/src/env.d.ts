@@ -184,6 +184,7 @@ declare global {
       notifyUserActivity(): void
       reportPath(path: string): void
       customPageUrl(): Promise<string | null>
+      customIconUrl(): Promise<string | null>
       quitApp(): Promise<void>
       restartApp(): Promise<void>
       getVersion(): Promise<string>
