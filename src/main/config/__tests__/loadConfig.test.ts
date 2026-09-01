@@ -4,14 +4,15 @@ import { CAR_NAME_MAX, WIFI_PASSWORD_MAX } from '@shared/types/Config'
 import { existsSync, readFileSync, writeFileSync } from 'fs'
 import type { Mock } from 'vitest'
 
-vi.mock('fs', () => {
-  const __m = {
-    existsSync: vi.fn(),
-    readFileSync: vi.fn(),
-    writeFileSync: vi.fn()
-  }
-  return { ...__m, default: __m }
-})
+const fsMock = vi.hoisted(() => ({
+  existsSync: vi.fn(),
+  readFileSync: vi.fn(),
+  renameSync: vi.fn(),
+  writeFileSync: vi.fn()
+}))
+
+vi.mock('fs', () => ({ ...fsMock, default: fsMock }))
+vi.mock('node:fs', () => ({ ...fsMock, default: fsMock }))
 
 vi.mock('@main/config/paths', () => ({
   CONFIG_PATH: '/tmp/config.json'
@@ -56,7 +57,10 @@ describe('loadConfig', () => {
       wifiPassword: 'livi-default-pw',
       startPage: '/'
     })
-    expect(writeFileSync).toHaveBeenCalledWith('/tmp/config.json', JSON.stringify(result, null, 2))
+    expect(writeFileSync).toHaveBeenCalledWith(
+      '/tmp/config.json.tmp',
+      JSON.stringify(result, null, 2)
+    )
   })
 
   test('reads and returns merged config from file', () => {
@@ -106,7 +110,10 @@ describe('loadConfig', () => {
       startPage: '/'
     })
     expect(warnSpy).toHaveBeenCalled()
-    expect(writeFileSync).toHaveBeenCalledWith('/tmp/config.json', JSON.stringify(result, null, 2))
+    expect(writeFileSync).toHaveBeenCalledWith(
+      '/tmp/config.json.tmp',
+      JSON.stringify(result, null, 2)
+    )
 
     warnSpy.mockRestore()
   })

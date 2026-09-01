@@ -3,7 +3,8 @@ import type { Config } from '@shared/types'
 import { DEFAULT_CONFIG } from '@shared/types'
 import { CAR_NAME_MAX, WIFI_PASSWORD_MAX, WIFI_PASSWORD_MIN } from '@shared/types/Config'
 import { isPagePath } from '@shared/types/Pages'
-import { existsSync, readFileSync, writeFileSync } from 'fs'
+import { writeFileAtomic } from '@shared/utils'
+import { existsSync, readFileSync } from 'fs'
 import { sysfsPanelGeometry } from '../services/video/panelEdid'
 import { CONFIG_PATH } from './paths'
 import { validate } from './validateConfig'
@@ -72,7 +73,7 @@ export function loadConfig(): Config {
     !existsSync(CONFIG_PATH) || JSON.stringify(fileConfig) !== JSON.stringify(merged)
 
   if (needWrite) {
-    writeFileSync(CONFIG_PATH, JSON.stringify(merged, null, 2))
+    writeFileAtomic(CONFIG_PATH, JSON.stringify(merged, null, 2))
     console.log('[config] Written corrected config.json')
   }
 
