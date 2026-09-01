@@ -710,6 +710,35 @@ describe('AaSession — codec/night-mode setters during an active session', () =
     expect(cfg.initialNightMode).toBe(true)
   })
 
+  test('a night-mode change is pushed to the phone, not just stored', () => {
+    const d = makeSession()
+    lastAaStack.instance!.sendNightModeData.mockClear()
+
+    d.setInitialNightMode(true)
+    d.setInitialNightMode(false)
+
+    expect(lastAaStack.instance!.sendNightModeData).toHaveBeenNthCalledWith(1, true)
+    expect(lastAaStack.instance!.sendNightModeData).toHaveBeenNthCalledWith(2, false)
+  })
+
+  test('taking over as the active session applies the appearance', () => {
+    const d = makeSession()
+    lastAaStack.instance!.sendNightModeData.mockClear()
+
+    d.applyNightMode(true)
+
+    expect(lastAaStack.instance!.sendNightModeData).toHaveBeenCalledWith(true)
+  })
+
+  test('an undefined night mode leaves the phone alone', () => {
+    const d = makeSession()
+    lastAaStack.instance!.sendNightModeData.mockClear()
+
+    d.setInitialNightMode(undefined)
+
+    expect(lastAaStack.instance!.sendNightModeData).not.toHaveBeenCalled()
+  })
+
   test('setClusterStreamActive forwards to the AAStack', () => {
     const d = makeSession()
     lastAaStack.instance!.setClusterStreamActive.mockClear()

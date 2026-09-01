@@ -161,9 +161,17 @@ export class AaSession extends EventEmitter implements IPhoneDriver {
     if (this._aaCfg) this._aaCfg.av1Supported = supported
   }
 
+  applyNightMode(night: boolean | undefined): void {
+    this.setInitialNightMode(night)
+  }
+
   setInitialNightMode(value: boolean | undefined): void {
     this._initialNightMode = value
     if (this._aaCfg) this._aaCfg.initialNightMode = value
+    // The stack answers with this on a sensor subscription, which a running
+    // session no longer sends, so push it as well.
+    console.log(`[AaSession] nightMode=${value} (stack ${this._aa ? 'up' : 'gone'})`)
+    if (value !== undefined) this._aa?.sendNightModeData(value)
   }
 
   // Visibility-gated cluster stream: stops/resumes the phone-side cluster encode

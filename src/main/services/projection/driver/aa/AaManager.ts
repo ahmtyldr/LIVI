@@ -72,6 +72,56 @@ export class AaManager {
     for (const s of this._sessions) s.setInitialNightMode(value)
   }
 
+  // ── Telemetry fan-out: every connected session, like CpManager ──────────────
+  sendSpeedData(speedMmS: number, cruiseEngaged?: boolean, cruiseSetSpeedMmS?: number): void {
+    for (const s of this._sessions) s.sendSpeedData(speedMmS, cruiseEngaged, cruiseSetSpeedMmS)
+  }
+  sendRpmData(rpmE3: number): void {
+    for (const s of this._sessions) s.sendRpmData(rpmE3)
+  }
+  sendGearData(gear: number): void {
+    for (const s of this._sessions) s.sendGearData(gear)
+  }
+  sendNightModeData(nightMode: boolean): void {
+    for (const s of this._sessions) s.sendNightModeData(nightMode)
+  }
+  sendParkingBrakeData(engaged: boolean): void {
+    for (const s of this._sessions) s.sendParkingBrakeData(engaged)
+  }
+  sendDrivingStatusData(status: number): void {
+    for (const s of this._sessions) s.sendDrivingStatusData(status)
+  }
+  sendLightData(headLight?: 1 | 2 | 3, hazardLights?: boolean, turnIndicator?: 1 | 2 | 3): void {
+    for (const s of this._sessions) s.sendLightData(headLight, hazardLights, turnIndicator)
+  }
+  sendFuelData(level: number, range?: number, lowFuelWarning?: boolean): void {
+    for (const s of this._sessions) s.sendFuelData(level, range, lowFuelWarning)
+  }
+  sendOdometerData(totalKmE1: number, tripKmE1?: number): void {
+    for (const s of this._sessions) s.sendOdometerData(totalKmE1, tripKmE1)
+  }
+  sendEnvironmentData(temperatureE3?: number, pressureE3?: number, rain?: number): void {
+    for (const s of this._sessions) s.sendEnvironmentData(temperatureE3, pressureE3, rain)
+  }
+  sendGpsLocationData(opts: {
+    latDeg: number
+    lngDeg: number
+    accuracyM?: number
+    altitudeM?: number
+    speedMs?: number
+    bearingDeg?: number
+  }): void {
+    for (const s of this._sessions) s.sendGpsLocationData(opts)
+  }
+  sendVehicleEnergyModel(
+    capacityWh: number,
+    currentWh: number,
+    rangeM: number,
+    opts?: { maxChargePowerW?: number; maxDischargePowerW?: number; auxiliaryWhPerKm?: number }
+  ): void {
+    for (const s of this._sessions) s.sendVehicleEnergyModel(capacityWh, currentWh, rangeM, opts)
+  }
+
   setClusterStreamActive(active: boolean): void {
     this._clusterStreamActive = active
     for (const s of this._sessions) s.setClusterStreamActive(active)

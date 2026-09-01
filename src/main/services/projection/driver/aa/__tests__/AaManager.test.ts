@@ -10,6 +10,18 @@ class MockAaSession extends EventEmitter {
   setAv1Supported = vi.fn()
   setInitialNightMode = vi.fn()
   setClusterStreamActive = vi.fn()
+  sendSpeedData = vi.fn()
+  sendRpmData = vi.fn()
+  sendGearData = vi.fn()
+  sendNightModeData = vi.fn()
+  sendParkingBrakeData = vi.fn()
+  sendDrivingStatusData = vi.fn()
+  sendLightData = vi.fn()
+  sendFuelData = vi.fn()
+  sendOdometerData = vi.fn()
+  sendEnvironmentData = vi.fn()
+  sendGpsLocationData = vi.fn()
+  sendVehicleEnergyModel = vi.fn()
   constructor(opts: MockAaSession['opts']) {
     super()
     this.opts = opts
@@ -87,14 +99,15 @@ import { UsbAoapBridge } from '../stack/transport/UsbAoapBridge'
 const fakeDevice = (serial = 'S1'): USBDevice =>
   ({ vendorId: 0x18d1, productId: 0x4ee1, serialNumber: serial }) as unknown as USBDevice
 
-function newManager(): { mgr: AaManager; onSpawn: Mock } {
+function newManager(): { mgr: AaManager; onSpawn: Mock; config: Partial<Config> } {
   const onSpawn = vi.fn()
+  const config: Partial<Config> = {}
   const mgr = new AaManager({
-    getConfig: () => ({}) as Config,
+    getConfig: () => config as Config,
     onWillReenumerate: vi.fn(),
     onSpawn
   })
-  return { mgr, onSpawn }
+  return { mgr, onSpawn, config }
 }
 
 beforeEach(() => {
@@ -392,14 +405,69 @@ describe('AaManager — codec/night-mode seed', () => {
   test('new sessions inherit the current seed', () => {
     const { mgr } = newManager()
     mgr.setHevcSupported(true)
-    mgr.setInitialNightMode(true)
     mgr.setClusterStreamActive(false)
 
     mgr.startWireless()
     lastServer.instance!.handler(new MockSocket())
     const seed = spawned[0]!.opts.seed
     expect(seed.hevcSupported).toBe(true)
-    expect(seed.initialNightMode).toBe(true)
     expect(seed.clusterStreamActive).toBe(false)
+  })
+
+  test('a new session inherits the stored night mode', () => {
+    const { mgr } = newManager()
+    mgr.setInitialNightMode(true)
+
+    mgr.startWireless()
+    lastServer.instance!.handler(new MockSocket())
+
+    expect(spawned[0]!.opts.seed.initialNightMode).toBe(true)
+  })
+
+  test('a live night-mode change reaches every session', () => {
+    const { mgr } = newManager()
+    mgr.startWireless()
+    lastServer.instance!.handler(new MockSocket())
+    lastServer.instance!.handler(new MockSocket())
+
+    mgr.setInitialNightMode(true)
+
+    expect(spawned[0]!.setInitialNightMode).toHaveBeenCalledWith(true)
+    expect(spawned[1]!.setInitialNightMode).toHaveBeenCalledWith(true)
+  })
+
+  test('telemetry fans out to every connected session', () => {
+    const { mgr } = newManager()
+    mgr.startWireless()
+    lastServer.instance!.handler(new MockSocket())
+    lastServer.instance!.handler(new MockSocket())
+
+    mgr.sendSpeedData(4200)
+    mgr.sendRpmData(3000)
+    mgr.sendGearData(4)
+    mgr.sendNightModeData(true)
+    mgr.sendParkingBrakeData(true)
+    mgr.sendDrivingStatusData(1)
+    mgr.sendLightData(2, false, 1)
+    mgr.sendFuelData(80, 400, false)
+    mgr.sendOdometerData(1200, 30)
+    mgr.sendEnvironmentData(21000, 101000, 0)
+    mgr.sendGpsLocationData({ latDeg: 1, lngDeg: 2 })
+    mgr.sendVehicleEnergyModel(60000, 45000, 300000)
+
+    for (const s of spawned) {
+      expect(s.sendSpeedData).toHaveBeenCalledWith(4200, undefined, undefined)
+      expect(s.sendRpmData).toHaveBeenCalledWith(3000)
+      expect(s.sendGearData).toHaveBeenCalledWith(4)
+      expect(s.sendNightModeData).toHaveBeenCalledWith(true)
+      expect(s.sendParkingBrakeData).toHaveBeenCalledWith(true)
+      expect(s.sendDrivingStatusData).toHaveBeenCalledWith(1)
+      expect(s.sendLightData).toHaveBeenCalledWith(2, false, 1)
+      expect(s.sendFuelData).toHaveBeenCalledWith(80, 400, false)
+      expect(s.sendOdometerData).toHaveBeenCalledWith(1200, 30)
+      expect(s.sendEnvironmentData).toHaveBeenCalledWith(21000, 101000, 0)
+      expect(s.sendGpsLocationData).toHaveBeenCalledWith({ latDeg: 1, lngDeg: 2 })
+      expect(s.sendVehicleEnergyModel).toHaveBeenCalledWith(60000, 45000, 300000, undefined)
+    }
   })
 })
