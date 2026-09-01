@@ -79,13 +79,10 @@ impl Fanout {
     }
 
     /// Accounts for `nal` and answers whether the caller pushes it. `has_target`
-    /// says whether any player is listening. The frame enters the cache either
-    /// way.
+    /// says whether any player is listening. The frame enters the cache whether
+    /// or not it is pushed.
     pub fn take(&mut self, nal: &[u8], has_target: bool) -> bool {
         self.stats.incoming += 1;
-        if !self.active {
-            return false;
-        }
         if !self.have_codec {
             self.stats.dropped += 1;
             return false;
@@ -115,6 +112,10 @@ impl Fanout {
             }
         }
 
+        // A held receiver fills its cache but pushes nothing.
+        if !self.active {
+            return false;
+        }
         if has_target {
             self.stats.pushed += 1;
         }
@@ -170,13 +171,26 @@ mod tests {
     }
 
     #[test]
-    fn an_inactive_receiver_counts_the_frame_and_nothing_else() {
+    fn an_inactive_receiver_fills_its_cache_and_pushes_nothing() {
         let mut f = Fanout::new();
         f.set_codec(CpCodec::H264);
 
         assert!(!f.take(&keyframe(), true));
-        assert_eq!(f.take_stats(), Stats { incoming: 1, dropped: 0, pushed: 0 });
-        assert!(f.cached().is_empty());
+        assert_eq!(f.take_stats(), Stats { incoming: 1, dropped: 1, pushed: 0 });
+        assert_eq!(f.cached().len(), 1);
+    }
+
+    #[test]
+    fn a_receiver_made_active_has_the_running_gop_ready() {
+        let mut f = Fanout::new();
+        f.set_codec(CpCodec::H264);
+        f.take(&keyframe(), true);
+        f.take(&delta(), true);
+
+        f.set_active(true);
+
+        assert_eq!(f.cached().len(), 2);
+        assert!(!f.awaiting_keyframe());
     }
 
     #[test]

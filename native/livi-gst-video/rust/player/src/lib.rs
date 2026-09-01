@@ -378,6 +378,13 @@ impl Player {
         let _ = (crop_l, crop_t, vis_w, vis_h, tier_w, tier_h);
     }
 
+    /// Drops everything queued, so the next frames play without the old tail.
+    pub fn flush(&self) {
+        let Some(src) = &self.appsrc else { return };
+        let _ = src.send_event(gst::event::FlushStart::new());
+        let _ = src.send_event(gst::event::FlushStop::new(true));
+    }
+
     /// Steers the calibration shader.
     pub fn set_gamma(&self, gamma: f64, contrast: f64, gain_r: f64, gain_g: f64, gain_b: f64) {
         let Some(shader) = &self.glshader else { return };
