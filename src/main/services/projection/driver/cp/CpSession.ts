@@ -11,7 +11,6 @@
 
 import { EventEmitter } from 'node:events'
 import type * as net from 'node:net'
-import { Microphone } from '@main/services/audio'
 import { panelPhysicalMm } from '@main/services/video/GstVideo'
 import { ICON_120_B64, ICON_180_B64, ICON_256_B64 } from '@shared/assets/carIcons'
 import type { Config } from '@shared/types'
@@ -50,22 +49,6 @@ import type { CpAudioProfile, CpIcon, CpStackConfig, CpStreamProfile } from './s
 /** Full knob-axis deflection: a d-pad direction maps to X/Y at the extreme (±127). */
 const KNOB_DEFLECT = 127
 
-/** PCM AudioData event; the PCM buffer is viewed as Int16 samples. */
-function buildCpAudioData(
-  pcm: Buffer,
-  sampleRate: number,
-  channels: number,
-  audioType: number
-): AudioData {
-  const sampleBytes = pcm.length - (pcm.length % 2)
-  const samples = new Int16Array(
-    pcm.buffer,
-    pcm.byteOffset,
-    sampleBytes / Int16Array.BYTES_PER_ELEMENT
-  )
-  return new AudioData({ decodeType: 0, audioType, sampleRate, channels, data: samples })
-}
-
 /** AudioData event carrying an AudioCommand (stream start/stop). */
 function buildCpAudioCommand(prof: CpAudioProfile, active: boolean): AudioData {
   return new AudioData({
@@ -100,8 +83,6 @@ export class CpSession extends EventEmitter implements IPhoneDriver {
   private _downEmitted = false
   private _hevc: boolean
   private _initialNightMode: boolean | undefined
-  private _mic: Microphone | null = null
-  private _micActive = false
   private readonly _getConfig: () => Config
   private readonly _helper: CpHelperSock
   /** Phone identity, learned from the stack's session-level SETUP + the socket peer. */
@@ -177,6 +158,7 @@ export class CpSession extends EventEmitter implements IPhoneDriver {
 
   setVideoActive(active: boolean): void {
     this._stack?.setVideoActive(active)
+    this._stack?.setAudioActive(active)
   }
 
   /** The live CarPlay session's stable pair-verify controller id, the CP device identity. */
@@ -264,18 +246,11 @@ export class CpSession extends EventEmitter implements IPhoneDriver {
     stack.on('cluster-video-config', (codecData: Buffer) =>
       this.emit('cluster-video-config', codecData)
     )
-    stack.on('audio-frame', (pcm: Buffer, prof: CpStreamProfile) => {
-      this.emit('message', buildCpAudioData(pcm, prof.sampleRate, prof.channels, prof.audioType))
-    })
     stack.on('audio-active', (prof: CpAudioProfile, active: boolean) => {
       this.emit('message', buildCpAudioCommand(prof, active))
     })
     stack.on('duck', (level: number, durationMs: number) => {
       this.emit('message', new DuckAudio(level, durationMs))
-    })
-    stack.on('mic-active', (active: boolean, sampleRate: number, channels: number) => {
-      if (active) this._startMicCapture(sampleRate, channels)
-      else this._stopMicCapture()
     })
     stack.on('host-ui-requested', () => {
       this.emit('message', new Command(CommandMapping.requestHostUI))
@@ -409,35 +384,15 @@ export class CpSession extends EventEmitter implements IPhoneDriver {
     }
   }
 
-  private _startMicCapture(sampleRate: number, channels: number): void {
-    if (this._micActive) return
-    this._micActive = true
-    if (!this._mic) {
-      this._mic = new Microphone()
-      this._mic.on('data', (chunk: Buffer) => {
-        if (this._micActive) this._stack?.writeMic(chunk)
-      })
-    }
-    // Capture from the configured input.
-    this._mic.setDevice(this._getConfig().audioInputDevice || undefined)
-    console.log(`[CpSession] mic uplink → starting capture (${sampleRate}Hz ${channels}ch)`)
-    this._mic.start(5, { frequency: sampleRate, channels })
-  }
-
-  private _stopMicCapture(): void {
-    if (!this._micActive) return
-    this._micActive = false
-    console.log('[CpSession] mic uplink → stopping capture')
-    this._mic?.stop()
+  /** Sets the level of the CarPlay streams of this audioType. */
+  setStreamVolume(audioType: number, level: number, rampMs: number): void {
+    this._stack?.setStreamVolume(audioType, level, rampMs)
   }
 
   async close(): Promise<void> {
     if (this._closed) return
     this._closed = true
     this._emitDisconnected()
-    this._micActive = false
-    this._mic?.stop()
-    this._mic = null
     try {
       this._stack?.stop()
     } catch (e) {

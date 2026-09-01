@@ -21,6 +21,7 @@ import { type GstVideoCodec, probeGstCodecs, setOnPlayerCreated } from '../../vi
 import { gstHost, VIDEO_PLANE_CLUSTER_RECV, VIDEO_PLANE_MAIN } from '../../video/gstHost'
 import { BluezDeviceClient } from '../bt/BluezDeviceClient'
 import { BtPairedRegistry } from '../bt/BtPairedRegistry'
+import type { AaManager } from '../driver/aa/AaManager'
 import type { AaSession } from '../driver/aa/AaSession'
 import type { CpManager } from '../driver/cp/CpManager'
 import type { CpSession } from '../driver/cp/CpSession'
@@ -86,6 +87,7 @@ type VolumeConfig = {
 }
 
 /** appearanceMode → initial NIGHT_DATA bit for AA. 'auto' = no override (undefined). */
+
 function deriveInitialNightMode(mode: string | undefined): boolean | undefined {
   if (mode === 'night') return true
   if (mode === 'day') return false
@@ -106,10 +108,6 @@ export class ProjectionService {
   private get dongleDriver(): DongleDriver {
     return this.drivers.getDongle()
   }
-  private activeAaSession(): AaSession | null {
-    const a = this.sessions.active()
-    return a?.protocol === 'androidauto' ? (a.driver as AaSession) : null
-  }
   private isActiveAaWired(): boolean {
     const a = this.sessions.active()
     return a?.protocol === 'androidauto' && a.transport === 'usb'
@@ -118,8 +116,8 @@ export class ProjectionService {
     const a = this.sessions.active()
     return a?.protocol === 'carplay' && a.transport === 'usb'
   }
-  public getAaDriver(): AaSession | null {
-    return this.activeAaSession()
+  public getAaDriver(): AaManager | null {
+    return this.drivers.getAaManager()
   }
   public getDongleDriver(): DongleDriver {
     return this.drivers.getDongle()
@@ -1091,11 +1089,6 @@ export class ProjectionService {
     } catch {
       /* best-effort */
     }
-    if (this.helperSupervisor) {
-      const sup = this.helperSupervisor
-      this.helperSupervisor = null
-      await sup.stop().catch(() => {})
-    }
   }
 
   constructor() {
@@ -1209,7 +1202,10 @@ export class ProjectionService {
       (pcm, decodeType) => {
         this.driver.sendPhoneAudio?.(pcm, decodeType)
       },
-      () => this.driver instanceof DongleDriver
+      () => this.driver instanceof DongleDriver,
+      (audioType, level, rampMs) => {
+        this.driver.setStreamVolume?.(audioType, level, rampMs)
+      }
     )
 
     registerProjectionIpc(this.buildIpcHost())
@@ -1587,12 +1583,14 @@ export class ProjectionService {
     }
   }
 
+  /** Runs while the helper is still up: the BlueZ calls go through it. */
   public async disconnectHostBtPhones(): Promise<void> {
     if (process.platform !== 'linux') return
     let devices
     try {
       devices = await this.bluez.listPaired()
-    } catch {
+    } catch (e) {
+      console.warn(`[ProjectionService] shutdown paired list failed: ${(e as Error).message}`)
       return
     }
     for (const d of devices) {

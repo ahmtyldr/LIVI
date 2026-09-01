@@ -275,17 +275,19 @@ describe('ProjectionService driver getters and codec caps', () => {
     expect(svc.getCpDriver()).toBeNull()
   })
 
-  test('activeAaSession and wired transport helpers reflect the active session', () => {
+  test('getAaDriver returns the manager and wired helpers reflect the active session', () => {
     const svc = makeSvc()
     expect(svc.getAaDriver()).toBeNull()
     expect(svc.isActiveAaWired()).toBe(false)
     expect(svc.isActiveCpWired()).toBe(false)
 
+    const mgr = { sendNightModeData: vi.fn() }
+    svc.drivers.getAaManager = vi.fn(() => mgr)
     const aa = fakeDriver({ isWiredMode: () => true })
     const s = svc.sessions.upsert(aa, 'androidauto', 'usb', {})
     svc.sessions.activate(s.index)
 
-    expect(svc.getAaDriver()).toBe(aa)
+    expect(svc.getAaDriver()).toBe(mgr)
     expect(svc.isActiveAaWired()).toBe(true)
     expect(svc.isActiveCpWired()).toBe(false)
   })
@@ -1355,7 +1357,7 @@ describe('ProjectionService delegations and ipc host', () => {
     expect(svc.pendingStartupConnectTarget).toEqual({ t: 1 })
   })
 
-  test('shutdownWirelessSessions releases drivers and stops the supervisor', async () => {
+  test('shutdownWirelessSessions releases the drivers and leaves the helper up', async () => {
     const svc = makeSvc()
     svc.drivers.releaseAa = vi.fn(async () => undefined)
     svc.drivers.releaseCp = vi.fn(async () => undefined)
@@ -1366,8 +1368,9 @@ describe('ProjectionService delegations and ipc host', () => {
 
     expect(svc.drivers.releaseAa).toHaveBeenCalled()
     expect(svc.drivers.releaseCp).toHaveBeenCalled()
-    expect(sup.stop).toHaveBeenCalled()
-    expect(svc.helperSupervisor).toBeNull()
+    // the BlueZ calls that follow go through the helper
+    expect(sup.stop).not.toHaveBeenCalled()
+    expect(svc.helperSupervisor).toBe(sup)
   })
 
   test('remote input reaches an active native session even when started is false', () => {

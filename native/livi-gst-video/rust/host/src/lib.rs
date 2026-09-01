@@ -2,10 +2,12 @@
 //! to, keeps the planes that process asks for, and feeds them from the CarPlay
 //! screen receivers. The pipelines themselves live in the player crate.
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::Rc;
 
+use livi_audio_stream::{AudioSink, Codec as AudioCodec};
+use livi_audio_uplink::UplinkCodec;
 use livi_host_proto::Framer;
 use livi_screen_stream::ScreenSink;
 use livi_video_fanout::Fanout;
@@ -27,19 +29,66 @@ const OP_GAMMA: u8 = 4;
 const OP_LISTEN: u8 = 5;
 const OP_TEARDOWN: u8 = 6;
 const OP_SET_ACTIVE: u8 = 7;
+const OP_AUDIO_OPEN: u8 = 8;
+const OP_AUDIO_VOLUME: u8 = 9;
+const OP_AUDIO_STOP: u8 = 10;
+const OP_MIC_OPEN: u8 = 11;
+const OP_MIC_STOP: u8 = 12;
+const OP_AUDIO_ACTIVE: u8 = 13;
+const OP_AUDIO_DATA: u8 = 14;
 
 const REPLY_PORT: u8 = 1;
 const REPLY_CONFIG: u8 = 2;
 const REPLY_STARTED: u8 = 3;
+const REPLY_AUDIO_PORTS: u8 = 4;
+const REPLY_AUDIO_STARTED: u8 = 5;
 
 fn is_cluster_plane(id: u32) -> bool {
     (CLUSTER_PLANE_MIN..=CLUSTER_PLANE_MAX).contains(&id)
+}
+
+/// One audio stream from its RTP packets to the sink.
+pub trait Speaker: 'static {
+    fn push_rtp(&self, rtp: &[u8]);
+    /// Samples the main process handed over, for the drivers that decode
+    /// themselves.
+    fn push_samples(&self, samples: &[u8]);
+    /// Sets the level at once, or glides to it over `ms`.
+    fn set_volume(&self, level: f64, ms: u64);
+}
+
+/// What one audio stream is set up with.
+pub struct AudioConfig {
+    pub codec: AudioCodec,
+    pub payload_type: u8,
+    pub clock_rate: u32,
+    pub channels: u8,
+    pub latency_ms: u32,
+    pub realtime: bool,
+    pub device: Option<String>,
+    pub key: [u8; 32],
+}
+
+/// What the microphone stream is set up with.
+pub struct UplinkConfig {
+    pub codec: UplinkCodec,
+    pub payload_type: u8,
+    pub sample_rate: u32,
+    pub channels: u8,
+    pub bitrate: u32,
+    pub frame_ms: u32,
+    pub port: u16,
+    pub key: [u8; 32],
+    pub phone: String,
+    pub device: Option<String>,
 }
 
 /// One decoding pipeline.
 pub trait Plane: 'static {
     fn start(&self);
     fn push(&self, nal: &[u8]);
+    /// Drops what is still queued from the feeder that was there before.
+    fn flush(&self);
     fn set_gamma(&self, gamma: f64, contrast: f64, r: f64, g: f64, b: f64);
 }
 
@@ -48,13 +97,31 @@ pub trait Plane: 'static {
 /// and to a listening socket, tests put stand-ins in their place.
 pub trait Outside: 'static {
     type Plane: Plane;
-    /// Kept for as long as its receiver. Dropping it stops the listening.
+    /// The open socket. Dropping it stops the listening.
     type Ears;
+
+    type Speaker: Speaker;
+    /// The open sockets. Dropping them stops the listening.
+    type AudioEars;
 
     fn create_plane(&self, codec: &str, codec_data: &[u8]) -> Option<Self::Plane>;
 
     /// Starts listening and answers with the port to tell the phone about.
     fn listen(&self, key: [u8; 32], sink: Box<dyn ScreenSink>) -> Option<(Self::Ears, u16)>;
+
+    /// The capture chain, running for as long as it is held.
+    type Uplink;
+
+    fn create_speaker(&self, cfg: &AudioConfig) -> Option<Self::Speaker>;
+
+    fn open_uplink(&self, cfg: UplinkConfig) -> Option<Self::Uplink>;
+
+    /// Binds the audio ports and answers with data and control port.
+    fn listen_audio(
+        &self,
+        key: [u8; 32],
+        sink: Box<dyn AudioSink>,
+    ) -> Option<(Self::AudioEars, u16, u16)>;
 }
 
 /// Where replies go: the socket in the process, a collector in tests.
@@ -141,6 +208,35 @@ struct Receiver<E> {
     _ears: E,
 }
 
+/// Carries what an audio receiver reads into its pipeline.
+struct AudioFeed<O: Outside> {
+    speaker: Rc<O::Speaker>,
+    wire: Rc<dyn Wire>,
+    id: u32,
+    /// One phone at a time reaches the sink. A held session keeps its ports and
+    /// its pipeline, but its packets stop here.
+    active: Rc<Cell<bool>>,
+}
+
+impl<O: Outside> AudioSink for AudioFeed<O> {
+    fn on_started(&mut self, first_sample: u32) {
+        self.wire.reply(REPLY_AUDIO_STARTED, self.id, &first_sample.to_le_bytes());
+    }
+
+    fn on_rtp(&mut self, rtp: &[u8], _sample: u32) {
+        if self.active.get() {
+            self.speaker.push_rtp(rtp);
+        }
+    }
+}
+
+struct AudioStream<S, E> {
+    speaker: Rc<S>,
+    active: Rc<Cell<bool>>,
+    /// Absent while the main process feeds the stream itself.
+    _ears: Option<E>,
+}
+
 /// Keeps the planes and the receivers, and acts on the messages the main
 /// process sends.
 pub struct Host<O: Outside> {
@@ -148,6 +244,8 @@ pub struct Host<O: Outside> {
     framer: Framer,
     planes: Planes<O::Plane>,
     receivers: HashMap<u32, Receiver<O::Ears>>,
+    audio: HashMap<u32, AudioStream<O::Speaker, O::AudioEars>>,
+    uplinks: HashMap<u32, O::Uplink>,
     wire: Rc<dyn Wire>,
 }
 
@@ -158,6 +256,8 @@ impl<O: Outside> Host<O> {
             framer: Framer::new(),
             planes: Rc::new(RefCell::new(HashMap::new())),
             receivers: HashMap::new(),
+            audio: HashMap::new(),
+            uplinks: HashMap::new(),
             wire,
         }
     }
@@ -188,6 +288,40 @@ impl<O: Outside> Host<O> {
                 self.receivers.remove(&id);
             }
             OP_SET_ACTIVE => self.set_active_feeder(id, rest),
+            OP_AUDIO_OPEN => self.open_audio(id, rest),
+            // [8B level][4B ramp in ms, 0 for at once]
+            OP_AUDIO_VOLUME => {
+                if rest.len() >= size_of::<f64>()
+                    && let Some(a) = self.audio.get(&id)
+                {
+                    let level = f64::from_le_bytes(rest[..8].try_into().unwrap());
+                    let ms = if rest.len() >= 12 {
+                        u32::from_le_bytes(rest[8..12].try_into().unwrap()).into()
+                    } else {
+                        0
+                    };
+                    a.speaker.set_volume(level, ms);
+                }
+            }
+            OP_AUDIO_STOP => {
+                self.audio.remove(&id);
+            }
+            OP_MIC_OPEN => self.open_uplink(id, rest),
+            OP_MIC_STOP => {
+                self.uplinks.remove(&id);
+            }
+            OP_AUDIO_DATA => {
+                if let Some(a) = self.audio.get(&id)
+                    && a.active.get()
+                {
+                    a.speaker.push_samples(rest);
+                }
+            }
+            OP_AUDIO_ACTIVE => {
+                if let Some(a) = self.audio.get(&id) {
+                    a.active.set(rest.first().is_some_and(|b| b & 1 != 0));
+                }
+            }
             _ => {}
         }
     }
@@ -291,11 +425,119 @@ impl<O: Outside> Host<O> {
             }
         }
 
-        let mut st = r.state.borrow_mut();
-        st.fan.set_active(true);
-        st.fan.restart();
-        if !st.config.is_empty() {
-            self.wire.reply(REPLY_CONFIG, plane_id, &st.config);
+        {
+            let mut st = r.state.borrow_mut();
+            st.fan.set_active(true);
+            if !st.config.is_empty() {
+                self.wire.reply(REPLY_CONFIG, plane_id, &st.config);
+            }
+        }
+
+        // The held receiver kept its GOP, so the new plane is primed from it.
+        let planes = self.planes.borrow();
+        let st = r.state.borrow();
+        st.for_each_target(&planes, |p| {
+            p.flush();
+            for frame in st.fan.cached() {
+                p.push(frame);
+            }
+        });
+    }
+
+    /// `[1B codec: 0 aac-lc, 1 opus, 2 lpcm][1B payloadType][4B clockRate]
+    /// [1B channels][4B latencyMs][1B flags: bit0=realtime][32B key]
+    /// [device name]`. The message id names the stream.
+    fn open_audio(&mut self, id: u32, rest: &[u8]) {
+        const FIXED: usize = 44;
+        const KEY_AT: usize = 12;
+        if rest.len() < FIXED {
+            return;
+        }
+
+        let cfg = AudioConfig {
+            codec: match rest[0] {
+                1 => AudioCodec::Opus,
+                2 => AudioCodec::Lpcm,
+                3 => AudioCodec::PcmLe,
+                _ => AudioCodec::AacLc,
+            },
+            payload_type: rest[1],
+            clock_rate: u32::from_le_bytes(rest[2..6].try_into().unwrap()),
+            channels: rest[6],
+            latency_ms: u32::from_le_bytes(rest[7..11].try_into().unwrap()),
+            realtime: rest[11] & 1 != 0,
+            device: match core::str::from_utf8(&rest[FIXED..]) {
+                Ok("") | Err(_) => None,
+                Ok(name) => Some(name.to_owned()),
+            },
+            key: rest[KEY_AT..KEY_AT + 32].try_into().unwrap(),
+        };
+
+        let Some(speaker) = self.outside.create_speaker(&cfg) else {
+            eprintln!("livi: create audio 0x{id:x} FAILED");
+            return;
+        };
+        let speaker = Rc::new(speaker);
+
+        // bit1 says the main process feeds this stream, so no ports are bound
+        let fed = rest[11] & 2 != 0;
+        let active = Rc::new(Cell::new(false));
+        let feed = AudioFeed::<O> {
+            speaker: speaker.clone(),
+            wire: self.wire.clone(),
+            id,
+            active: active.clone(),
+        };
+        let (ears, data_port, control_port) = if fed {
+            (None, 0, 0)
+        } else {
+            match self.outside.listen_audio(cfg.key, Box::new(feed)) {
+                Some((ears, data, control)) => (Some(ears), data, control),
+                None => return,
+            }
+        };
+
+        self.audio.insert(id, AudioStream { speaker, active, _ears: ears });
+        let mut ports = data_port.to_le_bytes().to_vec();
+        ports.extend_from_slice(&control_port.to_le_bytes());
+        self.wire.reply(REPLY_AUDIO_PORTS, id, &ports);
+    }
+
+    /// `[1B codec][1B payloadType][4B sampleRate][1B channels][4B bitrate]
+    /// [4B frameMs][2B port][32B key][1B phone length][phone][device]`.
+    fn open_uplink(&mut self, id: u32, rest: &[u8]) {
+        const FIXED: usize = 50;
+        const KEY_AT: usize = 17;
+        if rest.len() < FIXED {
+            return;
+        }
+        let phone_len = usize::from(rest[FIXED - 1]);
+        if rest.len() < FIXED + phone_len {
+            return;
+        }
+        let (phone, device) = rest[FIXED..].split_at(phone_len);
+
+        let cfg = UplinkConfig {
+            codec: if rest[0] == 1 { UplinkCodec::Pcm } else { UplinkCodec::Opus },
+            payload_type: rest[1],
+            sample_rate: u32::from_le_bytes(rest[2..6].try_into().unwrap()),
+            channels: rest[6],
+            bitrate: u32::from_le_bytes(rest[7..11].try_into().unwrap()),
+            frame_ms: u32::from_le_bytes(rest[11..15].try_into().unwrap()),
+            port: u16::from_le_bytes(rest[15..17].try_into().unwrap()),
+            key: rest[KEY_AT..KEY_AT + 32].try_into().unwrap(),
+            phone: String::from_utf8_lossy(phone).into_owned(),
+            device: match core::str::from_utf8(device) {
+                Ok("") | Err(_) => None,
+                Ok(name) => Some(name.to_owned()),
+            },
+        };
+
+        match self.outside.open_uplink(cfg) {
+            Some(uplink) => {
+                self.uplinks.insert(id, uplink);
+            }
+            None => eprintln!("livi: open microphone 0x{id:x} FAILED"),
         }
     }
 
@@ -362,12 +604,66 @@ mod tests {
             self.0.borrow_mut().pushed.push(nal.to_vec());
         }
 
+        fn flush(&self) {
+            self.0.borrow_mut().pushed.clear();
+        }
+
         fn set_gamma(&self, gamma: f64, contrast: f64, r: f64, g: f64, b: f64) {
             self.0.borrow_mut().gamma = Some([gamma, contrast, r, g, b]);
         }
     }
 
     type SharedSink = Rc<RefCell<Box<dyn ScreenSink>>>;
+    type SharedAudioSink = Rc<RefCell<Box<dyn AudioSink>>>;
+
+    #[derive(Default)]
+    struct SpeakerLog {
+        pushed: Vec<Vec<u8>>,
+        volume: Option<f64>,
+        ramp_ms: Option<u64>,
+    }
+
+    /// A pipeline that writes down what it was fed.
+    #[derive(Default, Clone)]
+    struct FakeSpeaker(Rc<RefCell<SpeakerLog>>);
+
+    impl FakeSpeaker {
+        fn pushed(&self) -> Vec<Vec<u8>> {
+            self.0.borrow().pushed.clone()
+        }
+
+        fn volume(&self) -> Option<f64> {
+            self.0.borrow().volume
+        }
+
+        fn ramp_ms(&self) -> Option<u64> {
+            self.0.borrow().ramp_ms
+        }
+    }
+
+    /// A capture chain that says when it was dropped.
+    struct FakeUplink(Rc<RefCell<usize>>);
+
+    impl Drop for FakeUplink {
+        fn drop(&mut self) {
+            *self.0.borrow_mut() += 1;
+        }
+    }
+
+    impl Speaker for FakeSpeaker {
+        fn push_rtp(&self, rtp: &[u8]) {
+            self.0.borrow_mut().pushed.push(rtp.to_vec());
+        }
+
+        fn push_samples(&self, samples: &[u8]) {
+            self.0.borrow_mut().pushed.push(samples.to_vec());
+        }
+
+        fn set_volume(&self, level: f64, ms: u64) {
+            self.0.borrow_mut().volume = Some(level);
+            self.0.borrow_mut().ramp_ms = Some(ms);
+        }
+    }
 
     #[derive(Default)]
     struct World {
@@ -375,9 +671,19 @@ mod tests {
         codecs: Vec<(String, Vec<u8>)>,
         sinks: Vec<SharedSink>,
         keys: Vec<[u8; 32]>,
+        speakers: Vec<FakeSpeaker>,
+        audio_cfgs: Vec<OpenedAudio>,
+        audio_sinks: Vec<SharedAudioSink>,
+        audio_keys: Vec<[u8; 32]>,
         refuse_plane: bool,
+        uplinks: Vec<OpenedUplink>,
+        uplinks_dropped: Rc<RefCell<usize>>,
+        refuse_speaker: bool,
+        refuse_uplink: bool,
         deaf: bool,
+        audio_deaf: bool,
         port: u16,
+        audio_ports: (u16, u16),
     }
 
     /// The world the host talks to, and the test's handle on it.
@@ -387,6 +693,9 @@ mod tests {
     impl Outside for Fake {
         type Plane = FakePlane;
         type Ears = SharedSink;
+        type Speaker = FakeSpeaker;
+        type AudioEars = SharedAudioSink;
+        type Uplink = FakeUplink;
 
         fn create_plane(&self, codec: &str, codec_data: &[u8]) -> Option<FakePlane> {
             if self.0.borrow().refuse_plane {
@@ -409,9 +718,67 @@ mod tests {
             w.sinks.push(shared.clone());
             Some((shared, w.port))
         }
+
+        fn open_uplink(&self, cfg: UplinkConfig) -> Option<FakeUplink> {
+            if self.0.borrow().refuse_uplink {
+                return None;
+            }
+            let mut w = self.0.borrow_mut();
+            w.uplinks.push((
+                cfg.payload_type,
+                cfg.sample_rate,
+                cfg.channels,
+                cfg.bitrate,
+                cfg.frame_ms,
+                cfg.port,
+                cfg.phone,
+                cfg.device,
+            ));
+            Some(FakeUplink(w.uplinks_dropped.clone()))
+        }
+
+        fn create_speaker(&self, cfg: &AudioConfig) -> Option<FakeSpeaker> {
+            if self.0.borrow().refuse_speaker {
+                return None;
+            }
+            let speaker = FakeSpeaker::default();
+            let mut w = self.0.borrow_mut();
+            w.audio_cfgs.push((
+                cfg.codec,
+                cfg.payload_type,
+                cfg.clock_rate,
+                cfg.channels,
+                cfg.latency_ms,
+                cfg.realtime,
+                cfg.device.clone(),
+            ));
+            w.speakers.push(speaker.clone());
+            Some(speaker)
+        }
+
+        fn listen_audio(
+            &self,
+            key: [u8; 32],
+            sink: Box<dyn AudioSink>,
+        ) -> Option<(SharedAudioSink, u16, u16)> {
+            if self.0.borrow().audio_deaf {
+                return None;
+            }
+            let shared: SharedAudioSink = Rc::new(RefCell::new(sink));
+            let mut w = self.0.borrow_mut();
+            w.audio_keys.push(key);
+            w.audio_sinks.push(shared.clone());
+            Some((shared, w.audio_ports.0, w.audio_ports.1))
+        }
     }
 
     type Reply = (u8, u32, Vec<u8>);
+    /// What the fake wrote down of one uplink: payload type, rate, channels,
+    /// bitrate, frame length, port, phone and device.
+    type OpenedUplink = (u8, u32, u8, u32, u32, u16, String, Option<String>);
+    /// What the fake wrote down of one audio stream: codec, payload type, rate,
+    /// channels, buffer depth, realtime and device.
+    type OpenedAudio = (AudioCodec, u8, u32, u8, u32, bool, Option<String>);
 
     /// Collects the replies that would go down the socket.
     #[derive(Default, Clone)]
@@ -470,6 +837,7 @@ mod tests {
         fn new() -> Self {
             let world = Fake::default();
             world.0.borrow_mut().port = 5555;
+            world.0.borrow_mut().audio_ports = (6000, 6001);
             let sent = Sent::default();
             let host = Host::new(world.clone(), Rc::new(sent.clone()));
             Self { host, world, sent }
@@ -758,6 +1126,21 @@ mod tests {
     }
 
     #[test]
+    fn a_receiver_made_active_feeds_its_plane_the_running_gop_at_once() {
+        let mut f = Fixture::new();
+        f.send(OP_LISTEN, 42, &listen_body(MAIN_PLANE, false, 1));
+        f.send(OP_CREATE, MAIN_PLANE, &create_body("h264", &[]));
+        f.config(0, CpCodec::H264, &[1, 2]);
+        f.frame_in(0, &nal(KEYFRAME, 1));
+        f.frame_in(0, &nal(DELTA, 2));
+        assert!(f.plane(0).pushed().is_empty());
+
+        f.send(OP_SET_ACTIVE, 42, &[1]);
+
+        assert_eq!(f.plane(0).pushed(), vec![nal(KEYFRAME, 1), nal(DELTA, 2)]);
+    }
+
+    #[test]
     fn a_receiver_of_another_plane_stays_active() {
         let mut f = Fixture::new();
         f.feeder(42, MAIN_PLANE, false);
@@ -862,6 +1245,273 @@ mod tests {
         f.started_in(0);
 
         assert_eq!(f.replies().len(), 1);
+    }
+
+    fn audio_body(codec: u8, realtime: bool, device: &str) -> Vec<u8> {
+        let mut v = vec![codec, 96];
+        v.extend_from_slice(&44100u32.to_le_bytes());
+        v.push(2);
+        v.extend_from_slice(&1000u32.to_le_bytes());
+        v.push(u8::from(realtime));
+        v.extend_from_slice(&[5u8; 32]);
+        v.extend_from_slice(device.as_bytes());
+        v
+    }
+
+    const MUSIC: u32 = 0x7b00_0001;
+
+    impl Fixture {
+        fn speaker(&self, i: usize) -> FakeSpeaker {
+            self.world.0.borrow().speakers[i].clone()
+        }
+
+        fn audio_sink(&self, i: usize) -> SharedAudioSink {
+            self.world.0.borrow().audio_sinks[i].clone()
+        }
+    }
+
+    #[test]
+    fn opening_an_audio_stream_answers_with_both_ports_and_takes_the_key() {
+        let mut f = Fixture::new();
+
+        f.send(OP_AUDIO_OPEN, MUSIC, &audio_body(0, false, ""));
+
+        let mut ports = 6000u16.to_le_bytes().to_vec();
+        ports.extend_from_slice(&6001u16.to_le_bytes());
+        assert_eq!(f.replies(), vec![(REPLY_AUDIO_PORTS, MUSIC, ports)]);
+        assert_eq!(f.world.0.borrow().audio_keys, vec![[5u8; 32]]);
+    }
+
+    #[test]
+    fn the_stream_settings_reach_the_pipeline() {
+        let mut f = Fixture::new();
+
+        f.send(OP_AUDIO_OPEN, MUSIC, &audio_body(1, true, "alsa_output.front"));
+
+        assert_eq!(
+            f.world.0.borrow().audio_cfgs,
+            vec![(AudioCodec::Opus, 96, 44100, 2, 1000, true, Some("alsa_output.front".to_owned()))]
+        );
+    }
+
+    #[test]
+    fn the_codec_byte_picks_the_pipeline() {
+        for (byte, expected) in
+            [(0u8, AudioCodec::AacLc), (1, AudioCodec::Opus), (2, AudioCodec::Lpcm)]
+        {
+            let mut f = Fixture::new();
+            f.send(OP_AUDIO_OPEN, MUSIC, &audio_body(byte, false, ""));
+
+            assert_eq!(f.world.0.borrow().audio_cfgs[0].0, expected);
+        }
+    }
+
+    #[test]
+    fn an_audio_message_short_of_the_key_opens_nothing() {
+        let mut f = Fixture::new();
+
+        f.send(OP_AUDIO_OPEN, MUSIC, &audio_body(0, false, "")[..43]);
+
+        assert!(f.replies().is_empty());
+        assert!(f.world.0.borrow().speakers.is_empty());
+    }
+
+    #[test]
+    fn a_pipeline_that_cannot_be_built_opens_nothing() {
+        let mut f = Fixture::new();
+        f.world.0.borrow_mut().refuse_speaker = true;
+
+        f.send(OP_AUDIO_OPEN, MUSIC, &audio_body(0, false, ""));
+
+        assert!(f.replies().is_empty());
+    }
+
+    #[test]
+    fn a_stream_that_cannot_listen_is_not_announced() {
+        let mut f = Fixture::new();
+        f.world.0.borrow_mut().audio_deaf = true;
+
+        f.send(OP_AUDIO_OPEN, MUSIC, &audio_body(0, false, ""));
+
+        assert!(f.replies().is_empty());
+    }
+
+    #[test]
+    fn packets_reach_the_pipeline_and_the_start_is_reported() {
+        let mut f = Fixture::new();
+        f.send(OP_AUDIO_OPEN, MUSIC, &audio_body(0, false, ""));
+
+        f.send(OP_AUDIO_ACTIVE, MUSIC, &[1]);
+        f.audio_sink(0).borrow_mut().on_started(4242);
+        f.audio_sink(0).borrow_mut().on_rtp(&[1, 2, 3], 4242);
+
+        assert_eq!(f.speaker(0).pushed(), vec![vec![1, 2, 3]]);
+        assert_eq!(
+            f.replies().last(),
+            Some(&(REPLY_AUDIO_STARTED, MUSIC, 4242u32.to_le_bytes().to_vec()))
+        );
+    }
+
+    #[test]
+    fn a_stream_stays_silent_until_it_is_made_active() {
+        let mut f = Fixture::new();
+        f.send(OP_AUDIO_OPEN, MUSIC, &audio_body(0, false, ""));
+
+        f.audio_sink(0).borrow_mut().on_rtp(&[1, 2, 3], 0);
+
+        assert!(f.speaker(0).pushed().is_empty());
+    }
+
+    #[test]
+    fn an_active_stream_reaches_the_pipeline_and_a_held_one_stops_again() {
+        let mut f = Fixture::new();
+        f.send(OP_AUDIO_OPEN, MUSIC, &audio_body(0, false, ""));
+
+        f.send(OP_AUDIO_ACTIVE, MUSIC, &[1]);
+        f.audio_sink(0).borrow_mut().on_rtp(&[1], 0);
+        f.send(OP_AUDIO_ACTIVE, MUSIC, &[0]);
+        f.audio_sink(0).borrow_mut().on_rtp(&[2], 0);
+
+        assert_eq!(f.speaker(0).pushed(), vec![vec![1]]);
+    }
+
+    /// A stream the main process feeds, which binds no ports.
+    fn fed_body() -> Vec<u8> {
+        let mut v = audio_body(3, false, "");
+        v[11] |= 2;
+        v
+    }
+
+    #[test]
+    fn a_fed_stream_binds_no_ports_and_still_answers() {
+        let mut f = Fixture::new();
+
+        f.send(OP_AUDIO_OPEN, MUSIC, &fed_body());
+
+        assert!(f.world.0.borrow().audio_sinks.is_empty());
+        assert_eq!(f.replies(), vec![(REPLY_AUDIO_PORTS, MUSIC, vec![0, 0, 0, 0])]);
+    }
+
+    #[test]
+    fn samples_handed_over_reach_the_pipeline_once_the_stream_is_active() {
+        let mut f = Fixture::new();
+        f.send(OP_AUDIO_OPEN, MUSIC, &fed_body());
+
+        f.send(OP_AUDIO_DATA, MUSIC, &[1, 2]);
+        f.send(OP_AUDIO_ACTIVE, MUSIC, &[1]);
+        f.send(OP_AUDIO_DATA, MUSIC, &[3, 4]);
+
+        assert_eq!(f.speaker(0).pushed(), vec![vec![3, 4]]);
+    }
+
+    #[test]
+    fn the_volume_reaches_the_pipeline() {
+        let mut f = Fixture::new();
+        f.send(OP_AUDIO_OPEN, MUSIC, &audio_body(0, false, ""));
+
+        f.send(OP_AUDIO_VOLUME, MUSIC, &0.25f64.to_le_bytes());
+
+        assert_eq!(f.speaker(0).volume(), Some(0.25));
+    }
+
+    #[test]
+    fn a_volume_message_can_carry_a_ramp() {
+        let mut f = Fixture::new();
+        f.send(OP_AUDIO_OPEN, MUSIC, &audio_body(0, false, ""));
+
+        let mut body = 0.5f64.to_le_bytes().to_vec();
+        body.extend_from_slice(&250u32.to_le_bytes());
+        f.send(OP_AUDIO_VOLUME, MUSIC, &body);
+
+        assert_eq!(f.speaker(0).volume(), Some(0.5));
+        assert_eq!(f.speaker(0).ramp_ms(), Some(250));
+    }
+
+    #[test]
+    fn a_volume_message_short_of_a_value_is_ignored() {
+        let mut f = Fixture::new();
+        f.send(OP_AUDIO_OPEN, MUSIC, &audio_body(0, false, ""));
+
+        f.send(OP_AUDIO_VOLUME, MUSIC, &0.25f64.to_le_bytes()[..7]);
+
+        assert_eq!(f.speaker(0).volume(), None);
+    }
+
+    #[test]
+    fn stopping_an_audio_stream_drops_it() {
+        let mut f = Fixture::new();
+        f.send(OP_AUDIO_OPEN, MUSIC, &audio_body(0, false, ""));
+
+        f.send(OP_AUDIO_STOP, MUSIC, &[]);
+        f.send(OP_AUDIO_VOLUME, MUSIC, &0.5f64.to_le_bytes());
+
+        assert_eq!(f.speaker(0).volume(), None);
+    }
+
+    fn mic_body(codec: u8, phone: &str, device: &str) -> Vec<u8> {
+        let mut v = vec![codec, 97];
+        v.extend_from_slice(&24000u32.to_le_bytes());
+        v.push(1);
+        v.extend_from_slice(&48000u32.to_le_bytes());
+        v.extend_from_slice(&20u32.to_le_bytes());
+        v.extend_from_slice(&5010u16.to_le_bytes());
+        v.extend_from_slice(&[7u8; 32]);
+        v.push(phone.len() as u8);
+        v.extend_from_slice(phone.as_bytes());
+        v.extend_from_slice(device.as_bytes());
+        v
+    }
+
+    const MIC: u32 = 0x7b00_0009;
+
+    #[test]
+    fn opening_the_microphone_carries_the_settings_and_the_phone_address() {
+        let mut f = Fixture::new();
+
+        f.send(OP_MIC_OPEN, MIC, &mic_body(0, "fe80::1", "hw:0"));
+
+        assert_eq!(
+            f.world.0.borrow().uplinks,
+            vec![(
+                97,
+                24000,
+                1,
+                48000,
+                20,
+                5010,
+                "fe80::1".to_owned(),
+                Some("hw:0".to_owned())
+            )]
+        );
+    }
+
+    #[test]
+    fn a_microphone_message_short_of_its_address_opens_nothing() {
+        let mut f = Fixture::new();
+
+        f.send(OP_MIC_OPEN, MIC, &mic_body(0, "fe80::1", "")[..52]);
+
+        assert!(f.world.0.borrow().uplinks.is_empty());
+    }
+
+    #[test]
+    fn a_capture_chain_that_cannot_be_built_opens_nothing() {
+        let mut f = Fixture::new();
+        f.world.0.borrow_mut().refuse_uplink = true;
+
+        f.send(OP_MIC_OPEN, MIC, &mic_body(0, "fe80::1", ""));
+
+        assert!(f.world.0.borrow().uplinks.is_empty());
+    }
+
+    #[test]
+    fn stopping_the_microphone_drops_the_capture() {
+        let mut f = Fixture::new();
+        f.send(OP_MIC_OPEN, MIC, &mic_body(0, "fe80::1", ""));
+
+        f.send(OP_MIC_STOP, MIC, &[]);
+
+        assert_eq!(*f.world.0.borrow().uplinks_dropped.borrow(), 1);
     }
 
     #[test]

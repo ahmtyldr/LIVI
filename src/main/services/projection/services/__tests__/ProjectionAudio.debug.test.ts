@@ -10,7 +10,7 @@ vi.mock('@main/services/audio', () => ({
       setDevice: vi.fn()
     }
   }),
-  AudioOutput: vi.fn().mockImplementation(function () {
+  HostAudioOutput: vi.fn().mockImplementation(function () {
     return {
       start: vi.fn(),
       stop: vi.fn(),

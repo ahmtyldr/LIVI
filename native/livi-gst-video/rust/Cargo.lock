@@ -298,6 +298,9 @@ version = "0.1.0"
 dependencies = [
  "glib",
  "libc",
+ "livi-audio-player",
+ "livi-audio-stream",
+ "livi-audio-uplink",
  "livi-host-proto",
  "livi-screen-stream",
  "livi-video-fanout",
@@ -382,6 +385,31 @@ dependencies = [
  "gobject-sys",
  "gstreamer-sys",
  "libc",
+ "system-deps",
+]
+
+[[package]]
+name = "gstreamer-controller"
+version = "0.24.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d0b0ccee595c4a3dd8b8e9b9fd399a217bc6c007ff00451dc5615db899ee2fa3"
+dependencies = [
+ "glib",
+ "gstreamer",
+ "gstreamer-controller-sys",
+]
+
+[[package]]
+name = "gstreamer-controller-sys"
+version = "0.24.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5ef97043a716992ad6e21b814c671840668e236e1ae42541c5b3d35cba6eff4d"
+dependencies = [
+ "glib-sys",
+ "gobject-sys",
+ "gstreamer-sys",
+ "libc",
+ "pkg-config",
  "system-deps",
 ]
 
@@ -492,6 +520,33 @@ checksum = "d7c4b02199fee7c5d21a5ae7d8cfa79a6ef5bb2fc834d6e9058e89c825efdc55"
 dependencies = [
  "cfg-if",
  "windows-link",
+]
+
+[[package]]
+name = "livi-audio-player"
+version = "0.1.0"
+dependencies = [
+ "gstreamer",
+ "gstreamer-app",
+ "gstreamer-controller",
+ "livi-audio-stream",
+ "livi-audio-uplink",
+]
+
+[[package]]
+name = "livi-audio-stream"
+version = "0.1.0"
+dependencies = [
+ "glib",
+ "livi-crypto-node",
+ "socket2",
+]
+
+[[package]]
+name = "livi-audio-uplink"
+version = "0.1.0"
+dependencies = [
+ "livi-crypto-node",
 ]
 
 [[package]]

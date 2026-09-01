@@ -29,6 +29,8 @@ const { StackMock, stackInstances, MicMock, micInstances, panelMock, wifiMock, b
       setNightMode = vi.fn()
       setClusterStreamActive = vi.fn()
       setVideoActive = vi.fn()
+      setAudioActive = vi.fn()
+      setStreamVolume = vi.fn()
       forceMainKeyframe = vi.fn()
       forceClusterKeyframe = vi.fn()
       sendTouches = vi.fn()
@@ -89,7 +91,6 @@ vi.mock('../../aa/stack/system/hwaddr', () => ({
 }))
 
 type Stack = InstanceType<typeof StackMock>
-type Mic = InstanceType<typeof MicMock>
 
 function baseConfig(over: Partial<Config> = {}): Config {
   return {
@@ -252,6 +253,8 @@ describe('CpSession driver surface', () => {
     const { session, stack } = makeSession()
     session.setClusterStreamActive(true)
     expect(stack.setClusterStreamActive).toHaveBeenCalledWith(true)
+    session.setStreamVolume(3, 0.5, 250)
+    expect(stack.setStreamVolume).toHaveBeenCalledWith(3, 0.5, 250)
     session.requestKeyframe()
     expect(stack.forceMainKeyframe).toHaveBeenCalled()
     expect(stack.forceClusterKeyframe).toHaveBeenCalled()
@@ -364,7 +367,7 @@ describe('CpSession stack event bridge', () => {
     expect(cconfig).toHaveBeenCalledWith(Buffer.from('ccfg'))
   })
 
-  it('wraps audio frames, audio commands and duck into messages', () => {
+  it('wraps audio commands and duck into messages', () => {
     const { session, stack } = makeSession()
     const msgs: unknown[] = []
     session.on('message', (m) => msgs.push(m))
@@ -377,12 +380,10 @@ describe('CpSession stack event bridge', () => {
       stopCmd: 2,
       label: 'media'
     }
-    stack.fire('audio-frame', Buffer.from([1, 2, 3]), prof)
     stack.fire('audio-active', prof, true)
     stack.fire('duck', 0.5, 250)
     expect(msgs[0]).toBeInstanceOf(AudioData)
-    expect(msgs[1]).toBeInstanceOf(AudioData)
-    expect(msgs[2]).toBeInstanceOf(DuckAudio)
+    expect(msgs[1]).toBeInstanceOf(DuckAudio)
   })
 
   it('emits a command message when the host UI is requested', () => {
@@ -485,43 +486,6 @@ describe('CpSession stack event bridge', () => {
     stack.fire('session-ended')
     stack.fire('session-ended')
     expect(down).toHaveBeenCalledTimes(1)
-  })
-})
-
-describe('CpSession microphone uplink', () => {
-  it('starts capture on mic-active and feeds pcm to the stack', () => {
-    const { session, stack } = makeSession()
-    stack.fire('mic-active', true, 24000, 1)
-    stack.fire('mic-active', true, 24000, 1)
-    const mic = micInstances.at(-1) as unknown as Mic
-    expect(mic.start).toHaveBeenCalledTimes(1)
-    mic.fire('data', Buffer.from([5, 6]))
-    expect(stack.writeMic).toHaveBeenCalledWith(Buffer.from([5, 6]))
-    void session
-  })
-
-  it('stops capture on mic-active false and drops late pcm', () => {
-    const { stack } = makeSession()
-    stack.fire('mic-active', true, 24000, 1)
-    const mic = micInstances.at(-1) as unknown as Mic
-    stack.fire('mic-active', false, 0, 0)
-    expect(mic.stop).toHaveBeenCalled()
-    stack.writeMic.mockClear()
-    mic.fire('data', Buffer.from([7]))
-    expect(stack.writeMic).not.toHaveBeenCalled()
-  })
-
-  it('ignores a stop when capture never started', () => {
-    const { stack } = makeSession()
-    expect(() => stack.fire('mic-active', false, 0, 0)).not.toThrow()
-  })
-
-  it('reuses the same microphone across restart cycles', () => {
-    const { stack } = makeSession()
-    stack.fire('mic-active', true, 24000, 1)
-    stack.fire('mic-active', false, 0, 0)
-    stack.fire('mic-active', true, 24000, 1)
-    expect(micInstances).toHaveLength(1)
   })
 })
 
@@ -806,15 +770,12 @@ describe('CpSession branch completion', () => {
 })
 
 describe('CpSession close', () => {
-  it('tears down once, stopping mic and stack', async () => {
+  it('tears down once, stopping the stack', async () => {
     const { session, stack } = makeSession()
-    stack.fire('mic-active', true, 24000, 1)
-    const mic = micInstances.at(-1) as unknown as Mic
     const down = vi.fn()
     session.on('disconnected', down)
     await session.close()
     await session.close()
-    expect(mic.stop).toHaveBeenCalled()
     expect(stack.stop).toHaveBeenCalledTimes(1)
     expect(down).toHaveBeenCalledTimes(1)
   })

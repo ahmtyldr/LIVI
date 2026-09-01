@@ -1,5 +1,5 @@
 import { DEBUG } from '@main/constants'
-import { AudioOutput, downsampleToMono, Microphone } from '@main/services/audio'
+import { downsampleToMono, HostAudioOutput, Microphone } from '@main/services/audio'
 import type { Config } from '@shared/types'
 import { AudioCommand } from '@shared/types/ProjectionEnums'
 import { AudioData } from '../messages'
@@ -28,9 +28,9 @@ type SendChunked = (
 type SendMicPcm = (pcm: Int16Array, decodeType: number) => void
 
 export class ProjectionAudio {
-  // One AudioOutput per (sampleRate, channels). The OS audio sink (PulseAudio
+  // One stream per (sampleRate, channels). The OS audio sink (PulseAudio
   // on Linux, CoreAudio on macOS) mixes all open streams automatically
-  private audioPlayers = new Map<PlayerKey, AudioOutput>()
+  private audioPlayers = new Map<PlayerKey, HostAudioOutput>()
   private lastCallPlaybackLog: {
     sampleRate?: number
     channels?: number
@@ -69,7 +69,7 @@ export class ProjectionAudio {
   private readonly musicRampUpMs = 1500
 
   // If we see a long gap between music chunks, we hard-reset the music
-  // AudioOutput to flush stale buffer state.
+  // the stream to flush stale buffer state.
   private readonly musicGapResetMs = process.platform === 'darwin' ? 1000 : 500
   private lastMusicDataAt = 0
 
@@ -109,8 +109,34 @@ export class ProjectionAudio {
     private readonly sendProjectionEvent: SendProjectionEvent,
     private readonly sendChunked: SendChunked,
     private readonly sendMicPcm: SendMicPcm,
-    private readonly micUplinkWanted: () => boolean = () => true
+    private readonly micUplinkWanted: () => boolean = () => true,
+    private readonly applyStreamVolume: (
+      audioType: number,
+      level: number,
+      rampMs: number
+    ) => void = () => {}
   ) {}
+
+  /** The CarPlay audioType each logical stream travels on. */
+  private static readonly AUDIO_TYPE: Record<LogicalStreamKey, number> = {
+    music: 3,
+    nav: 4,
+    voiceAssistant: 1,
+    call: 2
+  }
+
+  /** Pushes a logical stream's level to the driver that plays it out. */
+  private pushStreamVolume(stream: LogicalStreamKey, rampMs = 0): void {
+    const duck = stream === 'music' ? this.duckLevel : 1
+    this.applyStreamVolume(ProjectionAudio.AUDIO_TYPE[stream], this.volumes[stream] * duck, rampMs)
+  }
+
+  /** Pushes every level, after a volume or duck change. */
+  private pushAllStreamVolumes(): void {
+    for (const stream of Object.keys(ProjectionAudio.AUDIO_TYPE) as LogicalStreamKey[]) {
+      this.pushStreamVolume(stream)
+    }
+  }
 
   public setVisualizerEnabled(enabled: boolean, sourceId = -1) {
     if (enabled) this.visualizerWindows.add(sourceId)
@@ -192,6 +218,7 @@ export class ProjectionAudio {
     }
 
     this.volumes = next
+    this.pushAllStreamVolumes()
   }
 
   public setStreamVolume(stream: LogicalStreamKey, volume: number) {
@@ -204,6 +231,7 @@ export class ProjectionAudio {
     }
 
     this.volumes[stream] = v
+    this.pushStreamVolume(stream, this.getRampMsForTransition(prev, v))
   }
 
   private getRampMsForTransition(from: number, to: number): number {
@@ -213,11 +241,13 @@ export class ProjectionAudio {
   public duck(level: number, durationMs: number): void {
     this.duckLevel = Math.max(0, Math.min(1, level))
     this.duckRampMs = Math.max(0, durationMs)
+    this.pushStreamVolume('music', this.duckRampMs)
   }
 
   public unduck(durationMs: number): void {
     this.duckLevel = 1
     this.duckRampMs = Math.max(0, durationMs)
+    this.pushStreamVolume('music', this.duckRampMs)
   }
 
   public restoreDuck(level: number, durationMs: number): void {
@@ -717,8 +747,8 @@ export class ProjectionAudio {
     key: PlayerKey,
     sampleRate: number,
     channels: number
-  ): AudioOutput {
-    const player = new AudioOutput({
+  ): HostAudioOutput {
+    const player = new HostAudioOutput({
       sampleRate,
       channels,
       device: this.getConfig().audioOutputDevice || undefined
@@ -747,7 +777,7 @@ export class ProjectionAudio {
     logicalKey: LogicalStreamKey,
     audioType: number,
     msg: AudioData
-  ): AudioOutput | null {
+  ): HostAudioOutput | null {
     const meta = this.audioMeta(msg)
     const sampleRate = meta.frequency
     const channels = meta.channel

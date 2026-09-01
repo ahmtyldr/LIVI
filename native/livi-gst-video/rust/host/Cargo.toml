@@ -9,6 +9,9 @@ name = "livi-gst-host"
 path = "src/main.rs"
 
 [dependencies]
+livi-audio-player = { path = "../audioplayer" }
+livi-audio-stream = { path = "../audio" }
+livi-audio-uplink = { path = "../mic" }
 livi-host-proto = { path = "../hostproto" }
 livi-screen-stream = { path = "../screen" }
 livi-video-fanout = { path = "../fanout" }

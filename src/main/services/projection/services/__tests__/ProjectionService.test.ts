@@ -843,6 +843,24 @@ describe('ProjectionService', () => {
     expect(svc.audio.setStreamVolume).toHaveBeenCalledWith('music', 0.5)
   })
 
+  test('a stream level reaches the driver that plays it out', async () => {
+    const { ProjectionAudio } = await import('../ProjectionAudio')
+    const svc = new ProjectionService() as any
+    const applyStreamVolume = vi.mocked(ProjectionAudio).mock.calls.at(-1)?.[5] as (
+      audioType: number,
+      level: number,
+      rampMs: number
+    ) => void
+
+    const withVolume = { setStreamVolume: vi.fn() }
+    svc.drivers.getActive = vi.fn(() => withVolume)
+    applyStreamVolume(3, 0.5, 250)
+    expect(withVolume.setStreamVolume).toHaveBeenCalledWith(3, 0.5, 250)
+
+    svc.drivers.getActive = vi.fn(() => ({}))
+    expect(() => applyStreamVolume(3, 0.5, 0)).not.toThrow()
+  })
+
   test('projection-set-visualizer-enabled delegates to ProjectionAudio', async () => {
     const svc = new ProjectionService() as any
     const on = getOn('projection-set-visualizer-enabled')

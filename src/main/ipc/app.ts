@@ -45,6 +45,13 @@ export async function restartApp(
       console.warn('[MAIN] shutdownWirelessSessions failed (continuing restart):', e)
     }
 
+    // A restart leaves the phones paired and connected, only the helper goes.
+    try {
+      await services.projectionService.stopHelper()
+    } catch (e) {
+      console.warn('[MAIN] stopHelper failed (continuing restart):', e)
+    }
+
     try {
       await services.usbService?.gracefulReset()
     } catch (e) {

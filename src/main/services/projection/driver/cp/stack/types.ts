@@ -59,6 +59,10 @@ export interface CpStackConfig {
   hevc: boolean
   /** Tunnel-header fallback when the SETUP carried no deviceID. */
   phoneBtMac?: () => string
+  /** The sink the audio streams play out on, empty for the system default. */
+  audioDevice?: () => string
+  /** The source the microphone stream captures from. */
+  audioInputDevice?: () => string
   h264: boolean
   /** Main (centre) screen. */
   main: CpDisplayConfig

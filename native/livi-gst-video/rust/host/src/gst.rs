@@ -1,10 +1,13 @@
 //! What the host reaches for when it runs for real: GStreamer pipelines and a
 //! listening socket for the phone's screen stream.
 
+use livi_audio_player::uplink::{Uplink, UplinkConfig as UplinkPipeline};
+use livi_audio_player::{Config as AudioPipeline, Player as AudioPipelinePlayer};
+use livi_audio_stream::AudioSink;
 use livi_screen_stream::ScreenSink;
 use livi_video_player::Player;
 
-use crate::{Outside, Plane};
+use crate::{AudioConfig, Outside, Plane, Speaker, UplinkConfig};
 
 impl Plane for Player {
     fn start(&self) {
@@ -15,23 +18,51 @@ impl Plane for Player {
         Player::push(self, nal);
     }
 
+    fn flush(&self) {
+        Player::flush(self)
+    }
+
     fn set_gamma(&self, gamma: f64, contrast: f64, r: f64, g: f64, b: f64) {
         Player::set_gamma(self, gamma, contrast, r, g, b)
     }
 }
 
-/// The listening socket, dropped when its receiver goes.
+/// The socket one screen receiver listens on.
 #[cfg(target_os = "linux")]
 pub struct Ears(#[allow(dead_code)] livi_screen_stream::receiver::ScreenReceiver);
 
 #[cfg(not(target_os = "linux"))]
 pub struct Ears;
 
+/// The data and control sockets one audio stream is bound to.
+#[cfg(target_os = "linux")]
+pub struct AudioEars(#[allow(dead_code)] livi_audio_stream::receiver::AudioReceiver);
+
+#[cfg(not(target_os = "linux"))]
+pub struct AudioEars;
+
+impl Speaker for AudioPipelinePlayer {
+    fn push_rtp(&self, rtp: &[u8]) {
+        AudioPipelinePlayer::push_rtp(self, rtp);
+    }
+
+    fn push_samples(&self, samples: &[u8]) {
+        AudioPipelinePlayer::push_samples(self, samples);
+    }
+
+    fn set_volume(&self, level: f64, ms: u64) {
+        AudioPipelinePlayer::set_volume(self, level, ms)
+    }
+}
+
 pub struct Gst;
 
 impl Outside for Gst {
     type Plane = Player;
     type Ears = Ears;
+    type Speaker = AudioPipelinePlayer;
+    type AudioEars = AudioEars;
+    type Uplink = Uplink;
 
     fn create_plane(&self, codec: &str, codec_data: &[u8]) -> Option<Player> {
         // the window comes from the sink, so the player needs no handle
@@ -51,6 +82,64 @@ impl Outside for Gst {
 
     #[cfg(not(target_os = "linux"))]
     fn listen(&self, _key: [u8; 32], _sink: Box<dyn ScreenSink>) -> Option<(Ears, u16)> {
+        None
+    }
+
+    fn open_uplink(&self, cfg: UplinkConfig) -> Option<Uplink> {
+        let uplink = Uplink::new(UplinkPipeline {
+            codec: cfg.codec,
+            payload_type: cfg.payload_type,
+            sample_rate: cfg.sample_rate,
+            channels: cfg.channels,
+            bitrate: cfg.bitrate,
+            frame_ms: cfg.frame_ms,
+            key: cfg.key,
+            device: cfg.device,
+            phone: cfg.phone,
+            port: cfg.port,
+            label: String::from("mic"),
+        })?;
+        uplink.start();
+        Some(uplink)
+    }
+
+    fn create_speaker(&self, cfg: &AudioConfig) -> Option<AudioPipelinePlayer> {
+        let player = AudioPipelinePlayer::new(&AudioPipeline {
+            codec: cfg.codec,
+            payload_type: cfg.payload_type,
+            clock_rate: cfg.clock_rate,
+            channels: cfg.channels,
+            latency_ms: cfg.latency_ms,
+            realtime: cfg.realtime,
+            device: cfg.device.clone(),
+            label: format!("{:?}", cfg.codec),
+        })?;
+        player.start();
+        Some(player)
+    }
+
+    #[cfg(target_os = "linux")]
+    fn listen_audio(
+        &self,
+        key: [u8; 32],
+        sink: Box<dyn AudioSink>,
+    ) -> Option<(AudioEars, u16, u16)> {
+        let stream = livi_audio_stream::AudioStream::new(key, sink);
+        match livi_audio_stream::receiver::AudioReceiver::new(stream) {
+            Ok((r, data, control)) => Some((AudioEars(r), data, control)),
+            Err(e) => {
+                eprintln!("[cp_audio] cannot listen: {e}");
+                None
+            }
+        }
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    fn listen_audio(
+        &self,
+        _key: [u8; 32],
+        _sink: Box<dyn AudioSink>,
+    ) -> Option<(AudioEars, u16, u16)> {
         None
     }
 }
