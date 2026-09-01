@@ -190,7 +190,7 @@ pub fn pointer_button(state: &mut LiviState, time: u32, button: u32, pressed: bo
         }
 }
 
-fn focus_surface(state: &mut LiviState, surface: &WlSurface) {
+pub fn focus_surface(state: &mut LiviState, surface: &WlSurface) {
     // Focus skips video planes.
     if state
         .toplevels

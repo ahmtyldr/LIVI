@@ -139,6 +139,27 @@ fn classify_on_initial_commit(state: &mut LiviState, idx: usize) {
     } else {
         crate::layout::apply_ui_layout(state, screen_idx);
     }
+    // A window that arrives while nothing holds the keyboard takes it.
+    if !has_keyboard_focus(state) {
+        let surface = state.toplevels[idx].toplevel.wl_surface().clone();
+        crate::input::focus_surface(state, &surface);
+    }
+}
+
+fn has_keyboard_focus(state: &LiviState) -> bool {
+    state
+        .seat
+        .get_keyboard()
+        .is_some_and(|k| k.current_focus().is_some())
+}
+
+/// The main screen's UI window, which holds the keyboard when nothing else does.
+fn main_ui_surface(state: &LiviState) -> Option<WlSurface> {
+    state
+        .toplevels
+        .iter()
+        .find(|t| t.kind == Kind::Ui && t.screen_idx == 0)
+        .map(|t| t.toplevel.wl_surface().clone())
 }
 
 /// A plane still carrying `tag` is a leftover of the stream being replaced. It
@@ -262,6 +283,10 @@ impl XdgShellHandler for LiviState {
         if was == Kind::Video {
             log::info!("video plane '{}' gone", self.toplevels[idx].tag);
         }
+        let had_focus = self
+            .seat
+            .get_keyboard()
+            .is_some_and(|k| k.current_focus().as_ref() == Some(surface.wl_surface()));
         self.toplevels.remove(idx);
         self.video_order.retain(|&i| i != idx);
         for i in self.video_order.iter_mut() {
@@ -273,6 +298,10 @@ impl XdgShellHandler for LiviState {
         if was == Kind::Ui && screen_idx == 0 {
             log::info!("main UI toplevel gone -> shutting down");
             self.running = false;
+        }
+        // The keyboard follows back to the UI when its holder goes.
+        if had_focus && let Some(ui) = main_ui_surface(self) {
+            crate::input::focus_surface(self, &ui);
         }
         crate::host::damage_all(self);
     }
