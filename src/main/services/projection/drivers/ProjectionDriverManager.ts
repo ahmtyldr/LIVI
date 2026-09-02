@@ -1,5 +1,6 @@
 import type { Config } from '@shared/types'
-import { AaManager } from '../driver/aa/AaManager'
+import type { AaMediaSinkDeps } from '../driver/aa/AaEventBridge'
+import { AaManager, type HelperSessionSource } from '../driver/aa/AaManager'
 import type { AaSession } from '../driver/aa/AaSession'
 import { CpManager } from '../driver/cp/CpManager'
 import type { CpSession } from '../driver/cp/CpSession'
@@ -44,6 +45,7 @@ export type DriverManagerDeps = {
   getCpConfigSeed: () => AaConfigSeed
   onPhoneReenumerate: (ms: number) => void
   getConfig: () => Config
+  mediaSink?: AaMediaSinkDeps
 }
 
 export class ProjectionDriverManager {
@@ -76,7 +78,7 @@ export class ProjectionDriverManager {
   }
 
   selectFor(_transport: Transport): IPhoneDriver {
-    // CarPlay + AA are session-routed via SessionManager; only the dongle is
+    // CarPlay + AA are session-routed via SessionManager. Only the dongle is
     // selected directly (start() short-circuits before selecting a native driver).
     this.route(this.dongle)
     return this.dongle
@@ -96,7 +98,8 @@ export class ProjectionDriverManager {
     const mgr = new AaManager({
       getConfig: this.deps.getConfig,
       onWillReenumerate: (ms) => this.deps.onPhoneReenumerate(ms),
-      onSpawn: (session) => this.onAaSpawn(session)
+      onSpawn: (session) => this.onAaSpawn(session),
+      mediaSink: this.deps.mediaSink
     })
     this.aaManager = mgr
 
@@ -108,8 +111,8 @@ export class ProjectionDriverManager {
     return mgr
   }
 
-  startAaWireless(): void {
-    this.ensureAaManager().startWireless()
+  startAaWireless(helper: HelperSessionSource | undefined): void {
+    this.ensureAaManager().startWireless(helper)
   }
 
   stopAaWireless(): void {

@@ -1,25 +1,37 @@
 /**
- * AaManager — shared Android Auto infrastructure (singleton).
+ * AaManager, shared Android Auto infrastructure (singleton).
  *
- * Owns the :5277 wireless TCP listener and the wired AOAP bring-up (one
- * UsbAoapBridge per device). Every accepted wireless socket, and every wired
- * loopback socket after the AOAP handshake, spawns ONE AaSession handed off via
- * onSpawn. Holds the codec-capability seed applied to each new AaSession.
+ * Owns the wireless sessions the helper announces once it carries TCP and TLS,
+ * and the wired AOAP bring-up (one UsbAoapBridge per device). Every helper
+ * session, and every wired loopback socket after the AOAP handshake, spawns ONE
+ * AaSession handed off via onSpawn. Holds the codec-capability seed applied to
+ * each new AaSession.
  */
 
 import * as net from 'node:net'
 import type { Config } from '@shared/types'
+import type { AaMediaSinkDeps } from './AaEventBridge'
 import { AaSession, type AaSessionSeed } from './AaSession'
 import { AOAP_LOOPBACK_PORT } from './stack/aoap/constants'
-import { TCP_PORT } from './stack/index'
+import { HelperSessionLink } from './stack/transport/HelperSessionLink'
 import { UsbAoapBridge } from './stack/transport/UsbAoapBridge'
 
 type Device = USBDevice
+
+export type HelperSessionEvent = { event: string; socket?: string; peer?: string }
+
+/** The helper's event stream, where new phone sessions are announced. */
+export type HelperSessionSource = {
+  subscribe(onEvent: (ev: HelperSessionEvent) => void, onClose?: () => void): { close: () => void }
+}
+
+const HELPER_RESUBSCRIBE_MS = 2000
 
 export interface AaManagerOptions {
   getConfig: () => Config
   onWillReenumerate?: (durationMs: number) => void
   onSpawn: (session: AaSession) => void
+  mediaSink?: AaMediaSinkDeps
 }
 
 function deviceKey(device: Device): string {
@@ -31,7 +43,8 @@ function deviceKey(device: Device): string {
 }
 
 export class AaManager {
-  private _server: net.Server | null = null
+  private _helper: HelperSessionSource | null = null
+  private _helperSub: { close: () => void } | null = null
   private readonly _wiredBridges = new Map<string, UsbAoapBridge>()
   private readonly _sessions = new Set<AaSession>()
   private readonly _wirelessPeer = new Map<AaSession, string>()
@@ -45,11 +58,13 @@ export class AaManager {
   private readonly _getConfig: () => Config
   private readonly _onWillReenumerate: ((durationMs: number) => void) | undefined
   private readonly _onSpawn: (session: AaSession) => void
+  private readonly _mediaSink: AaMediaSinkDeps | undefined
 
   constructor(opts: AaManagerOptions) {
     this._getConfig = opts.getConfig
     this._onWillReenumerate = opts.onWillReenumerate
     this._onSpawn = opts.onSpawn
+    this._mediaSink = opts.mediaSink
   }
 
   setHevcSupported(supported: boolean): void {
@@ -137,48 +152,68 @@ export class AaManager {
     }
   }
 
-  // ── Wireless :5277 listener ────────────────────────────────────────────────
+  // ── Wireless sessions from the helper ──────────────────────────────────────
 
-  startWireless(): void {
-    if (this._server) return
-    const server = net.createServer({ allowHalfOpen: true }, (sock) => {
-      const ip = sock.remoteAddress ?? ''
-      console.log(`[AaManager] wireless connection from ${ip}:${sock.remotePort}`)
-      sock.setNoDelay(true)
-      sock.setTimeout(30_000)
-      this._supersedeWireless(ip)
-      this._spawn(sock, false, null, undefined, ip)
-    })
-    server.on('error', (err) => console.warn(`[AaManager] wireless server error: ${err.message}`))
-    this._server = server
-    server.listen(TCP_PORT, '0.0.0.0', () => {
-      console.log(`[AaManager] wireless AA listening on TCP ${TCP_PORT}`)
-    })
+  startWireless(helper: HelperSessionSource | undefined): void {
+    if (this._helper) return
+    if (!helper) {
+      console.warn('[AaManager] wireless AA needs the helper, none is running')
+      return
+    }
+    this._helper = helper
+    this._openHelperSub()
+    console.log('[AaManager] wireless AA sessions come from the helper')
+  }
+
+  private _openHelperSub(): void {
+    const helper = this._helper
+    if (!helper) return
+    this._helperSub = helper.subscribe(
+      (ev) => {
+        if (ev.event !== 'aa-session' || typeof ev.socket !== 'string') return
+        const socket = ev.socket
+        const peer = typeof ev.peer === 'string' ? ev.peer : ''
+        console.log(`[AaManager] helper session ${socket} from ${peer}`)
+        HelperSessionLink.connect(socket, peer)
+          .then((link) => {
+            if (!this._helper) {
+              link.destroy()
+              return
+            }
+            this._supersedeWireless(peer)
+            this._spawn(link, false, null, undefined, peer)
+          })
+          .catch((err: Error) => {
+            console.warn(`[AaManager] helper session ${socket}: ${err.message}`)
+          })
+      },
+      () => {
+        this._helperSub = null
+        if (this._helper) setTimeout(() => this._openHelperSub(), HELPER_RESUBSCRIBE_MS)
+      }
+    )
+  }
+
+  private _closeHelperSub(): void {
+    this._helper = null
+    const sub = this._helperSub
+    this._helperSub = null
+    try {
+      sub?.close()
+    } catch {
+      /* already closed */
+    }
   }
 
   stopWireless(): void {
-    if (this._server) {
-      try {
-        this._server.close()
-      } catch {
-        /* already closed */
-      }
-      this._server = null
-    }
+    this._closeHelperSub()
     for (const s of [...this._sessions]) {
       if (!s.isWiredMode()) void s.close()
     }
   }
 
   async close(): Promise<void> {
-    if (this._server) {
-      try {
-        this._server.close()
-      } catch {
-        /* already closed */
-      }
-      this._server = null
-    }
+    this._closeHelperSub()
     const sessions = [...this._sessions]
     this._sessions.clear()
     await Promise.all(
@@ -261,7 +296,7 @@ export class AaManager {
   }
 
   private _spawn(
-    socket: net.Socket,
+    transport: net.Socket | HelperSessionLink,
     wired: boolean,
     wiredBridge: UsbAoapBridge | null,
     key?: string,
@@ -269,12 +304,13 @@ export class AaManager {
     usbSerial?: string
   ): void {
     const session = new AaSession({
-      socket,
+      transport,
       getConfig: this._getConfig,
       wired,
       wiredBridge,
       usbSerial,
-      seed: this._seed()
+      seed: this._seed(),
+      mediaSink: this._mediaSink
     })
     this._sessions.add(session)
     if (wirelessIp) this._wirelessPeer.set(session, wirelessIp)
@@ -293,7 +329,7 @@ export class AaManager {
     if (!ip) return
     for (const [session, peer] of this._wirelessPeer) {
       if (peer === ip) {
-        console.log(`[AaManager] wireless reconnect from ${ip} — dropping the superseded session`)
+        console.log(`[AaManager] wireless reconnect from ${ip}, dropping the superseded session`)
         void session.close()
       }
     }

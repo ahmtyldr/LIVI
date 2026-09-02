@@ -1,7 +1,6 @@
 /**
- * AA wireless session — one per TCP connection.
- * State: INIT → VERSION → TLS_HANDSHAKE → AUTH → SERVICE_DISCOVERY
- *        → CHANNEL_SETUP → RUNNING → CLOSED
+ * AA wireless session, one per TCP connection.
+ * State: INIT, VERSION, TLS_HANDSHAKE, AUTH, SERVICE_DISCOVERY, CHANNEL_SETUP, RUNNING, CLOSED.
  */
 
 import { EventEmitter } from 'node:events'
@@ -45,6 +44,7 @@ import {
 } from '../constants.js'
 import { encodeFrame, FrameParser, type RawFrame } from '../frame/codec.js'
 import { decode, encode, loadProtos, type ProtoTypes } from '../proto/index.js'
+import { type HelperSessionControl, HelperSessionLink } from '../transport/HelperSessionLink.js'
 import { ControlChannel } from './ControlChannel.js'
 import { buildServiceDiscoveryResponse } from './ServiceDiscoveryBuilder.js'
 import { SessionTls } from './SessionTls.js'
@@ -63,7 +63,7 @@ const isFrameChannel = (ch: number): boolean =>
   ch === CH.SENSOR
 
 /** Ping/pong on the control channel runs every 1500 ms in both directions.
- *  Same idea as isFrameChannel — suppress under DEBUG, show under TRACE. */
+ *  Same idea as isFrameChannel, suppress under DEBUG, show under TRACE. */
 const isPingPong = (ch: number, msgId: number): boolean =>
   ch === CH.CONTROL && (msgId === CTRL_MSG.PING_REQUEST || msgId === CTRL_MSG.PING_RESPONSE)
 
@@ -112,7 +112,7 @@ export interface SessionConfig {
   // FuelType (UNLEADED=1, DIESEL_2=4, ELECTRIC=10, …)
   fuelTypes?: number[]
   evConnectorTypes?: number[]
-  // Renderer WebCodecs probe results — only codecs flagged true are advertised
+  // Renderer WebCodecs probe results, only codecs flagged true are advertised
   hevcSupported?: boolean
   vp9Supported?: boolean
   av1Supported?: boolean
@@ -140,10 +140,19 @@ export interface SessionConfig {
 export type VideoCodec = 'h264' | 'h265' | 'vp9' | 'av1'
 
 export class Session extends EventEmitter {
-  // Events: 'video-frame', 'video-codec', 'audio-frame', 'audio-start', 'audio-stop',
+  // Events: 'video-frame', 'video-codec', 'audio-frame', 'audio-setup', 'audio-start', 'audio-stop',
+  //         'video-started', 'cluster-video-started' (helper-fed sessions, no frames here),
   //         'mic-start', 'mic-stop',
   //         'host-ui-requested', 'media-metadata', 'media-status',
   //         'connected', 'disconnected', 'error'
+
+  // One of the two carries the phone: the socket with TLS in this process, or the
+  // helper link that hands over decrypted messages and takes cleartext to send.
+  private readonly _sock: net.Socket | null
+  private readonly _link: HelperSessionLink | null
+  private _linkReady = false
+  private _channelsReady = false
+  private readonly _pending: Array<[number, number, number, Buffer]> = []
 
   private _state: State = State.INIT
   private _rawParser = new FrameParser()
@@ -171,39 +180,125 @@ export class Session extends EventEmitter {
   private _clusterStreamWanted = true
 
   constructor(
-    private readonly _sock: net.Socket,
+    transport: net.Socket | HelperSessionLink,
     private readonly _cfg: SessionConfig
   ) {
     super()
-    this._setupRawPipeline()
+    if (transport instanceof HelperSessionLink) {
+      this._link = transport
+      this._sock = null
+      this._setupLinkPipeline(transport)
+    } else {
+      this._link = null
+      this._sock = transport
+      this._setupRawPipeline(transport)
+    }
   }
 
   close(reason = 'manual close'): void {
-    try {
-      this._sock.destroy()
-    } catch {
-      /* already destroyed */
-    }
+    this._destroyTransport()
     if (this._state !== State.CLOSED) {
       this._transition(State.CLOSED, reason)
     }
   }
 
+  get helperBacked(): boolean {
+    return this._link !== null
+  }
+
+  /** Tells the helper where its media goes: the feed socket, plane and stream ids. */
+  sendMediaSink(cfg: Record<string, unknown>): void {
+    this._link?.control({ type: 'sink', ...cfg })
+  }
+
   // ── Internal wiring ───────────────────────────────────────────────────────
 
-  private _setupRawPipeline(): void {
-    // Kernel-level safety net for sudden phone disappearances (battery yank,
-    // hard reboot, Wi-Fi crash). With keepalive on, Linux probes the peer
-    // after 5 s of idle and tears the socket down with ETIMEDOUT after a
-    // few unanswered probes. Without this, the half-open TCP zombie can sit
-    // around for ~2 hours (default tcp_keepalive_time = 7200 s).
+  private _peer(): string {
+    const raw = this._link?.peer ?? this._sock?.remoteAddress ?? ''
+    return raw.replace(/^::ffff:/i, '').replace(/%.*$/, '')
+  }
+
+  private _destroyTransport(): void {
     try {
-      this._sock.setKeepAlive(true, 5_000)
+      if (this._link) this._link.destroy()
+      else this._sock?.destroy()
+    } catch {
+      /* already gone */
+    }
+  }
+
+  private _endTransport(): void {
+    try {
+      if (this._link) this._link.end()
+      else this._sock?.end()
+    } catch {
+      /* ignore */
+    }
+  }
+
+  private _setupLinkPipeline(link: HelperSessionLink): void {
+    link.on('message', (ch: number, flags: number, msgId: number, payload: Buffer) => {
+      if (!this._channelsReady) {
+        this._pending.push([ch, flags, msgId, payload])
+        return
+      }
+      this._handleDecryptedMessage(ch, flags, msgId, payload)
+    })
+    link.on('control', (c: HelperSessionControl) => this._onLinkControl(c))
+    link.on('close', () => this._transition(State.CLOSED, 'socket closed'))
+    link.on('error', (err: Error) => {
+      this.emit('error', err)
+      this._transition(State.CLOSED, err.message)
+    })
+  }
+
+  private _onLinkControl(c: HelperSessionControl): void {
+    switch (c.type) {
+      case 'ready':
+        this._linkReady = true
+        this._onLinkReady()
+        break
+      case 'first-frame':
+        if (c.ch === CH.VIDEO) {
+          if (!this._mainFrameSeen) {
+            this._mainFrameSeen = true
+            if (this._clusterFocusPending) this._requestClusterStream()
+          }
+          this.emit('video-started')
+        } else if (c.ch === CH.CLUSTER_VIDEO) {
+          this.emit('cluster-video-started')
+        }
+        break
+      case 'eof':
+        if (this._pingTimer) {
+          clearInterval(this._pingTimer)
+          this._pingTimer = null
+        }
+        if (this._state !== State.RUNNING) this._link?.end()
+        break
+      case 'closed':
+        this._transition(State.CLOSED, typeof c.reason === 'string' ? c.reason : 'helper closed')
+        break
+    }
+  }
+
+  // The helper did version and TLS, so the session picks up at AUTH.
+  private _onLinkReady(): void {
+    if (!this._linkReady || !this._channelsReady || this._state >= State.AUTH) return
+    this._transition(State.AUTH)
+    void this._postTlsSetup()
+  }
+
+  private _setupRawPipeline(sock: net.Socket): void {
+    // TCP keepalive drops a half-open socket after a few unanswered probes,
+    // instead of the ~2 h default, so a vanished phone frees up fast.
+    try {
+      sock.setKeepAlive(true, 5_000)
     } catch (e) {
       console.warn('[Session] setKeepAlive failed (ignored)', e)
     }
 
-    this._sock.on('data', (chunk: Buffer) => {
+    sock.on('data', (chunk: Buffer) => {
       if (TRACE) {
         const fullDump = this._state <= State.TLS_HANDSHAKE
         const hexPreview =
@@ -219,16 +314,16 @@ export class Session extends EventEmitter {
       }
     })
 
-    this._sock.on('close', () => this._transition(State.CLOSED, 'socket closed'))
+    sock.on('close', () => this._transition(State.CLOSED, 'socket closed'))
 
-    this._sock.on('end', () => {
+    sock.on('end', () => {
       if (this._pingTimer) {
         clearInterval(this._pingTimer)
         this._pingTimer = null
       }
       if (this._state === State.RUNNING) {
         if (DEBUG) {
-          console.log(`[Session] phone sent TCP FIN in RUNNING state — keeping write side open`)
+          console.log(`[Session] phone sent TCP FIN in RUNNING state, keeping write side open`)
         }
       } else {
         if (DEBUG) {
@@ -243,13 +338,13 @@ export class Session extends EventEmitter {
             'CLOSED'
           ]
           const stateName = stateNames[this._state] ?? this._state.toString()
-          console.log(`[Session] phone sent TCP FIN state=${stateName} — completing close`)
+          console.log(`[Session] phone sent TCP FIN state=${stateName}, completing close`)
         }
-        this._sock.end()
+        sock.end()
       }
     })
 
-    this._sock.on('error', (err) => {
+    sock.on('error', (err) => {
       this.emit('error', err)
       this._transition(State.CLOSED, err.message)
     })
@@ -330,7 +425,7 @@ export class Session extends EventEmitter {
         if (this._tls && (frame.flags & 0x08) !== 0) {
           if (DEBUG) {
             console.log(
-              `[Session] pre-TLS encrypted frame ch=${frame.channelId} flags=0x${frame.flags.toString(16)} — routing to TLS`
+              `[Session] pre-TLS encrypted frame ch=${frame.channelId} flags=0x${frame.flags.toString(16)}, routing to TLS`
             )
           }
           this._tls.injectEncrypted(frame.channelId, frame.flags, frame.rawPayload)
@@ -449,9 +544,7 @@ export class Session extends EventEmitter {
           const signal =
             typeof ps['signalStrength'] === 'number' ? (ps['signalStrength'] as number) : undefined
           if (signal !== undefined) {
-            const peer = (this._sock.remoteAddress ?? '')
-              .replace(/^::ffff:/i, '')
-              .replace(/%.*$/, '')
+            const peer = this._peer()
             this.emit('device-status', { ip: peer, signalStrength: signal })
           }
         } catch (e) {
@@ -500,7 +593,7 @@ export class Session extends EventEmitter {
     if (channelId === CH.WIFI) {
       if (msgId === 0x8001) {
         // WIFI_CREDENTIALS_REQUEST
-        if (DEBUG) console.log('[Session] WifiCredentialsRequest received — sending credentials')
+        if (DEBUG) console.log('[Session] WifiCredentialsRequest received, sending credentials')
         this._handleWifiCredentialsRequest()
         return
       }
@@ -518,9 +611,9 @@ export class Session extends EventEmitter {
       return
     }
 
-    // AV START_INDICATION — phone announces it's about to send media frames.
+    // AV START_INDICATION: phone announces it's about to send media frames.
     // Video/cluster START_INDICATION never reaches here (routed to their channels
-    // above); this covers the audio + auxiliary channels that are otherwise unhandled.
+    // above). This covers the audio + auxiliary channels that are otherwise unhandled.
     if (msgId === AV_MSG.START_INDICATION) {
       const start = decodeStart(payload)
       const sessionId = start?.sessionId ?? -1
@@ -534,7 +627,7 @@ export class Session extends EventEmitter {
             ? 'audio'
             : `ch${channelId}`
         console.log(
-          `[Session] ${label} START_INDICATION ch=${channelId} sessionId=${sessionId} configIdx=${configIdx} — stream starting`
+          `[Session] ${label} START_INDICATION ch=${channelId} sessionId=${sessionId} configIdx=${configIdx}, stream starting`
         )
       }
       return
@@ -545,11 +638,9 @@ export class Session extends EventEmitter {
     if (channelId === CH.INPUT && msgId === 0x8002) {
       if (DEBUG) {
         // KeyBindingRequest body: repeated int32 keycodes = 1 (packed)
-        console.log(
-          `[Session] INPUT KeyBindingRequest (len=${payload.length}) — replying status=OK`
-        )
+        console.log(`[Session] INPUT KeyBindingRequest (len=${payload.length}), replying status=OK`)
       }
-      // KeyBindingResponse: required int32 status = 1; varint tag 0x08, value 0.
+      // KeyBindingResponse: required int32 status = 1. Varint tag 0x08, value 0.
       const respBuf = Buffer.from([0x08, 0x00])
       this._sendEncrypted(CH.INPUT, FRAME_FLAGS.ENC_SIGNAL, 0x8003, respBuf)
       return
@@ -564,7 +655,7 @@ export class Session extends EventEmitter {
 
   // ── Session startup sequence ──────────────────────────────────────────────
 
-  // Entry point — called once the TCP connection is accepted
+  // Entry point, called once the TCP connection is accepted
   async start(): Promise<void> {
     this._proto = await loadProtos()
 
@@ -588,12 +679,12 @@ export class Session extends EventEmitter {
       }
     })
 
-    // Exit/Home on AA display — keep session alive so phone can re-request focus
+    // Exit/Home on AA display, keep session alive so phone can re-request focus
     this._video.on('host-ui-requested', () => this.emit('host-ui-requested'))
     // Phone requested PROJECTED focus on the main video sink
     this._video.on('video-focus-projected', () => this.emit('video-focus-projected'))
 
-    // Cluster (secondary) display sink — phone may push a Maps overlay or
+    // Cluster (secondary) display sink: phone may push a Maps overlay or
     // navigation widget here when display_type=CLUSTER is advertised.
     this._cluster = new VideoChannel(
       (ch, flags, msgId, data) => this._sendEncrypted(ch, flags, msgId, data),
@@ -614,6 +705,9 @@ export class Session extends EventEmitter {
       audio.on('pcm', (buf: Buffer, ts: bigint, channel: AudioChannelType) =>
         this.emit('audio-frame', buf, ts, channel, channelId)
       )
+      audio.on('setup', (_codec: number, sampleRate: number, channels: number) =>
+        this.emit('audio-setup', audio.channelType, sampleRate, channels)
+      )
       audio.on('start', (channel: AudioChannelType, chId: number) =>
         this.emit('audio-start', channel, chId)
       )
@@ -623,24 +717,24 @@ export class Session extends EventEmitter {
       this._audio.set(channelId, audio)
     }
 
-    // Input channel — outbound only (HU → Phone)
+    // Input channel, outbound only (HU → Phone)
     this._input = new InputChannel((ch, flags, msgId, data) =>
       this._sendEncrypted(ch, flags, msgId, data)
     )
 
-    // Mic channel — outbound HU→Phone PCM, lifecycle driven by phone OPEN_REQUEST.
+    // Mic channel, outbound HU→Phone PCM, lifecycle driven by phone OPEN_REQUEST.
     this._mic = new MicChannel(CH.MIC_INPUT, (ch, flags, msgId, data) =>
       this._sendEncrypted(ch, flags, msgId, data)
     )
     this._mic.on('mic-start', (chId: number) => this.emit('mic-start', chId))
     this._mic.on('mic-stop', (chId: number) => this.emit('mic-stop', chId))
 
-    // NowPlaying — forward to driver for MediaData mapping
+    // NowPlaying, forward to driver for MediaData mapping
     this._media = new MediaInfoChannel()
     this._media.on('metadata', (m: MediaPlaybackMetadata) => this.emit('media-metadata', m))
     this._media.on('status', (s: MediaPlaybackStatus) => this.emit('media-status', s))
 
-    // Navigation status (turn-by-turn from Maps) — forward to driver
+    // Navigation status (turn-by-turn from Maps), forward to driver
     this._nav = new NavigationChannel()
     this._nav.on('nav-start', () => this.emit('nav-start'))
     this._nav.on('nav-stop', () => this.emit('nav-stop'))
@@ -656,7 +750,7 @@ export class Session extends EventEmitter {
     this._control.on(
       'battery',
       (b: { level?: number; critical: boolean; timeRemaining?: number }) => {
-        const peer = (this._sock.remoteAddress ?? '').replace(/^::ffff:/i, '').replace(/%.*$/, '')
+        const peer = this._peer()
         this.emit('device-status', {
           ip: peer,
           batteryLevel: b.level,
@@ -681,7 +775,7 @@ export class Session extends EventEmitter {
       const pInfo = req['phoneInfo'] as Record<string, unknown> | undefined
       const instId =
         pInfo && typeof pInfo['instanceId'] === 'string' ? (pInfo['instanceId'] as string) : ''
-      const peer = (this._sock.remoteAddress ?? '').replace(/^::ffff:/i, '').replace(/%.*$/, '')
+      const peer = this._peer()
       if (name || brand || instId) {
         this.emit('device-info', { name, model: brand, instanceId: instId, ip: peer })
       }
@@ -702,14 +796,10 @@ export class Session extends EventEmitter {
         if (this._state >= State.CLOSED) return
         if (Date.now() - this._lastPongAt > Session.PING_TIMEOUT_MS) {
           console.log(
-            `[Session] PING timeout (${Session.PING_TIMEOUT_MS}ms without PING_RESPONSE) — closing session`
+            `[Session] PING timeout (${Session.PING_TIMEOUT_MS}ms without PING_RESPONSE), closing session`
           )
           this._transition(State.CLOSED, 'ping timeout')
-          try {
-            this._sock.destroy()
-          } catch {
-            /* ignore */
-          }
+          this._destroyTransport()
           return
         }
         const pingBuf = encode(this._proto.PingRequest, { timestamp: Date.now() * 1000 })
@@ -736,18 +826,26 @@ export class Session extends EventEmitter {
       this._transition(State.CLOSED, `phone shutdown reason=${reason}`)
     })
 
-    // Step 1: send version request
-    this._transition(State.VERSION)
-    this._sendVersionRequest()
+    this._channelsReady = true
+    if (this._link) {
+      this._onLinkReady()
+      for (const [ch, flags, msgId, payload] of this._pending.splice(0)) {
+        this._handleDecryptedMessage(ch, flags, msgId, payload)
+      }
+    } else {
+      // Step 1: send version request
+      this._transition(State.VERSION)
+      this._sendVersionRequest()
+    }
 
     // Pre-RUNNING watchdog
     setTimeout(() => {
       if (this._state >= State.RUNNING || this._state === State.CLOSED) return
       console.warn(
-        `[Session] pre-RUNNING watchdog fired: stuck in state ${this._state} after 5s — aborting to trigger USB recovery`
+        `[Session] pre-RUNNING watchdog fired: stuck in state ${this._state} after 5s, aborting to trigger USB recovery`
       )
       const err = new Error(
-        `session stalled in pre-RUNNING state — phone-side AA service likely zombie`
+        `session stalled in pre-RUNNING state, phone-side AA service likely zombie`
       )
       try {
         this.emit('error', err)
@@ -892,7 +990,7 @@ export class Session extends EventEmitter {
 
   /**
    * EV battery / energy model. Sent as SensorBatch.vehicle_energy_model_data
-   * (field 23) — Maps reads min_usable_capacity.watt_hours as the *current*
+   * (field 23). Maps reads min_usable_capacity.watt_hours as the *current*
    * battery level
    *
    * capacityWh: gross battery capacity (e.g. 50000 = 50 kWh)
@@ -939,7 +1037,7 @@ export class Session extends EventEmitter {
       fieldLenDelim(3, fieldFloat(1, 0.36))
     ])
 
-    // ChargingPrefs { mode=3 } — mode 1 = standard
+    // ChargingPrefs { mode=3 } (mode 1 = standard)
     const chargingPrefs = fieldVarint(3, 1)
 
     // VehicleEnergyModel { battery=1, consumption=2, charging_prefs=12 }
@@ -1097,11 +1195,7 @@ export class Session extends EventEmitter {
     })
 
     this._transition(State.CLOSED, 'hu-initiated shutdown')
-    try {
-      this._sock.end()
-    } catch {
-      /* ignore */
-    }
+    this._endTransport()
   }
 
   private _sendVersionRequest(): void {
@@ -1156,18 +1250,18 @@ export class Session extends EventEmitter {
     if (DEBUG) console.log(`[Session] AUTH_COMPLETE proto bytes: ${authBuf.toString('hex')}`)
     this._sendAA(CH.CONTROL, FRAME_FLAGS.PLAINTEXT, CTRL_MSG.AUTH_COMPLETE, authBuf)
     this._transition(State.SERVICE_DISCOVERY)
-    if (DEBUG) console.log('[Session] AUTH_COMPLETE sent — waiting for SERVICE_DISCOVERY_REQUEST')
+    if (DEBUG) console.log('[Session] AUTH_COMPLETE sent, waiting for SERVICE_DISCOVERY_REQUEST')
   }
 
   // ── Channel open sequence ─────────────────────────────────────────────────
 
   private _openChannels(): void {
-    // Phone sends CHANNEL_OPEN_REQUEST on each service channel; we respond on
+    // Phone sends CHANNEL_OPEN_REQUEST on each service channel, we respond on
     // the same channel. HU never initiates channel open.
     this._transition(State.CHANNEL_SETUP)
     if (DEBUG) {
       console.log(
-        '[Session] Channel setup — waiting for phone CHANNEL_OPEN_REQUEST on each service channel'
+        '[Session] Channel setup, waiting for phone CHANNEL_OPEN_REQUEST on each service channel'
       )
     }
   }
@@ -1190,12 +1284,12 @@ export class Session extends EventEmitter {
             : { rate: 16000, ch: 1 } // SYSTEM_AUDIO
       audioCh.handleSetupRequest(codec, cfg.rate, cfg.ch)
     } else if (channelId === CH.MIC_INPUT && this._mic) {
-      // Mic uses the same SETUP_REQUEST/RESPONSE flow but is outbound;
-      // the format we advertised is 16 kHz mono.
+      // Mic uses the same SETUP_REQUEST/RESPONSE flow but is outbound.
+      // The format we advertised is 16 kHz mono.
       this._mic.handleSetupRequest(codec, 16000, 1)
     }
 
-    // mediaStatus MUST be OK(2) — NONE(0) is treated as FAIL and drops the session.
+    // mediaStatus MUST be OK(2). NONE(0) is treated as FAIL and drops the session.
     let configIdx = 0
     if (channelId === CH.VIDEO) {
       const want: VideoCodec =
@@ -1262,12 +1356,12 @@ export class Session extends EventEmitter {
       if (DEBUG)
         console.log('[Session] VideoFocusIndication main (PROJECTED, unsolicited=false) sent')
 
-      // No AVChannelStartIndication — phone sends START_INDICATION when ready
+      // No AVChannelStartIndication, phone sends START_INDICATION when ready
       this._transition(State.RUNNING)
       this.emit('connected')
       if (DEBUG)
         console.log(
-          `[Session] Video channel ready — waiting for ${this._videoCodec} frames from phone`
+          `[Session] Video channel ready, waiting for ${this._videoCodec} frames from phone`
         )
     } else if (channelId === CH.CLUSTER_VIDEO) {
       // Hold the cluster stream request until the first main frame so the main plane is claimed first
@@ -1288,7 +1382,7 @@ export class Session extends EventEmitter {
     // SensorStartResponse: status=SUCCESS(0). msgId 0x8002 = SENSOR_MESSAGE_RESPONSE.
     this._sendEncrypted(CH.SENSOR, FRAME_FLAGS.ENC_SIGNAL, 0x8002, Buffer.from([0x08, 0x00]))
 
-    // SensorBatch (msgId 0x8003) — emit initial value per type.
+    // SensorBatch (msgId 0x8003): emit initial value per type.
     if (sensorType === 13) {
       // DrivingStatus = UNRESTRICTED(0)
       this._sendEncrypted(
@@ -1308,7 +1402,7 @@ export class Session extends EventEmitter {
       )
       if (DEBUG) console.log(`[Session] SensorBatch: NightMode=${initial} sent`)
     }
-    // No-batch sensor types (most of them) emit ack-only — silent under DEBUG.
+    // No-batch sensor types (most of them) emit ack-only, silent under DEBUG.
   }
 
   // ── WiFi Projection channel (ch=14) ──────────────────────────────────────
@@ -1316,10 +1410,9 @@ export class Session extends EventEmitter {
   private _handleWifiCredentialsRequest(): void {
     // WifiCredentialsResponse (msgId 0x8002) on the WiFi projection channel:
     //   f1 = car_wifi_password (string)
-    //   f2 = car_wifi_security_mode (varint, WPA2_PERSONAL = 5 in the new
-    //        aap_protobuf WifiSecurityMode enum used by this message;
-    //        distinct from the legacy aasdk_proto SecurityMode enum where
-    //        WPA2_PERSONAL = 8 used by the RFCOMM-side WifiInfoResponse)
+    //   f2 = car_wifi_security_mode (varint, WPA2_PERSONAL = 5 in this
+    //        message's aap_protobuf WifiSecurityMode enum, not the legacy
+    //        aasdk_proto SecurityMode value 8 from the RFCOMM WifiInfoResponse)
     //   f3 = car_wifi_ssid (string)
     //   f5 = access_point_type = STATIC (0)
     const ssid = this._cfg.wifiSsid ?? ''
@@ -1328,7 +1421,7 @@ export class Session extends EventEmitter {
     if (!ssid) {
       if (DEBUG) {
         console.warn(
-          '[Session] WifiCredentialsRequest: no wifiSsid configured — sending empty response'
+          '[Session] WifiCredentialsRequest: no wifiSsid configured, sending empty response'
         )
       }
     }
@@ -1367,12 +1460,18 @@ export class Session extends EventEmitter {
   // Send an AA frame. Encrypted (flags & 0x08) → TLS via tlsSocket
 
   private _writeSock(frame: Buffer): void {
-    if (this._state === State.CLOSED || this._sock.writable === false) return
+    if (!this._sock || this._state === State.CLOSED || this._sock.writable === false) return
     this._sock.write(frame)
   }
 
   private _sendAA(channelId: number, flags: number, msgId: number, data: Buffer): void {
     const isEncrypted = (flags & 0x08) !== 0
+
+    if (this._link) {
+      if (this._state === State.CLOSED || (isEncrypted && this._state < State.AUTH)) return
+      this._link.send(channelId, flags, msgId, data)
+      return
+    }
 
     if (!isEncrypted) {
       const frame = encodeFrame(channelId, flags, msgId, data)
@@ -1409,7 +1508,7 @@ export class Session extends EventEmitter {
         clearInterval(this._pingTimer)
         this._pingTimer = null
       }
-      // Don't destroy the socket — phone controls lifetime; just notify.
+      // Don't destroy the socket, phone controls lifetime. Just notify.
       this.emit('disconnected', reason)
     }
   }

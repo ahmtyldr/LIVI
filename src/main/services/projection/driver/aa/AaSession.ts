@@ -1,5 +1,5 @@
 /**
- * AaSession — IPhoneDriver for ONE Android Auto connection (wired or wireless).
+ * AaSession, IPhoneDriver for ONE Android Auto connection (wired or wireless).
  *
  * Wraps a single AAStack that adopts an already-connected socket via
  * attachSocket (no :5277 listener of its own). AaManager owns the shared
@@ -29,6 +29,7 @@ import {
   matchFittingAAResolution
 } from '@shared/utils'
 import type { IPhoneDriver } from '../IPhoneDriver'
+import type { AaMediaSinkDeps } from './AaEventBridge'
 import { AaEventBridge } from './AaEventBridge'
 import {
   AAStack,
@@ -37,6 +38,7 @@ import {
   TOUCH_ACTION,
   type TouchPointer
 } from './stack/index'
+import { HelperSessionLink } from './stack/transport/HelperSessionLink'
 import type { UsbAoapBridge } from './stack/transport/UsbAoapBridge'
 
 /** Pixel aspect ratio in ten-thousandths: square pixels. */
@@ -81,12 +83,13 @@ export interface AaSessionSeed {
 }
 
 export interface AaSessionOptions {
-  socket: net.Socket
+  transport: net.Socket | HelperSessionLink
   getConfig: () => Config
   wired: boolean
   wiredBridge?: UsbAoapBridge | null
   usbSerial?: string
   seed: AaSessionSeed
+  mediaSink?: AaMediaSinkDeps
 }
 
 export class AaSession extends EventEmitter implements IPhoneDriver {
@@ -111,6 +114,7 @@ export class AaSession extends EventEmitter implements IPhoneDriver {
   private _aaCfg: AAStackConfig | null = null
   private readonly _wired: boolean
   private readonly _usbSerial: string
+  private readonly _mediaSink: AaMediaSinkDeps | undefined
   private _wiredBridge: UsbAoapBridge | null
   private _wiredClientSocket: net.Socket | null
   private readonly _getConfig: () => Config
@@ -120,8 +124,10 @@ export class AaSession extends EventEmitter implements IPhoneDriver {
     this._getConfig = opts.getConfig
     this._wired = opts.wired
     this._usbSerial = opts.usbSerial ?? ''
+    this._mediaSink = opts.mediaSink
     this._wiredBridge = opts.wiredBridge ?? null
-    this._wiredClientSocket = opts.wired ? opts.socket : null
+    this._wiredClientSocket =
+      opts.wired && !(opts.transport instanceof HelperSessionLink) ? opts.transport : null
     this._hevcSupported = opts.seed.hevcSupported
     this._vp9Supported = opts.seed.vp9Supported
     this._av1Supported = opts.seed.av1Supported
@@ -133,7 +139,8 @@ export class AaSession extends EventEmitter implements IPhoneDriver {
     aa.setConfigRefresh(() => aa.applyDisplayConfig(this._buildStackConfig(this._getConfig())))
     this._bridge = this._makeEventBridge(aa, aaCfg)
     aa.setClusterStreamActive(opts.seed.clusterStreamActive)
-    aa.attachSocket(opts.socket)
+    if (opts.transport instanceof HelperSessionLink) aa.attachLink(opts.transport)
+    else aa.attachSocket(opts.transport)
 
     this.on('disconnected', () => {
       setImmediate(() => {
@@ -332,7 +339,8 @@ export class AaSession extends EventEmitter implements IPhoneDriver {
         this._wiredBridge = null
         return b
       },
-      isClosed: () => this._closed
+      isClosed: () => this._closed,
+      mediaSink: this._mediaSink
     })
     bridge.wire()
     return bridge
@@ -483,7 +491,7 @@ export class AaSession extends EventEmitter implements IPhoneDriver {
    * Bridges:
    *   - SendTouch         (single pointer, normalised 0..1 coordinates)
    *   - SendMultiTouch    (multi-pointer, normalised 0..1 coordinates)
-   *   - SendCommand       (subset: 'frame', 'requestVideoFocus' → keyframe; rest no-op)
+   *   - SendCommand       (subset: 'frame', 'requestVideoFocus' → keyframe, rest no-op)
    *   - SendDisconnectPhone / SendCloseDongle  → ByeByeRequest(USER_SELECTION)
    *
    */
@@ -651,7 +659,7 @@ export class AaSession extends EventEmitter implements IPhoneDriver {
         const tierY = clamp01(t.y) * this._touchH
         const ux = tierX - this._touchInsetLeft
         const uy = tierY - this._touchInsetTop
-        // Out-of-window pointer — phone has no UI under that part of the
+        // Out-of-window pointer: phone has no UI under that part of the
         // canvas (AR-fit black bar / safe-area cutout). Skip silently.
         if (ux < 0 || uy < 0 || ux >= usableW || uy >= usableH) continue
         pointers.push({ id: t.id, x: Math.round(ux), y: Math.round(uy) })

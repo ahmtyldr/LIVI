@@ -5,6 +5,8 @@
 //! and the rest. A payload shorter than those five bytes carries nothing and is
 //! skipped.
 
+pub mod feed;
+
 const LEN_BYTES: usize = 4;
 const HEAD_BYTES: usize = 5;
 

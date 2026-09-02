@@ -14,47 +14,7 @@ pub const MSG_PONG: u16 = 9;
 const SECURITY_WPA2_PERSONAL: u64 = 8;
 const ACCESS_POINT_STATIC: u64 = 0;
 
-fn varint(value: u64) -> Vec<u8> {
-    let mut out = Vec::new();
-    let mut v = value;
-    while v > 0x7F {
-        out.push((v as u8 & 0x7F) | 0x80);
-        v >>= 7;
-    }
-    out.push(v as u8 & 0x7F);
-    out
-}
-
-fn pb_string(field: u32, s: &str) -> Vec<u8> {
-    let mut out = varint(((field << 3) | 2) as u64);
-    out.extend(varint(s.len() as u64));
-    out.extend_from_slice(s.as_bytes());
-    out
-}
-
-// Wire type 0 (varint) is zero, so the tag is just the shifted field number.
-fn pb_varint(field: u32, value: u64) -> Vec<u8> {
-    let mut out = varint((field << 3) as u64);
-    out.extend(varint(value));
-    out
-}
-
-fn read_varint(buf: &[u8], i: &mut usize) -> Option<u64> {
-    let mut val = 0u64;
-    let mut shift = 0u32;
-    loop {
-        let b = *buf.get(*i)?;
-        *i += 1;
-        val |= ((b & 0x7F) as u64) << shift;
-        if b & 0x80 == 0 {
-            return Some(val);
-        }
-        shift += 7;
-        if shift > 63 {
-            return None;
-        }
-    }
-}
+use crate::proto::{pb_string, pb_varint, read_varint, varint};
 
 pub fn frame(msg_id: u16, body: &[u8]) -> Vec<u8> {
     let mut out = Vec::with_capacity(body.len() + 4);

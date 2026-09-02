@@ -1,5 +1,5 @@
 /**
- * AA stack — Wireless Android Auto protocol engine for LIVI.
+ * AA stack, Wireless Android Auto protocol engine for LIVI.
  *
  * Public API:
  *
@@ -11,8 +11,7 @@
  *   aa.on('audio-frame',  (buf, ts, ch, chId) => { ... })   // PCM samples
  *   aa.on('error',        (err) => { ... })
  *
- *   aa.start()                          // begins listening on TCP port 5277
- *   aa.stop()                           // closes the server
+ *   aa.stop()                           // closes the active session
  *   aa.sendTouch(action, pointers)      // forward touch event to phone
  *   aa.sendButton(keyCode, down)        // forward HW button event to phone
  *
@@ -32,7 +31,7 @@ import type {
 } from './channels/NavigationChannel'
 import { Session, type SessionConfig, type VideoCodec } from './session/Session'
 import { detectBtMac, detectWifiBssid } from './system/hwaddr'
-import { TcpServer } from './transport/TcpServer'
+import type { HelperSessionLink } from './transport/HelperSessionLink'
 
 export type { AudioChannelType } from './channels/AudioChannel.js'
 export { BUTTON_KEY, TOUCH_ACTION, type TouchPointer } from './channels/InputChannel.js'
@@ -51,18 +50,13 @@ export type {
   NavigationTurnSide,
   NavigationTurnUpdate
 } from './channels/NavigationChannel.js'
-export { TCP_PORT } from './constants'
 export type { SessionConfig, VideoCodec } from './session/Session'
 export { Session } from './session/Session.js'
 export { detectBtMac, detectWifiBssid } from './system/hwaddr'
-export { TcpServer } from './transport/TcpServer'
 
-export interface AAStackConfig extends SessionConfig {
-  port?: number
-}
+export type AAStackConfig = SessionConfig
 
 export class AAStack extends EventEmitter {
-  private readonly _server: TcpServer
   private _activeSession: Session | null = null
   private _clusterStreamActive = true
   private _configRefresh: (() => void) | null = null
@@ -71,10 +65,6 @@ export class AAStack extends EventEmitter {
     super()
     _cfg.btMacAddress ??= detectBtMac()
     _cfg.wifiBssid ??= detectWifiBssid()
-    this._server = new TcpServer(_cfg, () => this._configRefresh?.())
-
-    this._server.on('session', (session: Session) => this._adoptSession(session))
-    this._server.on('error', (err: Error) => this.emit('error', err))
   }
 
   private _adoptSession(session: Session): void {
@@ -93,6 +83,9 @@ export class AAStack extends EventEmitter {
       'audio-frame',
       (buf: Buffer, ts: bigint, channel: AudioChannelType, channelId: number) =>
         this.emit('audio-frame', buf, ts, channel, channelId)
+    )
+    session.on('audio-setup', (channel: AudioChannelType, sampleRate: number, channels: number) =>
+      this.emit('audio-setup', channel, sampleRate, channels)
     )
     session.on('audio-start', (channel: AudioChannelType, channelId: number) =>
       this.emit('audio-start', channel, channelId)
@@ -113,6 +106,8 @@ export class AAStack extends EventEmitter {
     session.on('device-status', (s: Record<string, unknown>) => this.emit('device-status', s))
     session.on('video-focus-projected', () => this.emit('video-focus-projected'))
     session.on('cluster-video-focus-projected', () => this.emit('cluster-video-focus-projected'))
+    session.on('video-started', () => this.emit('video-started'))
+    session.on('cluster-video-started', () => this.emit('cluster-video-started'))
     session.on('media-metadata', (m: MediaPlaybackMetadata) => this.emit('media-metadata', m))
     session.on('media-status', (s: MediaPlaybackStatus) => this.emit('media-status', s))
     session.on('nav-start', () => this.emit('nav-start'))
@@ -129,10 +124,6 @@ export class AAStack extends EventEmitter {
     this.emit('session', session)
   }
 
-  start(): void {
-    this._server.listen(this._cfg.port)
-  }
-
   applyDisplayConfig(next: AAStackConfig): void {
     Object.assign(this._cfg, next)
   }
@@ -143,17 +134,34 @@ export class AAStack extends EventEmitter {
 
   attachSocket(socket: net.Socket): Session {
     socket.setNoDelay(true)
+    return this._attach(socket, 'loopback')
+  }
+
+  /** A session the helper carries: it did TCP, version and TLS already. */
+  attachLink(link: HelperSessionLink): Session {
+    return this._attach(link, `helper ${link.peer}`)
+  }
+
+  private _attach(transport: net.Socket | HelperSessionLink, label: string): Session {
     this._configRefresh?.()
-    const session = new Session(socket, this._cfg)
-    session.on('error', (err: Error) => console.error('[Session loopback] error:', err.message))
+    const session = new Session(transport, this._cfg)
+    session.on('error', (err: Error) => console.error(`[Session ${label}] error:`, err.message))
     session.on('disconnected', (reason?: string) =>
-      console.log(`[Session loopback] disconnected: ${reason ?? ''}`)
+      console.log(`[Session ${label}] disconnected: ${reason ?? ''}`)
     )
     this._adoptSession(session)
     void session.start().catch((err: Error) => {
-      console.error('[Session loopback] start error:', err.message)
+      console.error(`[Session ${label}] start error:`, err.message)
     })
     return session
+  }
+
+  get helperBacked(): boolean {
+    return this._activeSession?.helperBacked ?? false
+  }
+
+  sendMediaSink(cfg: Record<string, unknown>): void {
+    this._activeSession?.sendMediaSink(cfg)
   }
 
   stop(): void {
@@ -165,7 +173,6 @@ export class AAStack extends EventEmitter {
       }
       this._activeSession = null
     }
-    this._server.close()
   }
 
   get activeSession(): Session | null {

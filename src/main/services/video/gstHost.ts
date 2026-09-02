@@ -90,6 +90,8 @@ class GstHost {
   private readonly audioWaiters = new Map<number, (data: number, control: number) => void>()
   private recvBuf: Buffer = Buffer.alloc(0)
   private nextReceiverId = 0x7b000000
+  private feedWaiter: ((path: string) => void) | null = null
+  private feedPath: Promise<string> | null = null
 
   private start(): void {
     if (this.child || this.starting) return
@@ -97,7 +99,7 @@ class GstHost {
 
     let addonPath: string
     try {
-      // require.resolve gives the logical app.asar path; the real files are unpacked (asarUnpack),
+      // require.resolve gives the logical app.asar path. The real files are unpacked (asarUnpack),
       // and spawn plus the child need the physical path.
       addonPath = require
         .resolve('livi-gst-video')
@@ -161,6 +163,7 @@ class GstHost {
         this.child = null
         this.sock = null
         this.starting = false
+        this.feedPath = null
         server.close()
       })
     })
@@ -219,7 +222,31 @@ class GstHost {
     } else if (rop === 6 && rest.length >= 4) {
       // [rate u32 LE][mono s16 samples]. Copy off the shared socket buffer.
       this.events.emit('visualizerAudio', new Uint8Array(rest.subarray(4)), rest.readUInt32LE(0))
+    } else if (rop === 7) {
+      const waiter = this.feedWaiter
+      this.feedWaiter = null
+      waiter?.(rest.toString('utf8'))
     }
+  }
+
+  /** The socket the helper streams media into, empty when the host cannot bind it. */
+  openFeed(): Promise<string> {
+    if (this.feedPath) return this.feedPath
+    const feedPath = path.join(os.tmpdir(), `livi-gst-${process.pid}.sock.feed`)
+    this.feedPath = new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        this.feedWaiter = null
+        this.feedPath = null
+        resolve('')
+      }, 4000)
+      this.feedWaiter = (bound) => {
+        clearTimeout(timer)
+        if (!bound) this.feedPath = null
+        resolve(bound)
+      }
+      this.send(frame(16, 0, Buffer.from(feedPath, 'utf8')))
+    })
+    return this.feedPath
   }
 
   openVideoReceiver(

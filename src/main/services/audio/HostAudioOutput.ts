@@ -6,6 +6,8 @@ export type HostAudioOutputOptions = {
   device?: string
   /** Voice and call streams take the short path to the sink. */
   realtime?: boolean
+  /** The host's stream id, once the stream is open. */
+  onOpened?: (streamId: number) => void
 }
 
 /** Buffers held while the stream is still opening. */
@@ -22,6 +24,10 @@ export class HostAudioOutput {
   private readonly pending: Buffer[] = []
 
   constructor(private readonly opts: HostAudioOutputOptions) {}
+
+  get hostStreamId(): number | null {
+    return this.streamId
+  }
 
   start(): void {
     if (this.opening || this.streamId != null) return
@@ -47,6 +53,7 @@ export class HostAudioOutput {
         gstHost.setAudioActive(streamId, true)
         for (const b of this.pending) gstHost.pushAudio(streamId, b)
         this.pending.length = 0
+        this.opts.onOpened?.(streamId)
       })
       .catch(() => {
         this.opening = false

@@ -44,7 +44,7 @@ impl DeviceConfig {
         Self { json }
     }
 
-    // config.json wins, then env, then default — mirroring the previous helper.
+    // config.json wins, then env, then default. Mirrors the previous helper.
     pub fn string(&self, json_key: &str, env_key: &str, default: &str) -> String {
         if let Some(s) = self.json.get(json_key).and_then(|v| v.as_str())
             && !s.is_empty() {
@@ -175,6 +175,13 @@ async fn serve() -> Result<(), Box<dyn std::error::Error>> {
     tokio::spawn(reconnect::run(conn.clone(), adapter.clone(), state.clone()));
 
     if std::env::var("LIVI_AA_WIRELESS").unwrap_or_else(|_| "1".into()) != "0" {
+        // The projection listener the WPP bootstrap points the phone at.
+        let events = aa_events.clone();
+        tokio::spawn(livi_aa::server::run(env_or("LIVI_PORT", 5277u16), move |socket, peer| {
+            events.push_json(format!(
+                "{{\"event\":\"aa-session\",\"socket\":\"{socket}\",\"peer\":\"{peer}\"}}"
+            ));
+        }));
         match bt::start_aa(&conn).await {
             Ok(incoming) => {
                 let aa_cfg = crate::aa::AaConfig {

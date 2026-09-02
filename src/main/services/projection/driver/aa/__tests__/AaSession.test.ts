@@ -142,7 +142,7 @@ function makeSession(
 ): AaSession {
   const cfg = opts.cfg ?? baseCfg()
   return new AaSession({
-    socket: new MockSocket() as unknown as net.Socket,
+    transport: new MockSocket() as unknown as net.Socket,
     getConfig: () => cfg,
     wired: opts.wired ?? false,
     wiredBridge: (opts.wiredBridge ?? null) as unknown as UsbAoapBridge | null,
@@ -161,11 +161,11 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-describe('AaSession — construction', () => {
+describe('AaSession: construction', () => {
   test('constructs an AAStack and adopts the socket via attachSocket', () => {
     const sock = new MockSocket() as unknown as net.Socket
     const d = new AaSession({
-      socket: sock,
+      transport: sock,
       getConfig: () => baseCfg(),
       wired: false,
       seed: baseSeed()
@@ -247,7 +247,7 @@ describe('AaSession.close', () => {
     expect(bridge.stop).toHaveBeenCalled()
   })
 
-  test('idempotent — second close is a no-op', async () => {
+  test('idempotent: second close is a no-op', async () => {
     const d = makeSession()
     await d.close()
     await expect(d.close()).resolves.toBeUndefined()
@@ -282,7 +282,7 @@ describe('AaSession.close', () => {
   })
 })
 
-describe('AaSession.send — bail-out', () => {
+describe('AaSession.send: bail-out', () => {
   test('returns false after close (no AAStack)', async () => {
     const d = makeSession()
     await d.close()
@@ -291,7 +291,7 @@ describe('AaSession.send — bail-out', () => {
   })
 })
 
-describe('AaSession.send — SendCommand', () => {
+describe('AaSession.send: SendCommand', () => {
   let d: AaSession
   let aa: MockAAStack
   beforeEach(() => {
@@ -386,7 +386,7 @@ describe('AaSession.send — SendCommand', () => {
   })
 })
 
-describe('AaSession.send — SendTouch + SendMultiTouch', () => {
+describe('AaSession.send: SendTouch + SendMultiTouch', () => {
   let d: AaSession
   let aa: MockAAStack
 
@@ -435,7 +435,7 @@ describe('AaSession.send — SendTouch + SendMultiTouch', () => {
   })
 })
 
-describe('AaSession.send — shutdown messages', () => {
+describe('AaSession.send: shutdown messages', () => {
   test('SendDisconnectPhone calls AAStack.requestShutdown', async () => {
     const d = makeSession()
     await d.send(new SendDisconnectPhone())
@@ -449,7 +449,7 @@ describe('AaSession.send — shutdown messages', () => {
   })
 })
 
-describe('AaSession — vehicle-data passthrough', () => {
+describe('AaSession: vehicle-data passthrough', () => {
   let d: AaSession
   let aa: MockAAStack
   beforeEach(() => {
@@ -496,7 +496,7 @@ describe('AaSession — vehicle-data passthrough', () => {
   })
 })
 
-describe('AaSession — microphone lifecycle', () => {
+describe('AaSession: microphone lifecycle', () => {
   test('mic capture falls back to 16 kHz mono when the stack reports no format', () => {
     const d = makeSession()
     const aa = lastAaStack.instance!
@@ -557,7 +557,7 @@ describe('AaSession — microphone lifecycle', () => {
   })
 })
 
-describe('AaSession — close error swallowing', () => {
+describe('AaSession: close error swallowing', () => {
   test('mic.stop throwing is swallowed', async () => {
     const d = makeSession()
     const internal = d as unknown as {
@@ -602,7 +602,7 @@ describe('AaSession — close error swallowing', () => {
   })
 })
 
-describe('AaSession — bridge dep callbacks', () => {
+describe('AaSession: bridge dep callbacks', () => {
   test('emitMessage closure forwards a "message" event from the AA stack', () => {
     const d = makeSession()
     const aa = lastAaStack.instance!
@@ -647,7 +647,7 @@ describe('AaSession — bridge dep callbacks', () => {
   })
 })
 
-describe('AaSession — touch out-of-window handling', () => {
+describe('AaSession: touch out-of-window handling', () => {
   test('SendTouch with out-of-window coordinates is swallowed', async () => {
     const d = makeSession()
     const aa = lastAaStack.instance!
@@ -695,7 +695,7 @@ describe('AaSession — touch out-of-window handling', () => {
   })
 })
 
-describe('AaSession — codec/night-mode setters during an active session', () => {
+describe('AaSession: codec/night-mode setters during an active session', () => {
   test('updates AAStackConfig in place when set after construction', () => {
     const d = makeSession()
     d.setHevcSupported(true)
@@ -766,7 +766,7 @@ describe('AaSession — codec/night-mode setters during an active session', () =
 
   test('usbSerial returns the descriptor serial for a wired session', () => {
     const wired = new AaSession({
-      socket: new MockSocket() as unknown as net.Socket,
+      transport: new MockSocket() as unknown as net.Socket,
       getConfig: () => baseCfg(),
       wired: true,
       wiredBridge: new MockUsbAoapBridge() as unknown as UsbAoapBridge,
@@ -786,7 +786,7 @@ describe('AaSession — codec/night-mode setters during an active session', () =
   })
 })
 
-describe('AaSession — config edge cases', () => {
+describe('AaSession: config edge cases', () => {
   test('explicit projection + cluster DPI are used verbatim', () => {
     makeSession({
       cfg: { ...baseCfg(), projectionDpi: 160, clusterDpi: 200 } as Config
@@ -837,7 +837,7 @@ describe('AaSession — config edge cases', () => {
   })
 })
 
-describe('AaSession — bridge presence/lifecycle callbacks', () => {
+describe('AaSession: bridge presence/lifecycle callbacks', () => {
   test('device-status surfaces a status device-presence event', () => {
     const d = makeSession()
     const cb = vi.fn()
@@ -885,7 +885,7 @@ describe('AaSession — bridge presence/lifecycle callbacks', () => {
   })
 })
 
-describe('AaSession — touch + multitouch action variants', () => {
+describe('AaSession: touch + multitouch action variants', () => {
   test('SendTouch Move and Up map to the right pointer actions', async () => {
     const d = makeSession()
     const aa = lastAaStack.instance!

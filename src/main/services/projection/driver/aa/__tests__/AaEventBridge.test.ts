@@ -302,6 +302,30 @@ describe('AaEventBridge', () => {
       expect(msgs.length).toBeGreaterThan(0)
     })
 
+    test('audio-setup primes the host stream when the helper carries the session', async () => {
+      const primeAudio = vi.fn()
+      const mediaSink = {
+        feedPath: async () => '/tmp/x.feed',
+        videoPlaneId: () => 1,
+        primeVideo: vi.fn(),
+        noteVideoStarted: vi.fn(),
+        audioOutputs: () => [],
+        onAudioOutput: () => () => {},
+        primeAudio
+      }
+      const { aa } = makeBridge({ mediaSink })
+      aa.emit('audio-setup', 'media', 48000, 2)
+      expect(primeAudio).not.toHaveBeenCalled()
+
+      Object.assign(aa, { helperBacked: true })
+      aa.emit('audio-setup', 'media', 48000, 2)
+      aa.emit('audio-setup', 'speech', 16000, 1)
+      expect(primeAudio.mock.calls).toEqual([
+        [3, 48000, 2],
+        [1, 16000, 1]
+      ])
+    })
+
     test('audio-stop emits an AudioData lifecycle command', async () => {
       const { aa, emitMessage } = makeBridge()
       aa.emit('audio-stop', 'speech', 0)
@@ -438,7 +462,7 @@ describe('AaEventBridge', () => {
         NaviDisplayDistanceE3: 0.5,
         NaviDisplayDistanceUnit: 'km'
       })
-      // AA never carries the trip distance/ETA — those destination fields stay unset
+      // AA never carries the trip distance/ETA, so those destination fields stay unset
       expect(info.NaviDistanceToDestination).toBeUndefined()
       expect(info.NaviTimeToDestination).toBeUndefined()
     })
@@ -618,7 +642,7 @@ describe('AaEventBridge', () => {
     const { aa, emitMessage } = makeBridge()
     aa.emit('nav-start') // sets naviApp = "Google Maps"
     emitMessage.mockClear()
-    // emit a status update — publishNavi should pull naviApp from the existing bag (already set), not re-inject
+    // emit a status update. publishNavi should pull naviApp from the existing bag (already set), not re-inject
     aa.emit('nav-status', { state: 'active' })
     const meta = metas(emitMessage)[0]
     expect(asNavi(meta).navi?.NaviAPPName).toBe('Google Maps')

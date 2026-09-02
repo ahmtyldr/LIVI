@@ -69,9 +69,38 @@ fn classify_byte(header_byte: u8, codec: CpCodec) -> CpNalKind {
     }
 }
 
-/// Walks the length-prefixed NALs and reports the most significant kind found.
-/// A zero length or one reaching past the frame ends the walk.
+/// Reports the most significant kind among the frame's NALs. A frame opening
+/// with a four byte start code is Annex B (Android Auto), anything else is
+/// length prefixed (CarPlay).
 pub fn classify_nal(frame: &[u8], codec: CpCodec) -> CpNalKind {
+    if frame.starts_with(&[0, 0, 0, 1]) {
+        classify_annex_b(frame, codec)
+    } else {
+        classify_length_prefixed(frame, codec)
+    }
+}
+
+/// Every `00 00 01` is a start code, emulation prevention keeps the pattern
+/// out of NAL payloads. The header byte follows it.
+fn classify_annex_b(frame: &[u8], codec: CpCodec) -> CpNalKind {
+    let mut best = CpNalKind::Delta;
+    let mut i = 0usize;
+    while i + 3 < frame.len() {
+        if frame[i] == 0 && frame[i + 1] == 0 && frame[i + 2] == 1 {
+            let kind = classify_byte(frame[i + 3], codec);
+            if kind > best {
+                best = kind;
+            }
+            i += 4;
+        } else {
+            i += 1;
+        }
+    }
+    best
+}
+
+/// A zero length or one reaching past the frame ends the walk.
+fn classify_length_prefixed(frame: &[u8], codec: CpCodec) -> CpNalKind {
     let mut best = CpNalKind::Delta;
     let mut off = 0usize;
     while off + 4 <= frame.len() {
@@ -147,6 +176,47 @@ mod tests {
         assert_eq!(detect_codec(&overlong).0, CpCodec::H265); // length past the end
         let wrong_nal = [0u8, 0, 0, 0, 0, 0xe1, 0x00, 0x01, 0x41, 0x00];
         assert_eq!(detect_codec(&wrong_nal).0, CpCodec::H265); // not an SPS
+    }
+
+    fn annex_b(nals: &[&[u8]]) -> Vec<u8> {
+        let mut v = Vec::new();
+        for n in nals {
+            v.extend_from_slice(&[0, 0, 0, 1]);
+            v.extend_from_slice(n);
+        }
+        v
+    }
+
+    #[test]
+    fn annex_b_keyframes_hide_behind_their_parameter_sets() {
+        let au = annex_b(&[&[0x67, 0, 0], &[0x68, 0], &[0x65, 0, 0, 0]]);
+        assert_eq!(classify_nal(&au, CpCodec::H264), CpNalKind::Keyframe);
+        let delta = annex_b(&[&[0x09, 0xf0], &[0x41, 0, 0]]);
+        assert_eq!(classify_nal(&delta, CpCodec::H264), CpNalKind::Delta);
+        let params = annex_b(&[&[0x67, 0, 0], &[0x68, 0]]);
+        assert_eq!(classify_nal(&params, CpCodec::H264), CpNalKind::Params);
+    }
+
+    #[test]
+    fn annex_b_accepts_three_byte_start_codes_inside_the_frame() {
+        let mut au = annex_b(&[&[0x67, 0, 0]]);
+        au.extend_from_slice(&[0, 0, 1, 0x65, 0, 0]);
+        assert_eq!(classify_nal(&au, CpCodec::H264), CpNalKind::Keyframe);
+    }
+
+    #[test]
+    fn annex_b_h265() {
+        let au = annex_b(&[&[32 << 1, 1], &[19 << 1, 1, 0]]);
+        assert_eq!(classify_nal(&au, CpCodec::H265), CpNalKind::Keyframe);
+        let delta = annex_b(&[&[1 << 1, 1, 0]]);
+        assert_eq!(classify_nal(&delta, CpCodec::H265), CpNalKind::Delta);
+    }
+
+    #[test]
+    fn a_length_that_reads_like_a_short_start_code_stays_length_prefixed() {
+        let frame = h264_nal(1, &[0; 260]);
+        assert_eq!(frame[..4], [0, 0, 1, 5]);
+        assert_eq!(classify_nal(&frame, CpCodec::H264), CpNalKind::Delta);
     }
 
     #[test]

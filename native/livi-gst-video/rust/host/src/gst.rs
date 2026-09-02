@@ -7,7 +7,7 @@ use livi_audio_stream::AudioSink;
 use livi_screen_stream::ScreenSink;
 use livi_video_player::Player;
 
-use crate::{AudioConfig, Outside, Plane, Speaker, UplinkConfig};
+use crate::{AudioConfig, MediaSink, Outside, Plane, Speaker, UplinkConfig};
 
 impl Plane for Player {
     fn start(&self) {
@@ -40,6 +40,13 @@ pub struct AudioEars(#[allow(dead_code)] livi_audio_stream::receiver::AudioRecei
 
 #[cfg(not(target_os = "linux"))]
 pub struct AudioEars;
+
+/// The socket the helper's media feed listens on.
+#[cfg(target_os = "linux")]
+pub struct FeedEars(#[allow(dead_code)] crate::feed::FeedListener);
+
+#[cfg(not(target_os = "linux"))]
+pub struct FeedEars;
 
 impl Speaker for AudioPipelinePlayer {
     fn push_rtp(&self, rtp: &[u8]) {
@@ -148,6 +155,24 @@ impl Outside for Gst {
         _key: [u8; 32],
         _sink: Box<dyn AudioSink + Send>,
     ) -> Option<(AudioEars, u16, u16)> {
+        None
+    }
+
+    type FeedEars = FeedEars;
+
+    #[cfg(target_os = "linux")]
+    fn open_feed(&self, path: &str, sink: Box<dyn MediaSink>) -> Option<FeedEars> {
+        match crate::feed::FeedListener::new(path, sink) {
+            Ok(l) => Some(FeedEars(l)),
+            Err(e) => {
+                eprintln!("[feed] cannot listen on {path}: {e}");
+                None
+            }
+        }
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    fn open_feed(&self, _path: &str, _sink: Box<dyn MediaSink>) -> Option<FeedEars> {
         None
     }
 }

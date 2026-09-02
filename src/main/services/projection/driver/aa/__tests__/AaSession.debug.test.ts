@@ -115,7 +115,7 @@ const baseCfg = () =>
 
 function make() {
   return new AaSession({
-    socket: new MockSocket() as never,
+    transport: new MockSocket() as never,
     getConfig: () => baseCfg(),
     wired: false,
     seed: {

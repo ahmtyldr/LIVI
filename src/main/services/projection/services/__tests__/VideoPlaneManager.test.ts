@@ -240,6 +240,19 @@ describe('VideoPlaneManager', () => {
       expect(gstMock).toHaveBeenCalledTimes(2)
     })
 
+    test('primeClusters waits for the real codec before building a plane', () => {
+      const { mgr } = mkMgr({ getConfig: vi.fn(() => CLUSTER_CFG) })
+      secondaryMock.mockReturnValue(mkSecondary() as never)
+
+      mgr.primeClusters()
+      expect(gstMock).not.toHaveBeenCalled()
+
+      mgr.setClusterCodec('h265')
+      mgr.primeClusters()
+      expect(gstMock).toHaveBeenCalledTimes(2)
+      expect(planes()[0].prepare).toHaveBeenCalledWith('h265')
+    })
+
     test('ensureClusterPlanes adds a plane for a screen that appears later', () => {
       const { mgr } = mkMgr({ getConfig: vi.fn(() => CLUSTER_CFG) })
       const atom = Buffer.from('atom')

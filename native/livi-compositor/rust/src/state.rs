@@ -83,6 +83,10 @@ pub struct Screen {
     pub req_height: i32,
     pub fullscreen: bool,
     pub output: Option<Output>,
+    // Resize debounce: the output mode and video relayout wait until the drag settles.
+    pub resize_pending: Option<Instant>,
+    pub applied_width: i32,
+    pub applied_height: i32,
     pub backdrop_color: [f32; 4],
     pub has_backdrop_color: bool,
 }
@@ -211,6 +215,9 @@ impl LiviState {
                 req_height: 0,
                 fullscreen: kiosk,
                 output: None,
+                resize_pending: None,
+                applied_width: 0,
+                applied_height: 0,
                 backdrop_color: [0.0, 0.0, 0.0, 1.0],
                 has_backdrop_color: false,
             })
@@ -285,6 +292,7 @@ impl LiviState {
             && Instant::now() >= deadline {
                 crate::spawn::force_restart(self);
             }
+        crate::host::apply_settled_resizes(self);
         crate::host::pump(self);
         self.display_handle.flush_clients().ok();
     }

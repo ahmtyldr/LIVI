@@ -141,6 +141,8 @@ export class BluezDeviceClient {
       up?: boolean
       pct?: number
       mtu?: number
+      socket?: string
+      peer?: string
     }) => void,
     onClose?: () => void,
     onOpen?: () => void

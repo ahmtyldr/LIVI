@@ -29,25 +29,9 @@ class MockSession extends EventEmitter {
   close = vi.fn()
 }
 
-class MockTcpServer extends EventEmitter {
-  listen = vi.fn()
-  close = vi.fn()
-  refresh: () => void = () => {}
-  constructor(_cfg?: unknown, refresh?: () => void) {
-    super()
-    if (refresh) this.refresh = refresh
-  }
-}
-
 vi.mock('../session/Session', () => ({
   Session: vi.fn().mockImplementation(function () {
     return new MockSession()
-  })
-}))
-
-vi.mock('../transport/TcpServer', () => ({
-  TcpServer: vi.fn().mockImplementation(function (cfg: unknown, refresh: () => void) {
-    return new MockTcpServer(cfg, refresh)
   })
 }))
 
@@ -69,12 +53,6 @@ beforeEach(async () => {
       return new MockSession()
     }
   )
-  ;((await vi.importMock('../transport/TcpServer')) as { TcpServer: Mock }).TcpServer.mockReset()
-  ;(
-    (await vi.importMock('../transport/TcpServer')) as { TcpServer: Mock }
-  ).TcpServer.mockImplementation(function (cfg: unknown, refresh: () => void) {
-    return new MockTcpServer(cfg, refresh)
-  })
 })
 afterEach(async () => vi.restoreAllMocks())
 
@@ -91,14 +69,12 @@ function baseCfg(over: Partial<AAStackConfig> = {}): AAStackConfig {
 
 function setup() {
   const stack = new AAStack(baseCfg())
-  const server = (stack as unknown as { _server: MockTcpServer })._server
-  // Drive a session through the server
-  const session = new MockSession()
-  server.emit('session', session)
-  return { stack, server, session }
+  const sock = { setNoDelay: vi.fn() } as unknown as net.Socket
+  const session = stack.attachSocket(sock) as unknown as MockSession
+  return { stack, session }
 }
 
-describe('AAStack — construction', () => {
+describe('AAStack: construction', () => {
   test('auto-detects btMacAddress + wifiBssid when missing', async () => {
     const cfg = baseCfg()
     new AAStack(cfg)
@@ -114,26 +90,17 @@ describe('AAStack — construction', () => {
   })
 })
 
-describe('AAStack — lifecycle', () => {
-  test('start() listens on the configured port', async () => {
-    const stack = new AAStack(baseCfg({ port: 5277 }))
-    const server = (stack as unknown as { _server: MockTcpServer })._server
-    stack.start()
-    expect(server.listen).toHaveBeenCalledWith(5277)
-  })
-
-  test('stop() closes the active session and the server', async () => {
-    const { stack, server, session } = setup()
+describe('AAStack: lifecycle', () => {
+  test('stop() closes the active session', async () => {
+    const { stack, session } = setup()
     stack.stop()
     expect(session.close).toHaveBeenCalled()
-    expect(server.close).toHaveBeenCalled()
+    expect(stack.activeSession).toBeNull()
   })
 
-  test('stop() without an active session still closes the server', async () => {
+  test('stop() without an active session does not throw', async () => {
     const stack = new AAStack(baseCfg())
-    const server = (stack as unknown as { _server: MockTcpServer })._server
-    stack.stop()
-    expect(server.close).toHaveBeenCalled()
+    expect(() => stack.stop()).not.toThrow()
   })
 
   test('session.close throwing is swallowed during stop()', async () => {
@@ -145,7 +112,7 @@ describe('AAStack — lifecycle', () => {
   })
 })
 
-describe('AAStack — event forwarding', () => {
+describe('AAStack: event forwarding', () => {
   test('forwards video / audio / nav events from the active session', async () => {
     const { session, stack } = setup()
     const events: string[] = []
@@ -155,6 +122,7 @@ describe('AAStack — event forwarding', () => {
       'video-codec',
       'cluster-video-codec',
       'audio-frame',
+      'audio-setup',
       'audio-start',
       'audio-stop',
       'mic-start',
@@ -166,6 +134,8 @@ describe('AAStack — event forwarding', () => {
       'device-status',
       'video-focus-projected',
       'cluster-video-focus-projected',
+      'video-started',
+      'cluster-video-started',
       'media-metadata',
       'media-status',
       'nav-start',
@@ -190,18 +160,9 @@ describe('AAStack — event forwarding', () => {
     session.emit('error', new Error('x'))
     expect(onError).toHaveBeenCalled()
   })
-
-  test('server "error" is forwarded', () => {
-    const stack = new AAStack(baseCfg())
-    const server = (stack as unknown as { _server: MockTcpServer })._server
-    const onError = vi.fn()
-    stack.on('error', onError)
-    server.emit('error', new Error('eaddrinuse'))
-    expect(onError).toHaveBeenCalled()
-  })
 })
 
-describe('AAStack — mic format', () => {
+describe('AAStack: mic format', () => {
   test('falls back to 16 kHz mono without an active session', () => {
     const stack = new AAStack(baseCfg())
     expect(stack.micFormat()).toEqual({ sampleRate: 16000, channels: 1 })
@@ -214,7 +175,7 @@ describe('AAStack — mic format', () => {
   })
 })
 
-describe('AAStack — outbound API delegates to active session', () => {
+describe('AAStack: outbound API delegates to active session', () => {
   test('without an active session, calls are silently dropped', async () => {
     const stack = new AAStack(baseCfg())
     expect(() => {
@@ -283,7 +244,7 @@ describe('AAStack — outbound API delegates to active session', () => {
   })
 })
 
-describe('AAStack — config + keyframe API', () => {
+describe('AAStack: config + keyframe API', () => {
   test('applyDisplayConfig merges into the stored config', () => {
     const cfg = baseCfg()
     const stack = new AAStack(cfg)
@@ -291,13 +252,11 @@ describe('AAStack — config + keyframe API', () => {
     expect((stack as unknown as { _cfg: AAStackConfig })._cfg.videoWidth).toBe(1920)
   })
 
-  test('setConfigRefresh wires the TcpServer refresh hook', () => {
+  test('setConfigRefresh runs before a session is attached', () => {
     const stack = new AAStack(baseCfg())
-    const server = (stack as unknown as { _server: MockTcpServer })._server
-    server.refresh()
     const fn = vi.fn()
     stack.setConfigRefresh(fn)
-    server.refresh()
+    stack.attachSocket({ setNoDelay: vi.fn() } as unknown as net.Socket)
     expect(fn).toHaveBeenCalledTimes(1)
   })
 

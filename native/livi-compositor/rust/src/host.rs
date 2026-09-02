@@ -1,7 +1,7 @@
 //! Host side: one xdg-shell window of the outer session per open screen, its
 //! EGL surface, and the outer seat's pointer/touch/keyboard routed into our seat.
 
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use smithay::backend::egl::context::GlAttributes;
 use smithay::backend::egl::native::{EGLNativeDisplay, EGLPlatform};
@@ -585,29 +585,59 @@ impl WindowHandler for LiviState {
         if self.screens[screen_idx].fullscreen != host_fullscreen {
             self.screens[screen_idx].fullscreen = host_fullscreen;
         }
-        if let Some(output) = &self.screens[screen_idx].output {
-            output.change_current_state(
-                Some(smithay::output::Mode {
-                    size: (w, h).into(),
-                    refresh: 60_000,
-                }),
-                None,
-                None,
-                None,
-            );
+        // The output mode change and the video relayout each send an event the
+        // waylandsink clients crash on mid-resize, so defer them until the drag settles.
+        self.screens[screen_idx].resize_pending = Some(Instant::now() + RESIZE_SETTLE);
+        crate::layout::apply_ui_layout(self, screen_idx);
+        crate::ctrl::send_panels(self);
+    }
+}
+
+/// How long the compositor waits after the last resize step before it pushes the
+/// new output mode and relayouts the video planes.
+const RESIZE_SETTLE: Duration = Duration::from_millis(150);
+
+/// Applies a settled resize. Deferred from `configure` so the waylandsink clients are
+/// touched once per drag, not per step. The output mode is published only at the first
+/// setup, never on a later resize, since that mode change crashes the waylandsink.
+pub fn apply_settled_resizes(state: &mut LiviState) {
+    let now = Instant::now();
+    for idx in 0..state.screens.len() {
+        let Some(deadline) = state.screens[idx].resize_pending else {
+            continue;
+        };
+        if now < deadline {
+            continue;
         }
-        let videos: Vec<usize> = self
+        state.screens[idx].resize_pending = None;
+        let (w, h) = (state.screens[idx].width, state.screens[idx].height);
+        let first_setup =
+            state.screens[idx].applied_width == 0 && state.screens[idx].applied_height == 0;
+        if first_setup && (w, h) != (0, 0) {
+            state.screens[idx].applied_width = w;
+            state.screens[idx].applied_height = h;
+            if let Some(output) = &state.screens[idx].output {
+                output.change_current_state(
+                    Some(smithay::output::Mode {
+                        size: (w, h).into(),
+                        refresh: 60_000,
+                    }),
+                    None,
+                    None,
+                    None,
+                );
+            }
+        }
+        let videos: Vec<usize> = state
             .toplevels
             .iter()
             .enumerate()
-            .filter(|(_, t)| t.kind == crate::state::Kind::Video && t.screen_idx == screen_idx)
+            .filter(|(_, t)| t.kind == crate::state::Kind::Video && t.screen_idx == idx)
             .map(|(i, _)| i)
             .collect();
         for v in videos {
-            crate::layout::apply_video_layout(self, v);
+            crate::layout::apply_video_layout(state, v);
         }
-        crate::layout::apply_ui_layout(self, screen_idx);
-        crate::ctrl::send_panels(self);
     }
 }
 

@@ -100,6 +100,8 @@ export class ProjectionAudio {
   }
 
   private audioInfoSent = false
+  private readonly outputAudioTypes = new WeakMap<HostAudioOutput, number>()
+  private readonly hostOutputListeners = new Set<(audioType: number, streamId: number) => void>()
   private _mic: Microphone | null = null
   private currentMicDecodeType: number | null = null
 
@@ -282,7 +284,7 @@ export class ProjectionAudio {
       const now = Date.now()
       const logicalKey = this.getLogicalStreamKey(msg)
 
-      // One player per (audioType, rate, channels); OS sink mixes parallel streams.
+      // One player per (audioType, rate, channels). OS sink mixes parallel streams.
       const audioTypeKey = msg.audioType ?? 0
       let player = this.getAudioOutputForStream(logicalKey, audioTypeKey, msg)
       if (!player) return
@@ -349,10 +351,10 @@ export class ProjectionAudio {
           }
 
           if (!this.musicRampActive) {
-            // Steady state — single multiplication per sample.
+            // Steady state, single multiplication per sample.
             pcm = this.applyGain(msg.data, baseGain * fade.current)
           } else {
-            // Ramp in progress — interpolate gain across the chunk.
+            // Ramp in progress, interpolate gain across the chunk.
             pcm = new Int16Array(totalSamples)
             let current = fade.current
             let remaining = fade.remainingSamples
@@ -477,7 +479,7 @@ export class ProjectionAudio {
         return
       }
 
-      // AudioOpen — arm next AudioMediaStart. Don't learn musicAudioType here
+      // AudioOpen: arm next AudioMediaStart. Don't learn musicAudioType here
       // (fires for every stream open).
       if (cmd === AudioCommand.AudioOutputStart) {
         if (this.mediaActive) {
@@ -537,7 +539,7 @@ export class ProjectionAudio {
 
       if (cmd === AudioCommand.AudioMediaStop) {
         // The phone often stops music while voice-assistant/phone is active. Don't keep
-        // mediaActive=true — otherwise we ignore the next AudioMediaStart.
+        // mediaActive=true, otherwise we ignore the next AudioMediaStart.
         this.mediaActive = false
 
         this.audioOpenArmed = false
@@ -740,18 +742,49 @@ export class ProjectionAudio {
 
   private createAndStartAudioPlayer(
     key: PlayerKey,
+    audioType: number,
     sampleRate: number,
     channels: number
   ): HostAudioOutput {
     const player = new HostAudioOutput({
       sampleRate,
       channels,
-      device: this.getConfig().audioOutputDevice || undefined
+      device: this.getConfig().audioOutputDevice || undefined,
+      onOpened: (streamId) => {
+        for (const cb of this.hostOutputListeners) cb(audioType, streamId)
+      }
     })
+    this.outputAudioTypes.set(player, audioType)
     player.start()
     this.audioPlayers.set(key, player)
 
     return player
+  }
+
+  /** Opens the host stream for a format the phone announced. Idempotent per format. */
+  public primeOutput(audioType: number, sampleRate: number, channels: number): void {
+    if (!sampleRate || !channels) return
+    const key: PlayerKey = `${this.logicalKeyForType(audioType)}:at${audioType}:${sampleRate}:${channels}`
+    if (this.audioPlayers.has(key)) return
+    this.createAndStartAudioPlayer(key, audioType, sampleRate, channels)
+  }
+
+  /** The host's open streams by CarPlay audioType, for a driver feeding the host itself. */
+  public hostOutputs(): Array<{ audioType: number; streamId: number }> {
+    const out: Array<{ audioType: number; streamId: number }> = []
+    for (const player of this.audioPlayers.values()) {
+      const streamId = player.hostStreamId
+      const audioType = this.outputAudioTypes.get(player)
+      if (streamId != null && audioType != null) out.push({ audioType, streamId })
+    }
+    return out
+  }
+
+  public onHostOutput(cb: (audioType: number, streamId: number) => void): () => void {
+    this.hostOutputListeners.add(cb)
+    return () => {
+      this.hostOutputListeners.delete(cb)
+    }
   }
 
   // Called when audioOutputDevice / audioInputDevice changed in config
@@ -786,15 +819,19 @@ export class ProjectionAudio {
           `[ProjectionAudio] new player logicalKey=${logicalKey} audioType=${audioType} rate=${sampleRate} channels=${channels}`
         )
       }
-      player = this.createAndStartAudioPlayer(key, sampleRate, channels)
+      player = this.createAndStartAudioPlayer(key, audioType, sampleRate, channels)
     }
 
     return player
   }
 
   private getLogicalStreamKey(msg: AudioData): LogicalStreamKey {
-    if (this.musicAudioType != null && msg.audioType === this.musicAudioType) return 'music'
-    if (this.navAudioType != null && msg.audioType === this.navAudioType) return 'nav'
+    return this.logicalKeyForType(msg.audioType)
+  }
+
+  private logicalKeyForType(audioType: number | undefined): LogicalStreamKey {
+    if (this.musicAudioType != null && audioType === this.musicAudioType) return 'music'
+    if (this.navAudioType != null && audioType === this.navAudioType) return 'nav'
     if (this.phonecallActive) return 'call'
     if (this.voiceAssistantActive) return 'voiceAssistant'
     return 'music'
