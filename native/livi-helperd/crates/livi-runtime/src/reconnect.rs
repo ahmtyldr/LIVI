@@ -1,154 +1,94 @@
-// Pages known wireless phones back after a restart.
+// Round-robins paired phones back over Bluetooth after a restart.
 
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use zbus::Connection;
 
 use crate::state::HelperState;
 
-// Paging occupies the controller, so an absent phone backs off instead of holding the radio.
-const INTERVAL: Duration = Duration::from_secs(5);
-const BURST_ATTEMPTS: u32 = 3;
-const BACKOFF_MAX: Duration = Duration::from_secs(60);
-const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
+const PING_TIMEOUT: Duration = Duration::from_secs(1);
+const FAST_INTERVAL: Duration = Duration::from_secs(1);
+const FAST_ATTEMPTS: u32 = 15;
+const SLOW_INTERVAL: Duration = Duration::from_secs(30);
 const STALE: Duration = Duration::from_secs(10);
-const STARTUP_WINDOW: Duration = Duration::from_secs(30);
-const STARTUP_INTERVAL: Duration = Duration::from_secs(1);
 
 pub async fn run(conn: Connection, adapter: String, state: Arc<HelperState>) {
-    let started = Instant::now();
-    let paging = Arc::new(AtomicBool::new(false));
+    let mut rr: usize = 0;
+    let mut attempts: HashMap<String, u32> = HashMap::new();
+    let mut next_try: HashMap<String, Instant> = HashMap::new();
     let mut stale_since: HashMap<String, Instant> = HashMap::new();
-    let attempts: Arc<Mutex<HashMap<String, u32>>> = Arc::new(Mutex::new(HashMap::new()));
-    let next_try: Arc<Mutex<HashMap<String, Instant>>> = Arc::new(Mutex::new(HashMap::new()));
 
     loop {
-        let startup = started.elapsed() < STARTUP_WINDOW;
-        tokio::time::sleep(if startup { STARTUP_INTERVAL } else { INTERVAL }).await;
+        tokio::time::sleep(FAST_INTERVAL).await;
         let targets = state.reconnect_targets();
+        attempts.retain(|mac, _| targets.iter().any(|(m, _)| m == mac));
+        next_try.retain(|mac, _| targets.iter().any(|(m, _)| m == mac));
         stale_since.retain(|mac, _| targets.iter().any(|(m, _)| m == mac));
         if targets.is_empty() {
             continue;
         }
 
-        for (mac, uuid) in targets {
-            let path = device_path(&adapter, &mac);
-            let connected = device_connected(&conn, &path).await.unwrap_or(false);
+        let (mac, uuid) = targets[rr % targets.len()].clone();
+        rr = rr.wrapping_add(1);
 
-            if !connected {
-                stale_since.remove(&mac);
-                if next_try.lock().unwrap().get(&mac).is_some_and(|t| Instant::now() < *t) {
-                    continue;
-                }
-                if paging.swap(true, Ordering::SeqCst) {
-                    continue; // one page at a time — the controller pages a single device
-                }
-                spawn_page(
-                    conn.clone(),
-                    path,
-                    mac.clone(),
-                    uuid.clone(),
-                    paging.clone(),
-                    attempts.clone(),
-                    next_try.clone(),
-                    "paging",
-                );
-                continue;
-            }
+        let path = device_path(&adapter, &mac);
+        let connected = device_connected(&conn, &path).await.unwrap_or(false);
 
-            // Connected + no session: ConnectProfile on the existing ACL, Disconnect after
-            // STALE. Backoff resets only on a successful page — Connected flickers during
-            // failed ones.
+        if connected {
+            // Out of the rotation: nudge the profile, disconnect after STALE so it re-pages.
+            attempts.remove(&mac);
+            next_try.remove(&mac);
             let stale = match stale_since.entry(mac.clone()) {
                 Entry::Vacant(e) => {
                     e.insert(Instant::now());
                     false
                 }
-                Entry::Occupied(e) => e.get().elapsed() >= STALE && {
-                    e.remove();
-                    true
-                },
+                Entry::Occupied(e) => {
+                    e.get().elapsed() >= STALE && {
+                        e.remove();
+                        true
+                    }
+                }
             };
             if stale {
                 println!("[cp] reconnect: {mac} connected but no session, disconnecting");
                 let _ = disconnect(&conn, &path).await;
-                continue;
+            } else if uuid.is_some() {
+                let _ = tokio::time::timeout(PING_TIMEOUT, page(&conn, &path, uuid.as_deref())).await;
             }
-            if uuid.is_none() {
-                continue; // plain Connect() is a no-op on a connected device
-            }
-            if next_try.lock().unwrap().get(&mac).is_some_and(|t| Instant::now() < *t) {
-                continue;
-            }
-            if paging.swap(true, Ordering::SeqCst) {
-                continue;
-            }
-            spawn_page(
-                conn.clone(),
-                path,
-                mac.clone(),
-                uuid.clone(),
-                paging.clone(),
-                attempts.clone(),
-                next_try.clone(),
-                "profile nudge",
-            );
+            continue;
         }
-    }
-}
 
-#[allow(clippy::too_many_arguments)]
-fn spawn_page(
-    conn: Connection,
-    path: String,
-    mac: String,
-    uuid: Option<String>,
-    paging: Arc<AtomicBool>,
-    attempts: Arc<Mutex<HashMap<String, u32>>>,
-    next_try: Arc<Mutex<HashMap<String, Instant>>>,
-    verb: &'static str,
-) {
-    tokio::spawn(async move {
-        println!("[cp] reconnect: {verb} {mac}");
-        let outcome = tokio::time::timeout(CONNECT_TIMEOUT, page(&conn, &path, uuid.as_deref())).await;
-        let connected = matches!(outcome, Ok(Ok(())));
-        match outcome {
+        stale_since.remove(&mac);
+
+        // Absent phone: after the fast pokes, only poke every SLOW_INTERVAL.
+        if next_try.get(&mac).is_some_and(|t| Instant::now() < *t) {
+            continue;
+        }
+
+        println!("[cp] reconnect: paging {mac}");
+        match tokio::time::timeout(PING_TIMEOUT, page(&conn, &path, uuid.as_deref())).await {
             Ok(Ok(())) => {
                 println!("[cp] reconnect: {mac} connected");
-                attempts.lock().unwrap().remove(&mac);
-                next_try.lock().unwrap().remove(&mac);
+                attempts.remove(&mac);
+                next_try.remove(&mac);
+                continue;
             }
             Ok(Err(e)) => println!("[cp] reconnect: {mac} page failed: {e}"),
-            Err(_) => {
-                println!("[cp] reconnect: {mac} page timed out, clearing stuck attempt");
-                let _ = disconnect(&conn, &path).await;
-            }
+            // The poke woke it; the next pass catches it.
+            Err(_) => {}
         }
-        if !connected {
-            let tries = {
-                let mut a = attempts.lock().unwrap();
-                let n = a.entry(mac.clone()).or_insert(0);
-                *n += 1;
-                *n
-            };
-            if tries > BURST_ATTEMPTS {
-                let delay = backoff(tries);
-                println!("[cp] reconnect: {mac} backing off {}s", delay.as_secs());
-                next_try.lock().unwrap().insert(mac.clone(), Instant::now() + delay);
-            }
-        }
-        paging.store(false, Ordering::SeqCst);
-    });
-}
 
-/// Doubles from the scan interval up to the cap.
-fn backoff(tries: u32) -> Duration {
-    let steps = tries.saturating_sub(BURST_ATTEMPTS).min(6);
-    BACKOFF_MAX.min(INTERVAL * 2u32.saturating_pow(steps))
+        // After FAST_ATTEMPTS quick pokes, drop to the slow poll.
+        let n = attempts.entry(mac.clone()).or_insert(0);
+        *n += 1;
+        if *n >= FAST_ATTEMPTS {
+            next_try.insert(mac, Instant::now() + SLOW_INTERVAL);
+        }
+    }
 }
 
 fn device_path(adapter: &str, mac: &str) -> String {
