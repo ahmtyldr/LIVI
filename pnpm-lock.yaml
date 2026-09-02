@@ -30,8 +30,8 @@ importers:
         specifier: ^9.4.0
         version: 9.4.0(@emotion/react@11.14.0(@types/react@19.2.18)(react@19.2.8)(supports-color@7.2.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.18)(react@19.2.8)(supports-color@7.2.0))(@types/react@19.2.18)(react@19.2.8)(supports-color@7.2.0))(@types/react@19.2.18)(react@19.2.8)
       i18next:
-        specifier: ^26.4.0
-        version: 26.4.0(typescript@7.0.2)
+        specifier: ^26.4.1
+        version: 26.4.1(typescript@7.0.2)
       livi-crypto:
         specifier: workspace:*
         version: link:native/livi-crypto
@@ -42,8 +42,8 @@ importers:
         specifier: ^8.8.0
         version: 8.8.0
       react-i18next:
-        specifier: ^17.0.12
-        version: 17.0.12(i18next@26.4.0(typescript@7.0.2))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@7.0.2)
+        specifier: ^17.0.13
+        version: 17.0.13(i18next@26.4.1(typescript@7.0.2))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@7.0.2)
       react-router:
         specifier: ^8.3.1
         version: 8.3.1(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -67,8 +67,8 @@ importers:
         specifier: ^16.3.3
         version: 16.3.3(@testing-library/dom@10.4.1)(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@types/node':
-        specifier: ^26.4.0
-        version: 26.4.0
+        specifier: ^26.4.1
+        version: 26.4.1
       '@types/react':
         specifier: ^19.2.18
         version: 19.2.18
@@ -80,13 +80,13 @@ importers:
         version: 1.0.14
       '@vitejs/plugin-react':
         specifier: ^6.1.1
-        version: 6.1.1(vite@8.2.2(@types/node@26.4.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
+        version: 6.1.1(vite@8.2.2(@types/node@26.4.1)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
       '@vitest/coverage-v8':
         specifier: ^4.1.11
         version: 4.1.11(vitest@4.1.11)
       electron:
-        specifier: ^44.1.0
-        version: 44.1.0(supports-color@7.2.0)
+        specifier: ^44.1.1
+        version: 44.1.1(supports-color@7.2.0)
       electron-builder:
         specifier: ^26.15.3
         version: 26.15.3(electron-builder-squirrel-windows@26.15.3)(supports-color@7.2.0)
@@ -94,8 +94,8 @@ importers:
         specifier: ^0.28.2
         version: 0.28.2
       globals:
-        specifier: ^17.11.0
-        version: 17.11.0
+        specifier: ^17.12.0
+        version: 17.12.0
       husky:
         specifier: ^9.1.7
         version: 9.1.7
@@ -116,13 +116,13 @@ importers:
         version: 7.0.2
       vite:
         specifier: ^8.2.2
-        version: 8.2.2(@types/node@26.4.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0)
+        version: 8.2.2(@types/node@26.4.1)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0)
       vite-plugin-electron:
         specifier: ^1.1.2
-        version: 1.1.2(vite@8.2.2(@types/node@26.4.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
+        version: 1.1.2(vite@8.2.2(@types/node@26.4.1)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
       vitest:
         specifier: ^4.1.11
-        version: 4.1.11(@types/node@26.4.0)(@vitest/coverage-v8@4.1.11)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.2.2(@types/node@26.4.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
+        version: 4.1.11(@types/node@26.4.1)(@vitest/coverage-v8@4.1.11)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.2.2(@types/node@26.4.1)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
     optionalDependencies:
       '@node-usb/usb-darwin-arm64':
         specifier: 3.1.0
@@ -998,6 +998,9 @@ packages:
   '@types/node@26.4.0':
     resolution: {integrity: sha512-faiGnoIrLH/V8cibOMEAZ8pMw6oXqSukl29ra4mN8GdaB2ZewzeaLj+INpV5N+Z1eKWzY+IzaIZH2EIR6YZRNQ==}
 
+  '@types/node@26.4.1':
+    resolution: {integrity: sha512-k97ENvZWtvA6yqz5/FS6a7duDgOPEeOQOc2iKS/nY6mX6qJUKtLnWzQS+Xj6tXweyj6ZcTAK2Qecetnvi9nCLA==}
+
   '@types/parse-json@4.0.2':
     resolution: {integrity: sha512-dISoDXWWQwUquiKsyZ4Ng+HX2KsPL7LyHKHQwgGFEA3IaKac4Obd+h2a/a6waisAoepJlBcx9paWqjA8/HVjCw==}
 
@@ -1554,8 +1557,8 @@ packages:
     resolution: {integrity: sha512-bO3y10YikuUwUuDUQRM4KfwNkKhnpVO7IPdbsrejwN9/AABJzzTQ4GeHwyzNSrVO+tEH3/Np255a3sVZpZDjvg==}
     engines: {node: '>=8.0.0'}
 
-  electron@44.1.0:
-    resolution: {integrity: sha512-kmLg8axOg22DC3fXx5NCwBYW8fx0rK2zzJ3Tf67GjNCkxfoxEcd+yo0QfDjlBtHJs3xeA8fTg64b6iVzFTVErg==}
+  electron@44.1.1:
+    resolution: {integrity: sha512-N2WCq2sbOkqQgvXJYx2lS6UiO8bF+Yr67trDnS6JKa2WxTCRQsAjGl57SUtdW9h6r5PlduBFjIhxhgd3dzv1hg==}
     engines: {node: '>= 22.12.0'}
     hasBin: true
 
@@ -1723,8 +1726,8 @@ packages:
     resolution: {integrity: sha512-PT6XReJ+D07JvGoxQMkT6qji/jVNfX/h364XHZOWeRzy64sSFr+xJ5OX7LI3b4MPQzdL4H8Y8M0xzPpsVMwA8Q==}
     engines: {node: '>=10.0'}
 
-  globals@17.11.0:
-    resolution: {integrity: sha512-Z2I8hM+PbJDXQDq3Icgpzv+mPdwr68iZUU9d5WW4FuXfDUQfkZaZuvjMv42/5crNyw154+9+VWXbYrUgDXbxNw==}
+  globals@17.12.0:
+    resolution: {integrity: sha512-cezEd/DTyyht9cvSSURyygXPfy04GtWO/5e6ZPvH7fCtjKz9PYOmuawphw1Ctd1f6C+5JypXfGD7ahNMXvevBA==}
     engines: {node: '>=18'}
 
   globalthis@1.0.4:
@@ -1798,8 +1801,8 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
-  i18next@26.4.0:
-    resolution: {integrity: sha512-rsmK5bFqsD1AetSFSIa43wtNR4WpvvH4p0tLEsTxkC7QTrfdFm06nbQ95bh8Og4wwaCnUEcm9DVYL2cgxitiQg==}
+  i18next@26.4.1:
+    resolution: {integrity: sha512-9YbX5E6gd1H+yaOSX3izCsPj5iWXyH7X4oC+iuHHJJw8AeHglzOK5SJf+1CHxaYKYigcea+8jvzSxqYx46YvyA==}
     peerDependencies:
       typescript: ^5 || ^6 || ^7
     peerDependenciesMeta:
@@ -2299,8 +2302,8 @@ packages:
     peerDependencies:
       react: ^19.2.8
 
-  react-i18next@17.0.12:
-    resolution: {integrity: sha512-lFWPEGkxQ6RhusdUkysFBD58VHfSSzvHBzqMgN0SvfVpdQGfwtNkStTqdy08/sJd7s807qqutgx93fRpD0DJ3Q==}
+  react-i18next@17.0.13:
+    resolution: {integrity: sha512-Cc1PscmblIHA1kljTqDwrcVMI21ydgmUzw0UAeQBe7pAOgfuRLfzXze4EUBQoeDiICzFIXXhHFoZxuetNg5D0Q==}
     peerDependencies:
       i18next: '>= 26.2.0'
       react: '>= 16.8.0'
@@ -3569,7 +3572,7 @@ snapshots:
       picocolors: 1.1.1
       redent: 3.0.0
     optionalDependencies:
-      vitest: 4.1.11(@types/node@26.4.0)(@vitest/coverage-v8@4.1.11)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.2.2(@types/node@26.4.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
+      vitest: 4.1.11(@types/node@26.4.1)(@vitest/coverage-v8@4.1.11)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.2.2(@types/node@26.4.1)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
 
   '@testing-library/react@16.3.3(@testing-library/dom@10.4.1)(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:
@@ -3597,7 +3600,7 @@ snapshots:
 
   '@types/cors@2.8.19':
     dependencies:
-      '@types/node': 26.4.0
+      '@types/node': 26.4.1
 
   '@types/debug@4.1.13':
     dependencies:
@@ -3627,6 +3630,10 @@ snapshots:
     dependencies:
       undici-types: 8.3.0
 
+  '@types/node@26.4.1':
+    dependencies:
+      undici-types: 8.3.0
+
   '@types/parse-json@4.0.2': {}
 
   '@types/prop-types@15.7.15': {}
@@ -3651,7 +3658,7 @@ snapshots:
 
   '@types/ws@8.18.1':
     dependencies:
-      '@types/node': 26.4.0
+      '@types/node': 26.4.1
 
   '@typescript/typescript-aix-ppc64@7.0.2':
     optional: true
@@ -3713,10 +3720,10 @@ snapshots:
   '@typescript/typescript-win32-x64@7.0.2':
     optional: true
 
-  '@vitejs/plugin-react@6.1.1(vite@8.2.2(@types/node@26.4.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))':
+  '@vitejs/plugin-react@6.1.1(vite@8.2.2(@types/node@26.4.1)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))':
     dependencies:
       '@rolldown/pluginutils': 1.0.1
-      vite: 8.2.2(@types/node@26.4.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0)
+      vite: 8.2.2(@types/node@26.4.1)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0)
 
   '@vitest/coverage-v8@4.1.11(vitest@4.1.11)':
     dependencies:
@@ -3730,7 +3737,7 @@ snapshots:
       obug: 2.1.4
       std-env: 4.2.0
       tinyrainbow: 3.1.1
-      vitest: 4.1.11(@types/node@26.4.0)(@vitest/coverage-v8@4.1.11)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.2.2(@types/node@26.4.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
+      vitest: 4.1.11(@types/node@26.4.1)(@vitest/coverage-v8@4.1.11)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.2.2(@types/node@26.4.1)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
 
   '@vitest/expect@4.1.11':
     dependencies:
@@ -3741,13 +3748,13 @@ snapshots:
       chai: 6.2.2
       tinyrainbow: 3.1.1
 
-  '@vitest/mocker@4.1.11(vite@8.2.2(@types/node@26.4.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))':
+  '@vitest/mocker@4.1.11(vite@8.2.2(@types/node@26.4.1)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))':
     dependencies:
       '@vitest/spy': 4.1.11
       estree-walker: 3.0.3
       magic-string: 0.30.21
     optionalDependencies:
-      vite: 8.2.2(@types/node@26.4.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0)
+      vite: 8.2.2(@types/node@26.4.1)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0)
 
   '@vitest/pretty-format@4.1.11':
     dependencies:
@@ -4196,7 +4203,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  electron@44.1.0(supports-color@7.2.0):
+  electron@44.1.1(supports-color@7.2.0):
     dependencies:
       '@electron-internal/extract-zip': 1.0.5
       '@electron/get': 5.1.0(supports-color@7.2.0)
@@ -4215,7 +4222,7 @@ snapshots:
   engine.io@6.6.9(supports-color@7.2.0):
     dependencies:
       '@types/cors': 2.8.19
-      '@types/node': 26.4.0
+      '@types/node': 26.4.1
       '@types/ws': 8.18.1
       accepts: 1.3.8
       base64id: 2.0.0
@@ -4409,11 +4416,11 @@ snapshots:
       es6-error: 4.1.1
       matcher: 3.0.0
       roarr: 2.15.4
-      semver: 7.7.4
+      semver: 7.8.5
       serialize-error: 7.0.1
     optional: true
 
-  globals@17.11.0: {}
+  globals@17.12.0: {}
 
   globalthis@1.0.4:
     dependencies:
@@ -4497,7 +4504,7 @@ snapshots:
 
   husky@9.1.7: {}
 
-  i18next@26.4.0(typescript@7.0.2):
+  i18next@26.4.1(typescript@7.0.2):
     optionalDependencies:
       typescript: 7.0.2
 
@@ -4784,11 +4791,11 @@ snapshots:
 
   node-abi@4.35.0:
     dependencies:
-      semver: 7.7.4
+      semver: 7.8.5
 
   node-api-version@0.2.1:
     dependencies:
-      semver: 7.7.4
+      semver: 7.8.5
 
   node-gyp@12.4.0:
     dependencies:
@@ -4797,7 +4804,7 @@ snapshots:
       graceful-fs: 4.2.11
       nopt: 9.0.0
       proc-log: 6.1.0
-      semver: 7.7.4
+      semver: 7.8.5
       tar: 7.5.22
       tinyglobby: 0.2.17
       undici: 6.28.0
@@ -4952,11 +4959,11 @@ snapshots:
       react: 19.2.8
       scheduler: 0.27.0
 
-  react-i18next@17.0.12(i18next@26.4.0(typescript@7.0.2))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@7.0.2):
+  react-i18next@17.0.13(i18next@26.4.1(typescript@7.0.2))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@7.0.2):
     dependencies:
       '@babel/runtime': 7.29.7
       html-parse-stringify: 4.0.1
-      i18next: 26.4.0(typescript@7.0.2)
+      i18next: 26.4.1(typescript@7.0.2)
       react: 19.2.8
       use-sync-external-store: 1.6.0(react@19.2.8)
     optionalDependencies:
@@ -5335,12 +5342,12 @@ snapshots:
 
   vary@1.1.2: {}
 
-  vite-plugin-electron@1.1.2(vite@8.2.2(@types/node@26.4.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0)):
+  vite-plugin-electron@1.1.2(vite@8.2.2(@types/node@26.4.1)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0)):
     dependencies:
       local-pkg: 1.2.1
-      vite: 8.2.2(@types/node@26.4.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0)
+      vite: 8.2.2(@types/node@26.4.1)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0)
 
-  vite@8.2.2(@types/node@26.4.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0):
+  vite@8.2.2(@types/node@26.4.1)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0):
     dependencies:
       lightningcss: 1.33.0
       picomatch: 4.0.7
@@ -5348,16 +5355,16 @@ snapshots:
       rolldown: 1.2.6
       tinyglobby: 0.2.17
     optionalDependencies:
-      '@types/node': 26.4.0
+      '@types/node': 26.4.1
       esbuild: 0.28.2
       fsevents: 2.3.3
       jiti: 2.7.0
       yaml: 2.9.0
 
-  vitest@4.1.11(@types/node@26.4.0)(@vitest/coverage-v8@4.1.11)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.2.2(@types/node@26.4.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0)):
+  vitest@4.1.11(@types/node@26.4.1)(@vitest/coverage-v8@4.1.11)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.2.2(@types/node@26.4.1)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0)):
     dependencies:
       '@vitest/expect': 4.1.11
-      '@vitest/mocker': 4.1.11(vite@8.2.2(@types/node@26.4.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
+      '@vitest/mocker': 4.1.11(vite@8.2.2(@types/node@26.4.1)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
       '@vitest/pretty-format': 4.1.11
       '@vitest/runner': 4.1.11
       '@vitest/snapshot': 4.1.11
@@ -5374,10 +5381,10 @@ snapshots:
       tinyexec: 1.3.0
       tinyglobby: 0.2.17
       tinyrainbow: 3.1.1
-      vite: 8.2.2(@types/node@26.4.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0)
+      vite: 8.2.2(@types/node@26.4.1)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0)
       why-is-node-running: 2.3.0
     optionalDependencies:
-      '@types/node': 26.4.0
+      '@types/node': 26.4.1
       '@vitest/coverage-v8': 4.1.11(vitest@4.1.11)
       jsdom: 30.0.1(@noble/hashes@2.4.0)
     transitivePeerDependencies:
