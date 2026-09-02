@@ -36,12 +36,14 @@ const OP_MIC_OPEN: u8 = 11;
 const OP_MIC_STOP: u8 = 12;
 const OP_AUDIO_ACTIVE: u8 = 13;
 const OP_AUDIO_DATA: u8 = 14;
+const OP_VISUALIZER: u8 = 15;
 
 const REPLY_PORT: u8 = 1;
 const REPLY_CONFIG: u8 = 2;
 const REPLY_STARTED: u8 = 3;
 const REPLY_AUDIO_PORTS: u8 = 4;
 const REPLY_AUDIO_STARTED: u8 = 5;
+const REPLY_VISUALIZER: u8 = 6;
 
 fn is_cluster_plane(id: u32) -> bool {
     (CLUSTER_PLANE_MIN..=CLUSTER_PLANE_MAX).contains(&id)
@@ -55,6 +57,10 @@ pub trait Speaker: 'static {
     fn push_samples(&self, samples: &[u8]);
     /// Sets the level at once, or glides to it over `ms`.
     fn set_volume(&self, level: f64, ms: u64);
+    /// Turns the pre-fader tap on or off.
+    fn set_visualizer_enabled(&self, on: bool);
+    /// Drains the tapped mono samples with their rate.
+    fn take_visualizer(&self) -> Option<(Vec<u8>, u32)>;
 }
 
 /// What one audio stream is set up with.
@@ -246,6 +252,8 @@ pub struct Host<O: Outside> {
     receivers: HashMap<u32, Receiver<O::Ears>>,
     audio: HashMap<u32, AudioStream<O::Speaker, O::AudioEars>>,
     uplinks: HashMap<u32, O::Uplink>,
+    /// A window wants the pre-fader tap.
+    visualizer_enabled: bool,
     wire: Rc<dyn Wire>,
 }
 
@@ -258,6 +266,7 @@ impl<O: Outside> Host<O> {
             receivers: HashMap::new(),
             audio: HashMap::new(),
             uplinks: HashMap::new(),
+            visualizer_enabled: false,
             wire,
         }
     }
@@ -322,6 +331,7 @@ impl<O: Outside> Host<O> {
                     a.active.set(rest.first().is_some_and(|b| b & 1 != 0));
                 }
             }
+            OP_VISUALIZER => self.set_visualizer_enabled(rest.first().is_some_and(|b| b & 1 != 0)),
             _ => {}
         }
     }
@@ -497,6 +507,9 @@ impl<O: Outside> Host<O> {
             }
         };
 
+        if self.visualizer_enabled {
+            speaker.set_visualizer_enabled(true);
+        }
         self.audio.insert(id, AudioStream { speaker, active, _ears: ears });
         let mut ports = data_port.to_le_bytes().to_vec();
         ports.extend_from_slice(&control_port.to_le_bytes());
@@ -538,6 +551,29 @@ impl<O: Outside> Host<O> {
                 self.uplinks.insert(id, uplink);
             }
             None => eprintln!("livi: open microphone 0x{id:x} FAILED"),
+        }
+    }
+
+    /// Toggles the tap on every audio stream.
+    fn set_visualizer_enabled(&mut self, on: bool) {
+        self.visualizer_enabled = on;
+        for a in self.audio.values() {
+            a.speaker.set_visualizer_enabled(on);
+        }
+    }
+
+    /// Drains each stream up on the main loop, rate ahead of the samples. Empty
+    /// streams send nothing.
+    pub fn pump_visualizer(&self) {
+        if !self.visualizer_enabled {
+            return;
+        }
+        for (id, a) in &self.audio {
+            if let Some((samples, rate)) = a.speaker.take_visualizer() {
+                let mut payload = rate.to_le_bytes().to_vec();
+                payload.extend_from_slice(&samples);
+                self.wire.reply(REPLY_VISUALIZER, *id, &payload);
+            }
         }
     }
 
@@ -621,6 +657,8 @@ mod tests {
         pushed: Vec<Vec<u8>>,
         volume: Option<f64>,
         ramp_ms: Option<u64>,
+        visualizer_on: Option<bool>,
+        visualizer: Vec<u8>,
     }
 
     /// A pipeline that writes down what it was fed.
@@ -638,6 +676,14 @@ mod tests {
 
         fn ramp_ms(&self) -> Option<u64> {
             self.0.borrow().ramp_ms
+        }
+
+        fn visualizer_on(&self) -> Option<bool> {
+            self.0.borrow().visualizer_on
+        }
+
+        fn feed_visualizer(&self, samples: &[u8]) {
+            self.0.borrow_mut().visualizer.extend_from_slice(samples);
         }
     }
 
@@ -662,6 +708,19 @@ mod tests {
         fn set_volume(&self, level: f64, ms: u64) {
             self.0.borrow_mut().volume = Some(level);
             self.0.borrow_mut().ramp_ms = Some(ms);
+        }
+
+        fn set_visualizer_enabled(&self, on: bool) {
+            self.0.borrow_mut().visualizer_on = Some(on);
+        }
+
+        fn take_visualizer(&self) -> Option<(Vec<u8>, u32)> {
+            let s = core::mem::take(&mut self.0.borrow_mut().visualizer);
+            if s.is_empty() {
+                None
+            } else {
+                Some((s, 48000))
+            }
         }
     }
 
@@ -1460,6 +1519,64 @@ mod tests {
         v.extend_from_slice(phone.as_bytes());
         v.extend_from_slice(device.as_bytes());
         v
+    }
+
+    #[test]
+    fn enabling_the_visualizer_turns_the_tap_on_for_every_stream() {
+        let mut f = Fixture::new();
+        f.send(OP_AUDIO_OPEN, MUSIC, &audio_body(0, false, ""));
+        f.send(OP_AUDIO_OPEN, MUSIC + 1, &audio_body(0, false, ""));
+
+        f.send(OP_VISUALIZER, 0, &[1]);
+
+        assert_eq!(f.speaker(0).visualizer_on(), Some(true));
+        assert_eq!(f.speaker(1).visualizer_on(), Some(true));
+    }
+
+    #[test]
+    fn a_stream_opened_while_the_visualizer_is_on_taps_at_once() {
+        let mut f = Fixture::new();
+        f.send(OP_VISUALIZER, 0, &[1]);
+
+        f.send(OP_AUDIO_OPEN, MUSIC, &audio_body(0, false, ""));
+
+        assert_eq!(f.speaker(0).visualizer_on(), Some(true));
+    }
+
+    #[test]
+    fn pump_sends_each_stream_its_samples_with_rate_and_channels_while_on() {
+        let mut f = Fixture::new();
+        f.send(OP_AUDIO_OPEN, MUSIC, &audio_body(0, false, ""));
+        f.send(OP_VISUALIZER, 0, &[1]);
+        f.speaker(0).feed_visualizer(&[5, 6]);
+
+        f.host.pump_visualizer();
+
+        let mut want = 48000u32.to_le_bytes().to_vec();
+        want.extend_from_slice(&[5, 6]);
+        assert_eq!(f.replies().last(), Some(&(REPLY_VISUALIZER, MUSIC, want)));
+    }
+
+    #[test]
+    fn pump_stays_silent_while_the_visualizer_is_off() {
+        let mut f = Fixture::new();
+        f.send(OP_AUDIO_OPEN, MUSIC, &audio_body(0, false, ""));
+        f.speaker(0).feed_visualizer(&[1, 2]);
+
+        f.host.pump_visualizer();
+
+        assert!(f.replies().iter().all(|(op, _, _)| *op != REPLY_VISUALIZER));
+    }
+
+    #[test]
+    fn a_stream_with_no_samples_says_nothing_on_pump() {
+        let mut f = Fixture::new();
+        f.send(OP_AUDIO_OPEN, MUSIC, &audio_body(0, false, ""));
+        f.send(OP_VISUALIZER, 0, &[1]);
+
+        f.host.pump_visualizer();
+
+        assert!(f.replies().iter().all(|(op, _, _)| *op != REPLY_VISUALIZER));
     }
 
     const MIC: u32 = 0x7b00_0009;

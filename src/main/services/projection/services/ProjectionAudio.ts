@@ -1,5 +1,6 @@
 import { DEBUG } from '@main/constants'
-import { downsampleToMono, HostAudioOutput, Microphone } from '@main/services/audio'
+import { HostAudioOutput, Microphone } from '@main/services/audio'
+import { gstHost } from '@main/services/video/gstHost'
 import type { Config } from '@shared/types'
 import { AudioCommand } from '@shared/types/ProjectionEnums'
 import { AudioData } from '../messages'
@@ -115,7 +116,16 @@ export class ProjectionAudio {
       level: number,
       rampMs: number
     ) => void = () => {}
-  ) {}
+  ) {
+    // Forward the host's pre-fader mono tap to the renderer.
+    gstHost.onVisualizerAudio((samples, sampleRate) => {
+      if (this.visualizerWindows.size === 0 || samples.length === 0) return
+      this.sendChunked('projection-audio-chunk', samples.buffer as ArrayBuffer, 64 * 1024, {
+        sampleRate,
+        channels: 1
+      })
+    })
+  }
 
   /** The CarPlay audioType each logical stream travels on. */
   private static readonly AUDIO_TYPE: Record<LogicalStreamKey, number> = {
@@ -139,8 +149,11 @@ export class ProjectionAudio {
   }
 
   public setVisualizerEnabled(enabled: boolean, sourceId = -1) {
+    const had = this.visualizerWindows.size > 0
     if (enabled) this.visualizerWindows.add(sourceId)
     else this.visualizerWindows.delete(sourceId)
+    const wants = this.visualizerWindows.size > 0
+    if (wants !== had) gstHost.setVisualizerTap(wants)
   }
 
   // True while any window wants the FFT chunks
@@ -399,24 +412,6 @@ export class ProjectionAudio {
       }
 
       player.write(pcm)
-
-      // Mono only for FFT visualization (optional)
-      if (this.visualizerWindows.size > 0 && msg.data) {
-        const inSampleRate = meta.frequency ?? 48000
-        const inChannels = meta.channel ?? 2
-
-        const mono = downsampleToMono(msg.data, {
-          inSampleRate,
-          inChannels
-        })
-
-        if (mono.length > 0) {
-          this.sendChunked('projection-audio-chunk', mono.buffer as ArrayBuffer, 64 * 1024, {
-            sampleRate: inSampleRate,
-            channels: 1
-          })
-        }
-      }
 
       if (!this.audioInfoSent) {
         this.sendProjectionEvent({

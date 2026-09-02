@@ -53,6 +53,14 @@ impl Speaker for AudioPipelinePlayer {
     fn set_volume(&self, level: f64, ms: u64) {
         AudioPipelinePlayer::set_volume(self, level, ms)
     }
+
+    fn set_visualizer_enabled(&self, on: bool) {
+        AudioPipelinePlayer::set_visualizer_enabled(self, on)
+    }
+
+    fn take_visualizer(&self) -> Option<(Vec<u8>, u32)> {
+        AudioPipelinePlayer::take_visualizer(self)
+    }
 }
 
 pub struct Gst;

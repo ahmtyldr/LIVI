@@ -17,6 +17,8 @@ use crate::{Host, Wire};
 
 /// How often every receiver reports what it saw.
 const STATS_SECONDS: u32 = 5;
+/// How often the visualizer samples are drained to the main process.
+const VISUALIZER_INTERVAL_MS: u64 = 20;
 const CHUNK: usize = 65536;
 
 struct SocketWire(Rc<UnixStream>);
@@ -63,6 +65,12 @@ pub fn run(sock_path: &str, crash_log: &str) {
             glib::ControlFlow::Continue
         },
     );
+
+    let visualizer_host = host.clone();
+    glib::timeout_add_local(std::time::Duration::from_millis(VISUALIZER_INTERVAL_MS), move || {
+        visualizer_host.borrow().pump_visualizer();
+        glib::ControlFlow::Continue
+    });
 
     glib::timeout_add_seconds_local(STATS_SECONDS, move || {
         for line in host.borrow().take_stats() {

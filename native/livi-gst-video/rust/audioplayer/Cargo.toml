@@ -12,4 +12,5 @@ livi-audio-stream = { path = "../audio" }
 livi-audio-uplink = { path = "../mic" }
 gstreamer = { version = "0.24", features = ["v1_24"] }
 gstreamer-app = { version = "0.24", features = ["v1_24"] }
+gstreamer-audio = { version = "0.24", features = ["v1_24"] }
 gstreamer-controller = "0.24"

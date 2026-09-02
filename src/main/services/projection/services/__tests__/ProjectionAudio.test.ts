@@ -1,6 +1,17 @@
-import { downsampleToMono } from '@main/services/audio'
 import { ProjectionAudio } from '@main/services/projection/services/ProjectionAudio'
-import type { Mock } from 'vitest'
+
+const gstHostMock = vi.hoisted(() => {
+  let vizCb: ((s: Uint8Array, rate: number) => void) | null = null
+  return {
+    setVisualizerTap: vi.fn(),
+    onVisualizerAudio: (cb: (s: Uint8Array, rate: number) => void) => {
+      vizCb = cb
+    },
+    emitViz: (s: Uint8Array, rate = 48000) => vizCb?.(s, rate)
+  }
+})
+
+vi.mock('@main/services/video/gstHost', () => ({ gstHost: gstHostMock }))
 
 vi.mock('@main/services/audio', () => ({
   Microphone: vi.fn().mockImplementation(function () {
@@ -19,9 +30,6 @@ vi.mock('@main/services/audio', () => ({
       write: vi.fn(),
       setDevice: vi.fn()
     }
-  }),
-  downsampleToMono: vi.fn(function () {
-    return new Int16Array([1, 2, 3])
   })
 }))
 
@@ -685,32 +693,26 @@ describe('ProjectionAudio state controls', () => {
     expect(existingMic.start).toHaveBeenCalledWith(2)
   })
 
-  test('handleAudioData with pcm data and visualizerEnabled sends chunked audio', async () => {
+  test('host viz samples reach the renderer while a window wants them', async () => {
     const sendChunked = vi.fn()
-    const { ProjectionAudio } = await import('@main/services/projection/services/ProjectionAudio')
-    const a = new ProjectionAudio(
-      () => ({ mediaDelay: 120 }) as any,
-      vi.fn(),
-      sendChunked,
-      vi.fn()
-    ) as any
+    const a = new ProjectionAudio(() => ({}) as any, vi.fn(), sendChunked, vi.fn()) as any
 
-    const player = { write: vi.fn() }
-    a.getAudioOutputForStream = vi.fn(() => player)
-    a.getLogicalStreamKey = vi.fn(() => 'music')
-    a.mediaActive = true
+    gstHostMock.emitViz(new Uint8Array([1, 2]))
+    expect(sendChunked).not.toHaveBeenCalled()
+
     a.setVisualizerEnabled(true)
+    expect(gstHostMock.setVisualizerTap).toHaveBeenCalledWith(true)
+    gstHostMock.emitViz(new Uint8Array([1, 2, 3, 4]), 44100)
 
-    a.handleAudioData({ data: new Int16Array([1, 2, 3]), decodeType: 1 })
-
-    const [, buf] = sendChunked.mock.calls[0]
-    expect(Object.prototype.toString.call(buf)).toBe('[object ArrayBuffer]')
     expect(sendChunked).toHaveBeenCalledWith(
       'projection-audio-chunk',
       expect.anything(),
       64 * 1024,
-      expect.objectContaining({ channels: 1 })
+      { sampleRate: 44100, channels: 1 }
     )
+
+    a.setVisualizerEnabled(false)
+    expect(gstHostMock.setVisualizerTap).toHaveBeenLastCalledWith(false)
   })
 
   test('stopAllAudioPlayers is called during reset and stops all players ignoring errors', async () => {
@@ -1119,26 +1121,6 @@ describe('ProjectionAudio state controls', () => {
     a.getAudioOutputForStream = vi.fn(() => player)
     expect(() => a.handleAudioData({})).not.toThrow()
     expect(player.write).not.toHaveBeenCalled()
-  })
-
-  test('handleAudioData skips visualizer chunking when the downsampled buffer is empty', async () => {
-    ;(downsampleToMono as unknown as Mock).mockReturnValueOnce(new Int16Array(0))
-    const sendChunked = vi.fn()
-    const a = new ProjectionAudio(
-      () => ({ mediaDelay: 120 }) as any,
-      vi.fn(),
-      sendChunked,
-      vi.fn()
-    ) as any
-    const player = { write: vi.fn() }
-    a.getAudioOutputForStream = vi.fn(() => player)
-    a.getLogicalStreamKey = vi.fn(() => 'music')
-    a.mediaActive = true
-    a.setVisualizerEnabled(true)
-
-    a.handleAudioData({ data: new Int16Array([1, 2, 3]), sampleRate: 48000, channels: 2 })
-
-    expect(sendChunked).not.toHaveBeenCalled()
   })
 
   test('handleAudioData VoiceAssistantStart does not re-emit hint when already active', async () => {

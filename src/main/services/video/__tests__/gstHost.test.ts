@@ -680,6 +680,30 @@ describe('gstHost audio', () => {
     expect(body.length).toBe(51)
   })
 
+  test('setVisualizerTap toggles the tap and viz samples reach the listener with their rate', async () => {
+    const gstHost = await freshHost()
+    gstHost.closeAudio(0)
+    const sock = makeSocket()
+    connectionHandlers[0](sock)
+    sock.write.mockClear()
+
+    gstHost.setVisualizerTap(true)
+    const on = sock.write.mock.calls[0][0] as Buffer
+    expect(on.readUInt8(4)).toBe(15)
+    expect(on.subarray(9)).toEqual(Buffer.from([1]))
+
+    gstHost.setVisualizerTap(false)
+    expect((sock.write.mock.calls[1][0] as Buffer).subarray(9)).toEqual(Buffer.from([0]))
+
+    const seen: { samples: Uint8Array; rate: number }[] = []
+    gstHost.onVisualizerAudio((samples, rate) => seen.push({ samples, rate }))
+    const reply = Buffer.concat([Buffer.alloc(4), Buffer.from([9, 8, 7, 6])])
+    reply.writeUInt32LE(44100, 0)
+    sock.emit('data', reverse(6, 7, reply))
+
+    expect(seen).toEqual([{ samples: new Uint8Array([9, 8, 7, 6]), rate: 44100 }])
+  })
+
   test('the started report reaches its listener with the first sample', async () => {
     const gstHost = await freshHost()
     gstHost.closeAudio(0)

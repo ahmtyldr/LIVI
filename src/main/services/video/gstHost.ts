@@ -38,6 +38,7 @@ type ReverseEvents = {
   config: (id: number, codec: 'h264' | 'h265', atom: Buffer) => void
   started: (id: number) => void
   audioStarted: (id: number, firstSample: number) => void
+  visualizerAudio: (samples: Uint8Array, sampleRate: number) => void
 }
 
 /** How a CarPlay audio stream travels. */
@@ -215,6 +216,9 @@ class GstHost {
       }
     } else if (rop === 5) {
       this.events.emit('audioStarted', id, rest.length >= 4 ? rest.readUInt32LE(0) : 0)
+    } else if (rop === 6 && rest.length >= 4) {
+      // [rate u32 LE][mono s16 samples]. Copy off the shared socket buffer.
+      this.events.emit('visualizerAudio', new Uint8Array(rest.subarray(4)), rest.readUInt32LE(0))
     }
   }
 
@@ -281,6 +285,16 @@ class GstHost {
   /** Feeds samples into a stream the host does not receive itself. */
   pushAudio(streamId: number, samples: Buffer): void {
     this.send(frame(14, streamId, samples))
+  }
+
+  /** Toggles the pre-fader mono tap on every audio stream. */
+  setVisualizerTap(on: boolean): void {
+    this.send(frame(15, 0, Buffer.from([on ? 1 : 0])))
+  }
+
+  onVisualizerAudio(cb: ReverseEvents['visualizerAudio']): void {
+    this.events.removeAllListeners('visualizerAudio')
+    this.events.on('visualizerAudio', cb)
   }
 
   /** Sets the level at once, or over `rampMs` on the pipeline clock. */

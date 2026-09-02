@@ -1,5 +1,9 @@
 import { ProjectionAudio } from '@main/services/projection/services/ProjectionAudio'
 
+vi.mock('@main/services/video/gstHost', () => ({
+  gstHost: { setVisualizerTap: vi.fn(), onVisualizerAudio: vi.fn() }
+}))
+
 vi.mock('@main/services/audio', () => ({
   Microphone: vi.fn().mockImplementation(function () {
     return {
@@ -17,9 +21,6 @@ vi.mock('@main/services/audio', () => ({
       write: vi.fn(),
       setDevice: vi.fn()
     }
-  }),
-  downsampleToMono: vi.fn(function () {
-    return new Int16Array([1, 2, 3])
   })
 }))
 
