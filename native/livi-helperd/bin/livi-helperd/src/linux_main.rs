@@ -11,7 +11,7 @@ use livi_runtime::bt;
 use livi_runtime::driver::spawn_link;
 use livi_runtime::ident::{Identity, Transport};
 use livi_runtime::livi_sock::{self, pump_artwork, pump_events_for, Broadcaster, LiviSockConfig, SharedTag};
-use livi_runtime::mfi_async::SharedCoprocessor;
+use livi_runtime::mfi_async::{NoAuth, SharedCoprocessor};
 use livi_runtime::reconnect;
 use livi_runtime::state::HelperState;
 
@@ -119,9 +119,16 @@ async fn serve() -> Result<(), Box<dyn std::error::Error>> {
     let pi = std::env::var("LIVI_CP_PI").unwrap_or_default();
 
     println!("[helperd] opening MFi bus={bus_num} gpio={gpio}");
-    let chip = I2cCoprocessor::open(bus_num, gpio)?;
-    println!("[helperd] MFi addr=0x{:02X}", chip.address());
-    let auth = SharedCoprocessor::new(chip);
+    let auth = match I2cCoprocessor::open(bus_num, gpio) {
+        Ok(chip) => {
+            println!("[helperd] MFi addr=0x{:02X}", chip.address());
+            Some(SharedCoprocessor::new(chip))
+        }
+        Err(e) => {
+            eprintln!("[helperd] MFi coprocessor unavailable ({e}); CarPlay off, Android Auto only");
+            None
+        }
+    };
 
     let bcast = Broadcaster::default();
     let aa_events = Broadcaster::default();
@@ -143,15 +150,26 @@ async fn serve() -> Result<(), Box<dyn std::error::Error>> {
         cp: cp.clone(),
     };
     {
-        let auth = auth.clone();
         let bus = conn.clone();
         let bcast = bcast.clone();
         let state = state.clone();
-        tokio::spawn(async move {
-            if let Err(e) = livi_sock::serve(sock_cfg, auth, bus, bcast, state).await {
-                eprintln!("[helperd] livi_sock ended: {e}");
+        // Also serves subscribe/reconnect/disconnect, so it runs without MFi.
+        match auth.clone() {
+            Some(auth) => {
+                tokio::spawn(async move {
+                    if let Err(e) = livi_sock::serve(sock_cfg, auth, bus, bcast, state).await {
+                        eprintln!("[helperd] livi_sock ended: {e}");
+                    }
+                });
             }
-        });
+            None => {
+                tokio::spawn(async move {
+                    if let Err(e) = livi_sock::serve(sock_cfg, NoAuth, bus, bcast, state).await {
+                        eprintln!("[helperd] livi_sock ended: {e}");
+                    }
+                });
+            }
+        }
     }
 
     tokio::spawn(reconnect::run(conn.clone(), adapter.clone(), state.clone()));
@@ -215,21 +233,22 @@ async fn serve() -> Result<(), Box<dyn std::error::Error>> {
         });
     }
 
-    if std::env::var("LIVI_CP_WIRED").unwrap_or_else(|_| "1".into()) != "0" {
-        let wired_cp = CpConfig {
-            transport: Transport::Wired,
-            av_iface: std::env::var("LIVI_CP_AV_IFACE").ok(),
-            ..cp.clone()
-        };
-        tokio::spawn(crate::wired::watch(
-            auth.clone(),
-            identity.clone(),
-            wired_cp,
-            bcast.clone(),
-            state.clone(),
-        ));
-        println!("[helperd] wired CarPlay watcher started");
-    }
+    if let Some(auth) = auth.clone()
+        && std::env::var("LIVI_CP_WIRED").unwrap_or_else(|_| "1".into()) != "0" {
+            let wired_cp = CpConfig {
+                transport: Transport::Wired,
+                av_iface: std::env::var("LIVI_CP_AV_IFACE").ok(),
+                ..cp.clone()
+            };
+            tokio::spawn(crate::wired::watch(
+                auth,
+                identity.clone(),
+                wired_cp,
+                bcast.clone(),
+                state.clone(),
+            ));
+            println!("[helperd] wired CarPlay watcher started");
+        }
 
     let wlan_mac = livi_runtime::net::wlan_mac(&wifi_iface).unwrap_or_else(|| format_mac(&bt_mac));
     let _bonjour = match Bonjour::start(wlan_mac, cp.airplay_port as u16, cp.source_version.clone(), pk, pi, bcast.clone()) {
@@ -250,11 +269,15 @@ async fn serve() -> Result<(), Box<dyn std::error::Error>> {
             }
             conn = incoming.recv() => {
                 let Some(conn) = conn else { return Ok(()) };
+                let Some(auth) = auth.clone() else {
+                    println!("[helperd] BT phone connected but MFi off; CarPlay link ignored");
+                    continue;
+                };
                 println!("[helperd] phone connected mac={}", conn.peer_mac);
                 let cfg = LinkConfig { max_outgoing: 4, control_version: 2, ..LinkConfig::default() };
                 let (channel, art_rx) = spawn_link(conn.fd, cfg, false);
                 let (tx, rx) = tokio::sync::mpsc::channel(64);
-                tokio::spawn(run_accessory(channel, auth.clone(), identity.clone(), cp.clone(), tx));
+                tokio::spawn(run_accessory(channel, auth, identity.clone(), cp.clone(), tx));
                 let ident: SharedTag = Default::default();
                 tokio::spawn(pump_events_for(rx, bcast.clone(), "bt", None, ident.clone()));
                 tokio::spawn(pump_artwork(art_rx, bcast.clone(), ident));
