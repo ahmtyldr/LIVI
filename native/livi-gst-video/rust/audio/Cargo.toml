@@ -11,5 +11,5 @@ crate-type = ["rlib"]
 livi-crypto-node = { path = "../../../livi-crypto/rust", default-features = false }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-glib = "0.21"
 socket2 = "0.6"
+libc = "0.2"

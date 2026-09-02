@@ -2,9 +2,11 @@
 //! to, keeps the planes that process asks for, and feeds them from the CarPlay
 //! screen receivers. The pipelines themselves live in the player crate.
 
-use std::cell::{Cell, RefCell};
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
 use livi_audio_stream::{AudioSink, Codec as AudioCodec};
 use livi_audio_uplink::UplinkCodec;
@@ -50,7 +52,7 @@ fn is_cluster_plane(id: u32) -> bool {
 }
 
 /// One audio stream from its RTP packets to the sink.
-pub trait Speaker: 'static {
+pub trait Speaker: Send + Sync + 'static {
     fn push_rtp(&self, rtp: &[u8]);
     /// Samples the main process handed over, for the drivers that decode
     /// themselves.
@@ -126,12 +128,12 @@ pub trait Outside: 'static {
     fn listen_audio(
         &self,
         key: [u8; 32],
-        sink: Box<dyn AudioSink>,
+        sink: Box<dyn AudioSink + Send>,
     ) -> Option<(Self::AudioEars, u16, u16)>;
 }
 
 /// Where replies go: the socket in the process, a collector in tests.
-pub trait Wire {
+pub trait Wire: Send + Sync {
     fn reply(&self, op: u8, id: u32, rest: &[u8]);
 }
 
@@ -173,7 +175,7 @@ impl ReceiverState {
 struct Feed<O: Outside> {
     state: Rc<RefCell<ReceiverState>>,
     planes: Planes<O::Plane>,
-    wire: Rc<dyn Wire>,
+    wire: Arc<dyn Wire>,
 }
 
 impl<O: Outside> ScreenSink for Feed<O> {
@@ -216,12 +218,12 @@ struct Receiver<E> {
 
 /// Carries what an audio receiver reads into its pipeline.
 struct AudioFeed<O: Outside> {
-    speaker: Rc<O::Speaker>,
-    wire: Rc<dyn Wire>,
+    speaker: Arc<O::Speaker>,
+    wire: Arc<dyn Wire>,
     id: u32,
     /// One phone at a time reaches the sink. A held session keeps its ports and
     /// its pipeline, but its packets stop here.
-    active: Rc<Cell<bool>>,
+    active: Arc<AtomicBool>,
 }
 
 impl<O: Outside> AudioSink for AudioFeed<O> {
@@ -230,15 +232,15 @@ impl<O: Outside> AudioSink for AudioFeed<O> {
     }
 
     fn on_rtp(&mut self, rtp: &[u8], _sample: u32) {
-        if self.active.get() {
+        if self.active.load(Ordering::Relaxed) {
             self.speaker.push_rtp(rtp);
         }
     }
 }
 
 struct AudioStream<S, E> {
-    speaker: Rc<S>,
-    active: Rc<Cell<bool>>,
+    speaker: Arc<S>,
+    active: Arc<AtomicBool>,
     /// Absent while the main process feeds the stream itself.
     _ears: Option<E>,
 }
@@ -254,11 +256,11 @@ pub struct Host<O: Outside> {
     uplinks: HashMap<u32, O::Uplink>,
     /// A window wants the pre-fader tap.
     visualizer_enabled: bool,
-    wire: Rc<dyn Wire>,
+    wire: Arc<dyn Wire>,
 }
 
 impl<O: Outside> Host<O> {
-    pub fn new(outside: O, wire: Rc<dyn Wire>) -> Self {
+    pub fn new(outside: O, wire: Arc<dyn Wire>) -> Self {
         Self {
             outside,
             framer: Framer::new(),
@@ -321,14 +323,14 @@ impl<O: Outside> Host<O> {
             }
             OP_AUDIO_DATA => {
                 if let Some(a) = self.audio.get(&id)
-                    && a.active.get()
+                    && a.active.load(Ordering::Relaxed)
                 {
                     a.speaker.push_samples(rest);
                 }
             }
             OP_AUDIO_ACTIVE => {
                 if let Some(a) = self.audio.get(&id) {
-                    a.active.set(rest.first().is_some_and(|b| b & 1 != 0));
+                    a.active.store(rest.first().is_some_and(|b| b & 1 != 0), Ordering::Relaxed);
                 }
             }
             OP_VISUALIZER => self.set_visualizer_enabled(rest.first().is_some_and(|b| b & 1 != 0)),
@@ -487,11 +489,11 @@ impl<O: Outside> Host<O> {
             eprintln!("livi: create audio 0x{id:x} FAILED");
             return;
         };
-        let speaker = Rc::new(speaker);
+        let speaker = Arc::new(speaker);
 
         // bit1 says the main process feeds this stream, so no ports are bound
         let fed = rest[11] & 2 != 0;
-        let active = Rc::new(Cell::new(false));
+        let active = Arc::new(AtomicBool::new(false));
         let feed = AudioFeed::<O> {
             speaker: speaker.clone(),
             wire: self.wire.clone(),
@@ -650,7 +652,7 @@ mod tests {
     }
 
     type SharedSink = Rc<RefCell<Box<dyn ScreenSink>>>;
-    type SharedAudioSink = Rc<RefCell<Box<dyn AudioSink>>>;
+    type SharedAudioSink = Rc<RefCell<Box<dyn AudioSink + Send>>>;
 
     #[derive(Default)]
     struct SpeakerLog {
@@ -663,27 +665,27 @@ mod tests {
 
     /// A pipeline that writes down what it was fed.
     #[derive(Default, Clone)]
-    struct FakeSpeaker(Rc<RefCell<SpeakerLog>>);
+    struct FakeSpeaker(Arc<std::sync::Mutex<SpeakerLog>>);
 
     impl FakeSpeaker {
         fn pushed(&self) -> Vec<Vec<u8>> {
-            self.0.borrow().pushed.clone()
+            self.0.lock().unwrap().pushed.clone()
         }
 
         fn volume(&self) -> Option<f64> {
-            self.0.borrow().volume
+            self.0.lock().unwrap().volume
         }
 
         fn ramp_ms(&self) -> Option<u64> {
-            self.0.borrow().ramp_ms
+            self.0.lock().unwrap().ramp_ms
         }
 
         fn visualizer_on(&self) -> Option<bool> {
-            self.0.borrow().visualizer_on
+            self.0.lock().unwrap().visualizer_on
         }
 
         fn feed_visualizer(&self, samples: &[u8]) {
-            self.0.borrow_mut().visualizer.extend_from_slice(samples);
+            self.0.lock().unwrap().visualizer.extend_from_slice(samples);
         }
     }
 
@@ -698,24 +700,25 @@ mod tests {
 
     impl Speaker for FakeSpeaker {
         fn push_rtp(&self, rtp: &[u8]) {
-            self.0.borrow_mut().pushed.push(rtp.to_vec());
+            self.0.lock().unwrap().pushed.push(rtp.to_vec());
         }
 
         fn push_samples(&self, samples: &[u8]) {
-            self.0.borrow_mut().pushed.push(samples.to_vec());
+            self.0.lock().unwrap().pushed.push(samples.to_vec());
         }
 
         fn set_volume(&self, level: f64, ms: u64) {
-            self.0.borrow_mut().volume = Some(level);
-            self.0.borrow_mut().ramp_ms = Some(ms);
+            let mut w = self.0.lock().unwrap();
+            w.volume = Some(level);
+            w.ramp_ms = Some(ms);
         }
 
         fn set_visualizer_enabled(&self, on: bool) {
-            self.0.borrow_mut().visualizer_on = Some(on);
+            self.0.lock().unwrap().visualizer_on = Some(on);
         }
 
         fn take_visualizer(&self) -> Option<(Vec<u8>, u32)> {
-            let s = core::mem::take(&mut self.0.borrow_mut().visualizer);
+            let s = core::mem::take(&mut self.0.lock().unwrap().visualizer);
             if s.is_empty() {
                 None
             } else {
@@ -818,7 +821,7 @@ mod tests {
         fn listen_audio(
             &self,
             key: [u8; 32],
-            sink: Box<dyn AudioSink>,
+            sink: Box<dyn AudioSink + Send>,
         ) -> Option<(SharedAudioSink, u16, u16)> {
             if self.0.borrow().audio_deaf {
                 return None;
@@ -841,11 +844,11 @@ mod tests {
 
     /// Collects the replies that would go down the socket.
     #[derive(Default, Clone)]
-    struct Sent(Rc<RefCell<Vec<Reply>>>);
+    struct Sent(Arc<std::sync::Mutex<Vec<Reply>>>);
 
     impl Wire for Sent {
         fn reply(&self, op: u8, id: u32, rest: &[u8]) {
-            self.0.borrow_mut().push((op, id, rest.to_vec()));
+            self.0.lock().unwrap().push((op, id, rest.to_vec()));
         }
     }
 
@@ -898,7 +901,7 @@ mod tests {
             world.0.borrow_mut().port = 5555;
             world.0.borrow_mut().audio_ports = (6000, 6001);
             let sent = Sent::default();
-            let host = Host::new(world.clone(), Rc::new(sent.clone()));
+            let host = Host::new(world.clone(), Arc::new(sent.clone()));
             Self { host, world, sent }
         }
 
@@ -931,7 +934,7 @@ mod tests {
         }
 
         fn replies(&self) -> Vec<Reply> {
-            self.sent.0.borrow().clone()
+            self.sent.0.lock().unwrap().clone()
         }
 
         /// Opens a receiver on `recv_id` for `plane_id` and makes it the feeder.

@@ -89,17 +89,21 @@ TOUCH_FILTER="$(livi_fetch_template "$APPIMAGE_PATH" "$LIVI_TOUCH_FILTER_TEMPLAT
   exit 1
 }
 
+# --- shared ---
 livi_install_touch_filter "$TOUCH_FILTER"
 livi_write_udev_rule "$UDEV_TEMPLATE"
 livi_write_sudoers "$SUDOERS_TEMPLATE"
-livi_install_video_mode_helper
 livi_install_time_helper
-livi_install_power_helper
 livi_disable_wifi_powersave
 livi_set_wifi_pmf_optional
+livi_grant_rtprio
 livi_apply_mfi
 livi_apply_splash
 livi_apply_hdmi_pr "$APPIMAGE_PATH"
+
+# --- headless only ---
+livi_install_video_mode_helper
+livi_install_power_helper
 
 echo "→ Enabling seatd"
 sudo systemctl enable --now seatd

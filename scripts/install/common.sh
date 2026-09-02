@@ -22,6 +22,7 @@ LIVI_MFI_OVERLAY="dtoverlay=i2c-gpio,bus=${LIVI_MFI_I2C_BUS},i2c_gpio_sda=19,i2c
 LIVI_MODULES_LOAD="${LIVI_MODULES_LOAD:-/etc/modules-load.d/livi-i2c.conf}"
 LIVI_NM_POWERSAVE_FILE="/etc/NetworkManager/conf.d/99-LIVI-wifi-powersave.conf"
 LIVI_NM_PMF_FILE="/etc/NetworkManager/conf.d/99-LIVI-wifi-pmf.conf"
+LIVI_RTPRIO_FILE="/etc/security/limits.d/99-livi-rtprio.conf"
 
 # Pixel repetition for RGB/VGA panels below HDMI's clock floor
 LIVI_HDMI_PR_SCRIPT="setup-hdmi-pr-display.sh"
@@ -400,6 +401,14 @@ livi_apply_hdmi_pr() {
 
 # The radio's power saving drops an idle link after a few minutes, which takes the
 # host off the network. Applies from the next boot, so no running session is cut.
+# Grants real-time scheduling to the CarPlay audio receive thread. Kiosk and
+# desktop sessions run through PAM, so pam_limits applies this on login.
+livi_grant_rtprio() {
+  echo "→ Writing $LIVI_RTPRIO_FILE"
+  sudo mkdir -p "$(dirname "$LIVI_RTPRIO_FILE")"
+  printf '%s - rtprio 30\n' "$USER" | sudo tee "$LIVI_RTPRIO_FILE" >/dev/null
+}
+
 livi_disable_wifi_powersave() {
   echo "→ Writing $LIVI_NM_POWERSAVE_FILE"
   sudo mkdir -p "$(dirname "$LIVI_NM_POWERSAVE_FILE")"

@@ -23,11 +23,11 @@ pub trait AudioSink {
 pub struct AudioStream {
     key: [u8; 32],
     started: bool,
-    sink: Box<dyn AudioSink>,
+    sink: Box<dyn AudioSink + Send>,
 }
 
 impl AudioStream {
-    pub fn new(key: [u8; 32], sink: Box<dyn AudioSink>) -> Self {
+    pub fn new(key: [u8; 32], sink: Box<dyn AudioSink + Send>) -> Self {
         Self { key, started: false, sink }
     }
 
@@ -158,8 +158,7 @@ pub fn reframe_aac(rtp: &[u8], payload_type: u8) -> Vec<u8> {
 mod tests {
     use super::*;
     use livi_crypto_node::seal_impl;
-    use std::cell::RefCell;
-    use std::rc::Rc;
+    use std::sync::{Arc, Mutex};
 
     const KEY: [u8; 32] = [9u8; 32];
 
@@ -172,17 +171,18 @@ mod tests {
     /// A sink and the reader of what it collected. The stream takes one
     /// handle, the test keeps another.
     #[derive(Default, Clone)]
-    struct Seen(Rc<RefCell<Reports>>);
+    struct Seen(Arc<Mutex<Reports>>);
 
     impl Seen {
         fn started(&self) -> Vec<u32> {
-            self.0.borrow().started.clone()
+            self.0.lock().unwrap().started.clone()
         }
 
         /// The payloads, without the 12-byte header the sink also gets.
         fn payloads(&self) -> Vec<(Vec<u8>, u32)> {
             self.0
-                .borrow()
+                .lock()
+                .unwrap()
                 .rtp
                 .iter()
                 .map(|(p, s)| (p[RTP_HEADER_LEN..].to_vec(), *s))
@@ -192,11 +192,11 @@ mod tests {
 
     impl AudioSink for Seen {
         fn on_started(&mut self, first_sample: u32) {
-            self.0.borrow_mut().started.push(first_sample);
+            self.0.lock().unwrap().started.push(first_sample);
         }
 
         fn on_rtp(&mut self, rtp: &[u8], sample: u32) {
-            self.0.borrow_mut().rtp.push((rtp.to_vec(), sample));
+            self.0.lock().unwrap().rtp.push((rtp.to_vec(), sample));
         }
     }
 
@@ -354,21 +354,24 @@ mod wire {
 #[cfg(target_os = "linux")]
 pub mod receiver {
     use super::AudioStream;
-    use glib::IOCondition;
     use socket2::{Domain, Protocol, Socket, Type};
-    use std::cell::RefCell;
     use std::net::UdpSocket;
-    use std::os::fd::AsRawFd;
-    use std::rc::Rc;
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::Arc;
+    use std::thread::JoinHandle;
+    use std::time::Duration;
 
     const DATAGRAM: usize = 4096;
+    /// A receive blocks at most this long, so the thread notices shutdown.
+    const POLL: Duration = Duration::from_millis(200);
 
     /// The two UDP ports one audio stream is set up with. The phone sends RTP to
-    /// the data port and RTCP to the control port, which is bound and drained.
+    /// the data port and RTCP to the control port. Each is read on its own
+    /// thread, so a packet reaches the appsrc without waiting behind the main
+    /// loop.
     pub struct AudioReceiver {
-        _data: Rc<UdpSocket>,
-        _control: Rc<UdpSocket>,
-        sources: Vec<glib::SourceId>,
+        stop: Arc<AtomicBool>,
+        threads: Vec<JoinHandle<()>>,
     }
 
     fn bind_any_port() -> std::io::Result<UdpSocket> {
@@ -376,54 +379,67 @@ pub mod receiver {
         // dual stack: the phone may reach us over either family
         socket.set_only_v6(false)?;
         socket.bind(&"[::]:0".parse::<std::net::SocketAddr>().unwrap().into())?;
-        socket.set_nonblocking(true)?;
-        Ok(socket.into())
+        let sock: UdpSocket = socket.into();
+        sock.set_read_timeout(Some(POLL))?;
+        Ok(sock)
     }
 
     impl AudioReceiver {
         /// Binds both ports and answers with them for the SETUP reply.
-        pub fn new(
-            stream: AudioStream,
-        ) -> std::io::Result<(Self, u16, u16)> {
-            let data = Rc::new(bind_any_port()?);
-            let control = Rc::new(bind_any_port()?);
+        pub fn new(stream: AudioStream) -> std::io::Result<(Self, u16, u16)> {
+            let data = bind_any_port()?;
+            let control = bind_any_port()?;
             let data_port = data.local_addr()?.port();
             let control_port = control.local_addr()?.port();
 
-            let mut r = Self { _data: data.clone(), _control: control.clone(), sources: Vec::new() };
-            r.watch_data(data, Rc::new(RefCell::new(stream)));
-            r.watch_control(control);
-            Ok((r, data_port, control_port))
-        }
+            let stop = Arc::new(AtomicBool::new(false));
+            let mut threads = Vec::new();
 
-        fn watch_data(&mut self, sock: Rc<UdpSocket>, stream: Rc<RefCell<AudioStream>>) {
-            let fd = sock.as_raw_fd();
-            let id = glib::unix_fd_add_local(fd, IOCondition::IN, move |_, _| {
-                let mut buf = [0u8; DATAGRAM];
-                while let Ok(n) = sock.recv(&mut buf) {
-                    stream.borrow_mut().push(&buf[..n]);
-                }
-                glib::ControlFlow::Continue
-            });
-            self.sources.push(id);
-        }
+            let data_stop = stop.clone();
+            threads.push(
+                std::thread::Builder::new().name("cp-audio-rx".into()).spawn(move || {
+                    set_realtime();
+                    let mut stream = stream;
+                    let mut buf = [0u8; DATAGRAM];
+                    while !data_stop.load(Ordering::Relaxed) {
+                        if let Ok(n) = data.recv(&mut buf) {
+                            stream.push(&buf[..n]);
+                        }
+                    }
+                })?,
+            );
 
-        fn watch_control(&mut self, sock: Rc<UdpSocket>) {
-            let fd = sock.as_raw_fd();
-            let id = glib::unix_fd_add_local(fd, IOCondition::IN, move |_, _| {
-                let mut buf = [0u8; DATAGRAM];
-                while sock.recv(&mut buf).is_ok() {}
-                glib::ControlFlow::Continue
-            });
-            self.sources.push(id);
+            let control_stop = stop.clone();
+            threads.push(
+                std::thread::Builder::new().name("cp-audio-rtcp".into()).spawn(move || {
+                    let mut buf = [0u8; DATAGRAM];
+                    while !control_stop.load(Ordering::Relaxed) {
+                        let _ = control.recv(&mut buf);
+                    }
+                })?,
+            );
+
+            Ok((Self { stop, threads }, data_port, control_port))
         }
     }
 
     impl Drop for AudioReceiver {
         fn drop(&mut self) {
-            for id in self.sources.drain(..) {
-                id.remove();
+            self.stop.store(true, Ordering::Relaxed);
+            for t in self.threads.drain(..) {
+                let _ = t.join();
             }
+        }
+    }
+
+    /// Best-effort real-time scheduling so foreign processes cannot preempt the
+    /// receive. Needs an rtprio limit or CAP_SYS_NICE; warns and stays at normal
+    /// priority otherwise.
+    fn set_realtime() {
+        let param = libc::sched_param { sched_priority: 20 };
+        let rc = unsafe { libc::pthread_setschedparam(libc::pthread_self(), libc::SCHED_FIFO, &param) };
+        if rc != 0 {
+            eprintln!("[cp_audio_rx] real-time priority denied (rc={rc}); normal priority");
         }
     }
 }

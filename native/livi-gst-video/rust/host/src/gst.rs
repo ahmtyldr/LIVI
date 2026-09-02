@@ -130,7 +130,7 @@ impl Outside for Gst {
     fn listen_audio(
         &self,
         key: [u8; 32],
-        sink: Box<dyn AudioSink>,
+        sink: Box<dyn AudioSink + Send>,
     ) -> Option<(AudioEars, u16, u16)> {
         let stream = livi_audio_stream::AudioStream::new(key, sink);
         match livi_audio_stream::receiver::AudioReceiver::new(stream) {
@@ -146,7 +146,7 @@ impl Outside for Gst {
     fn listen_audio(
         &self,
         _key: [u8; 32],
-        _sink: Box<dyn AudioSink>,
+        _sink: Box<dyn AudioSink + Send>,
     ) -> Option<(AudioEars, u16, u16)> {
         None
     }

@@ -9,6 +9,7 @@ use std::os::fd::AsRawFd;
 use std::os::unix::net::UnixStream;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicPtr, Ordering};
+use std::sync::{Arc, Mutex};
 
 use glib::IOCondition;
 
@@ -21,11 +22,17 @@ const STATS_SECONDS: u32 = 5;
 const VISUALIZER_INTERVAL_MS: u64 = 20;
 const CHUNK: usize = 65536;
 
-struct SocketWire(Rc<UnixStream>);
+/// The audio receive threads reply through the same socket, so writes take the
+/// lock to keep the framed messages from interleaving.
+struct SocketWire {
+    sock: Arc<UnixStream>,
+    write: Mutex<()>,
+}
 
 impl Wire for SocketWire {
     fn reply(&self, op: u8, id: u32, rest: &[u8]) {
-        let mut sock: &UnixStream = &self.0;
+        let _guard = self.write.lock().unwrap_or_else(|e| e.into_inner());
+        let mut sock: &UnixStream = &self.sock;
         let _ = sock.write_all(&livi_host_proto::encode_reply(op, id, rest));
     }
 }
@@ -42,8 +49,8 @@ pub fn run(sock_path: &str, crash_log: &str) {
         eprintln!("[gst-host] connect to {sock_path} failed");
         std::process::exit(1);
     };
-    let sock = Rc::new(sock);
-    let wire = Rc::new(SocketWire(sock.clone()));
+    let sock = Arc::new(sock);
+    let wire = Arc::new(SocketWire { sock: sock.clone(), write: Mutex::new(()) });
     let host = Rc::new(RefCell::new(Host::new(Gst, wire)));
 
     let fd = sock.as_raw_fd();

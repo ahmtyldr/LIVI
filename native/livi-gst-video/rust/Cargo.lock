@@ -567,7 +567,7 @@ dependencies = [
 name = "livi-audio-stream"
 version = "0.1.0"
 dependencies = [
- "glib",
+ "libc",
  "livi-crypto-node",
  "socket2",
 ]
