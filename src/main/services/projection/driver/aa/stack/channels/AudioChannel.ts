@@ -1,5 +1,5 @@
 /**
- * Audio channel handler (GAL types: MEDIA_AUDIO=4, SPEECH_AUDIO=5, PHONE_AUDIO=6).
+ * Audio channel handler (GAL types: MEDIA_AUDIO=4, SPEECH_AUDIO=5, SYSTEM_AUDIO=6).
  *
  * Receives PCM or AAC-LC frames from the phone and emits them as 'pcm' events.
  * Sends AVMediaAck for flow control (same as VideoChannel).
@@ -20,12 +20,12 @@ import { decodeStart, fieldVarint } from './protoEnc.js'
 
 type SendFn = (channelId: number, flags: number, msgId: number, data: Buffer) => void
 
-export type AudioChannelType = 'media' | 'speech' | 'phone'
+export type AudioChannelType = 'media' | 'speech' | 'system'
 
 const CHANNEL_NAMES: Record<number, AudioChannelType> = {
   4: 'media',
   5: 'speech',
-  6: 'phone'
+  6: 'system'
 }
 
 export class AudioChannel extends EventEmitter {

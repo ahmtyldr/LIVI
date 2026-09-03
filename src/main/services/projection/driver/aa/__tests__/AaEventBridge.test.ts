@@ -11,7 +11,7 @@ import {
   Unplugged,
   VideoData
 } from '@projection/messages'
-import { CommandMapping } from '@shared/types/ProjectionEnums'
+import { AudioCommand, CommandMapping } from '@shared/types/ProjectionEnums'
 import type { Mock } from 'vitest'
 import { AaEventBridge, type AaEventBridgeDeps } from '../AaEventBridge'
 import type { AAStack, AAStackConfig } from '../stack/index'
@@ -311,7 +311,8 @@ describe('AaEventBridge', () => {
         noteVideoStarted: vi.fn(),
         audioOutputs: () => [],
         onAudioOutput: () => () => {},
-        primeAudio
+        primeAudio,
+        setHostVolume: vi.fn()
       }
       const { aa } = makeBridge({ mediaSink })
       aa.emit('audio-setup', 'media', 48000, 2)
@@ -321,8 +322,38 @@ describe('AaEventBridge', () => {
       aa.emit('audio-setup', 'media', 48000, 2)
       aa.emit('audio-setup', 'speech', 16000, 1)
       expect(primeAudio.mock.calls).toEqual([
-        [3, 48000, 2],
-        [1, 16000, 1]
+        [3, 48000, 2, 'media'],
+        [4, 16000, 1, 'speech']
+      ])
+    })
+
+    test('a host stream is routed only to the channel it was tagged with', async () => {
+      const sendMediaSink = vi.fn()
+      let announce: ((audioType: number, streamId: number, tag?: string) => void) | undefined
+      const mediaSink = {
+        feedPath: async () => '/tmp/feed',
+        videoPlaneId: () => 1,
+        primeVideo: vi.fn(),
+        noteVideoStarted: vi.fn(),
+        audioOutputs: () => [],
+        onAudioOutput: (cb: (audioType: number, streamId: number, tag?: string) => void) => {
+          announce = cb
+          return () => {}
+        },
+        primeAudio: vi.fn(),
+        setHostVolume: vi.fn()
+      }
+      const { aa } = makeBridge({ mediaSink })
+      Object.assign(aa, { helperBacked: true, sendMediaSink })
+
+      announce?.(4, 11, 'speech')
+      announce?.(4, 12, 'system')
+      announce?.(4, 13, undefined)
+      await new Promise((r) => setImmediate(r))
+
+      expect(sendMediaSink.mock.calls.map((c) => c[0].audio)).toEqual([
+        [{ ch: 5, id: 11 }],
+        [{ ch: 6, id: 12 }]
       ])
     })
 
@@ -596,11 +627,12 @@ describe('AaEventBridge', () => {
     })
   })
 
-  test('audio lifecycle command for "phone" channel emits AudioOutput* commands', () => {
+  test('audio lifecycle command for "system" channel emits AudioNavi* commands, like CarPlay alerts', () => {
     const { aa, emitMessage } = makeBridge()
-    aa.emit('audio-start', 'phone', 0)
-    aa.emit('audio-stop', 'phone', 0)
-    expect(messagesOf(emitMessage, AudioData).length).toBeGreaterThanOrEqual(2)
+    aa.emit('audio-start', 'system', 0)
+    aa.emit('audio-stop', 'system', 0)
+    const cmds = messagesOf(emitMessage, AudioData).map((m) => m.command)
+    expect(cmds).toEqual([AudioCommand.AudioNaviStart, AudioCommand.AudioNaviStop])
   })
 
   test('audio lifecycle command for "speech" channel emits AudioNavi* commands', () => {

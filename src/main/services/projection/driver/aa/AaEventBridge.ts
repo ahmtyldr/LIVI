@@ -34,16 +34,18 @@ import {
 } from './stack/index'
 import type { UsbAoapBridge } from './stack/transport/UsbAoapBridge'
 
+// audioType uses the CarPlay numbering ProjectionAudio keys its streams by, not the AA wire types.
+// System sounds take the nav type like CarPlay alerts, calls never reach this link (HFP).
 const AUDIO_MAP: Record<AudioChannelType, { audioType: number; decodeType: number }> = {
   media: { audioType: 3, decodeType: 4 },
-  speech: { audioType: 1, decodeType: 5 },
-  phone: { audioType: 2, decodeType: 5 }
+  speech: { audioType: 4, decodeType: 5 },
+  system: { audioType: 4, decodeType: 5 }
 }
 
 const AUDIO_CHANNEL_ID: Record<AudioChannelType, number> = {
   media: CH.MEDIA_AUDIO,
   speech: CH.SPEECH_AUDIO,
-  phone: CH.SYSTEM_AUDIO
+  system: CH.SYSTEM_AUDIO
 }
 
 /** What a helper-carried session needs to route its media straight into the host. */
@@ -55,11 +57,13 @@ export type AaMediaSinkDeps = {
   primeVideo: (cluster: boolean) => void
   /** The helper saw the first frame of a stream, geometry and focus follow. */
   noteVideoStarted: (cluster: boolean, width: number, height: number) => void
-  /** The host's audio streams by CarPlay audioType, now and as they open. */
-  audioOutputs: () => Array<{ audioType: number; streamId: number }>
-  onAudioOutput: (cb: (audioType: number, streamId: number) => void) => () => void
-  /** Opens the host stream for a format the phone announced, samples never pass through here. */
-  primeAudio: (audioType: number, sampleRate: number, channels: number) => void
+  /** The host's driver-fed streams, tagged with the channel they were opened for. */
+  audioOutputs: () => Array<{ audioType: number; streamId: number; tag?: string }>
+  onAudioOutput: (cb: (audioType: number, streamId: number, tag?: string) => void) => () => void
+  /** Opens the host stream for a channel's format, samples never pass through here. */
+  primeAudio: (audioType: number, sampleRate: number, channels: number, tag: string) => void
+  /** Sets the level of the host-fed streams of this audioType. */
+  setHostVolume: (audioType: number, level: number, rampMs: number) => void
 }
 
 export function buildVideoDataMessage(
@@ -92,9 +96,8 @@ function audioLifecycleCommand(channel: AudioChannelType, starting: boolean): Au
     case 'media':
       return starting ? AudioCommand.AudioMediaStart : AudioCommand.AudioMediaStop
     case 'speech':
+    case 'system':
       return starting ? AudioCommand.AudioNaviStart : AudioCommand.AudioNaviStop
-    case 'phone':
-      return starting ? AudioCommand.AudioPhonecallStart : AudioCommand.AudioPhonecallStop
   }
 }
 
@@ -237,16 +240,17 @@ export class AaEventBridge {
 
     if (deps.mediaSink) {
       const sink = deps.mediaSink
-      const off = sink.onAudioOutput((audioType, streamId) =>
-        this.pushAudioSink(audioType, streamId)
+      const off = sink.onAudioOutput((_audioType, streamId, tag) =>
+        this.pushAudioSink(streamId, tag)
       )
       aa.on('connected', () => {
-        for (const o of sink.audioOutputs()) this.pushAudioSink(o.audioType, o.streamId)
+        for (const o of sink.audioOutputs()) this.pushAudioSink(o.streamId, o.tag)
       })
       aa.on('disconnected', off)
+      // One host stream per channel, so speech and system never share a decoder.
       aa.on('audio-setup', (channel: AudioChannelType, sampleRate: number, channels: number) => {
         if (!this.aa.helperBacked) return
-        sink.primeAudio(AUDIO_MAP[channel].audioType, sampleRate, channels)
+        sink.primeAudio(AUDIO_MAP[channel].audioType, sampleRate, channels, channel)
       })
     }
 
@@ -416,16 +420,15 @@ export class AaEventBridge {
     })
   }
 
-  private pushAudioSink(audioType: number, streamId: number): void {
+  // Routes a host stream to the one channel it was opened for.
+  private pushAudioSink(streamId: number, tag: string | undefined): void {
     const sink = this.deps.mediaSink
     if (!sink || !this.aa.helperBacked) return
-    const channels = (Object.keys(AUDIO_MAP) as AudioChannelType[])
-      .filter((c) => AUDIO_MAP[c].audioType === audioType)
-      .map((c) => AUDIO_CHANNEL_ID[c])
-    if (channels.length === 0) return
+    if (!tag || !(tag in AUDIO_CHANNEL_ID)) return
+    const ch = AUDIO_CHANNEL_ID[tag as AudioChannelType]
     void sink.feedPath().then((feed) => {
       if (this.deps.isClosed()) return
-      this.aa.sendMediaSink({ feed, audio: channels.map((ch) => ({ ch, id: streamId })) })
+      this.aa.sendMediaSink({ feed, audio: [{ ch, id: streamId }] })
     })
   }
 

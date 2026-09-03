@@ -29,7 +29,7 @@ describe('AudioChannel.channelType', () => {
   test.each([
     [CH.MEDIA_AUDIO, 'media'],
     [CH.SPEECH_AUDIO, 'speech'],
-    [CH.SYSTEM_AUDIO, 'phone']
+    [CH.SYSTEM_AUDIO, 'system']
   ])('channelId %s → %s', (id, type) => {
     const { send } = freshSend()
     const ch = new AudioChannel(id, send)

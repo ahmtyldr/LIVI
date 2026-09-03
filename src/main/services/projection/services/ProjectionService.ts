@@ -1143,8 +1143,10 @@ export class ProjectionService {
         },
         audioOutputs: () => this.audio.hostOutputs(),
         onAudioOutput: (cb) => this.audio.onHostOutput(cb),
-        primeAudio: (audioType, sampleRate, channels) =>
-          this.audio.primeOutput(audioType, sampleRate, channels)
+        primeAudio: (audioType, sampleRate, channels, tag) =>
+          this.audio.primeOutput(audioType, sampleRate, channels, tag),
+        setHostVolume: (audioType, level, rampMs) =>
+          this.audio.setHostStreamVolume(audioType, level, rampMs)
       }
     })
 

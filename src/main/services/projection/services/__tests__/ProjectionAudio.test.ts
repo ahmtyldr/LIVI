@@ -1,9 +1,11 @@
+import { HostAudioOutput } from '@main/services/audio'
 import { ProjectionAudio } from '@main/services/projection/services/ProjectionAudio'
 
 const gstHostMock = vi.hoisted(() => {
   let vizCb: ((s: Uint8Array, rate: number) => void) | null = null
   return {
     setVisualizerTap: vi.fn(),
+    setAudioVolume: vi.fn(),
     onVisualizerAudio: (cb: (s: Uint8Array, rate: number) => void) => {
       vizCb = cb
     },
@@ -81,6 +83,92 @@ describe('ProjectionAudio state controls', () => {
       voiceAssistant: 1,
       call: 1
     })
+  })
+
+  // A HostAudioOutput stand-in that opens with a fixed stream id on start().
+  function openingOutput(streamId: number) {
+    return function (opts: { onOpened?: (id: number) => void }) {
+      const o = {
+        hostStreamId: null as number | null,
+        start: vi.fn(() => {
+          o.hostStreamId = streamId
+          opts.onOpened?.(streamId)
+        }),
+        stop: vi.fn(),
+        write: vi.fn(),
+        setDevice: vi.fn()
+      }
+      return o
+    }
+  }
+
+  test('a primed host stream opens at the current level and follows setHostStreamVolume', async () => {
+    vi.mocked(HostAudioOutput).mockImplementationOnce(openingOutput(42) as never)
+    const a = createSubject()
+    a.setStreamVolume('music', 0.5)
+    gstHostMock.setAudioVolume.mockClear()
+
+    a.primeOutput(3, 48000, 2)
+    expect(gstHostMock.setAudioVolume).toHaveBeenCalledWith(42, 0.5, 0)
+
+    a.setHostStreamVolume(3, 0.25, 80)
+    expect(gstHostMock.setAudioVolume).toHaveBeenLastCalledWith(42, 0.25, 80)
+  })
+
+  test('setHostStreamVolume leaves a Node-fed stream alone, its gain rides on the pcm', async () => {
+    vi.mocked(HostAudioOutput).mockImplementationOnce(openingOutput(7) as never)
+    const a = createSubject()
+    gstHostMock.setAudioVolume.mockClear()
+
+    a.handleAudioData({
+      data: new Int16Array([1, 2, 3]),
+      decodeType: 1,
+      audioType: 3,
+      sampleRate: 48000,
+      channels: 2
+    })
+    a.setHostStreamVolume(3, 0.25, 0)
+
+    expect(gstHostMock.setAudioVolume).not.toHaveBeenCalled()
+  })
+
+  test('primeOutput keeps channels apart, same type and format open separate host streams', async () => {
+    vi.mocked(HostAudioOutput)
+      .mockImplementationOnce(openingOutput(21) as never)
+      .mockImplementationOnce(openingOutput(22) as never)
+    const a = createSubject()
+    const seen: Array<[number, number, string | undefined]> = []
+    a.onHostOutput((audioType, streamId, tag) => {
+      seen.push([audioType, streamId, tag])
+    })
+
+    a.primeOutput(4, 16000, 1, 'speech')
+    a.primeOutput(4, 16000, 1, 'system')
+    a.primeOutput(4, 16000, 1, 'speech')
+
+    expect(seen).toEqual([
+      [4, 21, 'speech'],
+      [4, 22, 'system']
+    ])
+    expect(a.hostOutputs()).toEqual([
+      { audioType: 4, streamId: 21, tag: 'speech' },
+      { audioType: 4, streamId: 22, tag: 'system' }
+    ])
+  })
+
+  test('hostOutputs lists driver-fed streams only, a Node-fed player stays out', async () => {
+    vi.mocked(HostAudioOutput).mockImplementationOnce(openingOutput(7) as never)
+    const a = createSubject()
+
+    a.handleAudioData({
+      data: new Int16Array([1, 2, 3]),
+      decodeType: 1,
+      audioType: 3,
+      sampleRate: 48000,
+      channels: 2
+    })
+
+    expect(a.hostOutputs()).toEqual([])
   })
 
   test('setStreamVolume clamps values and ignores tiny no-op changes', async () => {

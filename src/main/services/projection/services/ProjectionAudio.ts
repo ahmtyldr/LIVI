@@ -101,7 +101,13 @@ export class ProjectionAudio {
 
   private audioInfoSent = false
   private readonly outputAudioTypes = new WeakMap<HostAudioOutput, number>()
-  private readonly hostOutputListeners = new Set<(audioType: number, streamId: number) => void>()
+  private readonly hostOutputListeners = new Set<
+    (audioType: number, streamId: number, tag?: string) => void
+  >()
+  // Streams a driver feeds in the host. Their level is set there, Node-fed ones get it on the PCM.
+  private readonly hostFedPlayers = new WeakSet<HostAudioOutput>()
+  // The driver's channel a host-fed stream was opened for.
+  private readonly outputTags = new WeakMap<HostAudioOutput, string>()
   private _mic: Microphone | null = null
   private currentMicDecodeType: number | null = null
 
@@ -744,43 +750,73 @@ export class ProjectionAudio {
     key: PlayerKey,
     audioType: number,
     sampleRate: number,
-    channels: number
+    channels: number,
+    hostFed = false,
+    tag?: string
   ): HostAudioOutput {
-    const player = new HostAudioOutput({
+    const player: HostAudioOutput = new HostAudioOutput({
       sampleRate,
       channels,
       device: this.getConfig().audioOutputDevice || undefined,
       onOpened: (streamId) => {
-        for (const cb of this.hostOutputListeners) cb(audioType, streamId)
+        for (const cb of this.hostOutputListeners) cb(audioType, streamId, tag)
+        // A host-fed stream opens at the current level instead of the host default.
+        if (this.hostFedPlayers.has(player)) {
+          gstHost.setAudioVolume(streamId, this.levelForType(audioType), 0)
+        }
       }
     })
     this.outputAudioTypes.set(player, audioType)
+    if (hostFed) this.hostFedPlayers.add(player)
+    if (tag) this.outputTags.set(player, tag)
     player.start()
     this.audioPlayers.set(key, player)
 
     return player
   }
 
-  /** Opens the host stream for a format the phone announced. Idempotent per format. */
-  public primeOutput(audioType: number, sampleRate: number, channels: number): void {
+  /** Opens the host stream for a channel's format. Idempotent per channel and format. */
+  public primeOutput(audioType: number, sampleRate: number, channels: number, tag?: string): void {
     if (!sampleRate || !channels) return
-    const key: PlayerKey = `${this.logicalKeyForType(audioType)}:at${audioType}:${sampleRate}:${channels}`
+    const suffix = tag ? `:${tag}` : ''
+    const key: PlayerKey = `${this.logicalKeyForType(audioType)}:at${audioType}:${sampleRate}:${channels}${suffix}`
     if (this.audioPlayers.has(key)) return
-    this.createAndStartAudioPlayer(key, audioType, sampleRate, channels)
+    this.createAndStartAudioPlayer(key, audioType, sampleRate, channels, true, tag)
   }
 
-  /** The host's open streams by CarPlay audioType, for a driver feeding the host itself. */
-  public hostOutputs(): Array<{ audioType: number; streamId: number }> {
-    const out: Array<{ audioType: number; streamId: number }> = []
+  /** Sets the level of the host-fed streams of this audioType, the driver's volume hook. */
+  public setHostStreamVolume(audioType: number, level: number, rampMs: number): void {
     for (const player of this.audioPlayers.values()) {
+      if (!this.hostFedPlayers.has(player)) continue
+      if (this.outputAudioTypes.get(player) !== audioType) continue
+      const streamId = player.hostStreamId
+      if (streamId != null) gstHost.setAudioVolume(streamId, level, rampMs)
+    }
+  }
+
+  /** The current level for an audioType, ducking included, 1 when no stream maps to it. */
+  private levelForType(audioType: number): number {
+    const streams = Object.keys(ProjectionAudio.AUDIO_TYPE) as LogicalStreamKey[]
+    const stream = streams.find((s) => ProjectionAudio.AUDIO_TYPE[s] === audioType)
+    if (!stream) return 1
+    const duck = stream === 'music' ? this.duckLevel : 1
+    return this.volumes[stream] * duck
+  }
+
+  /** The host's driver-fed streams with their channel tag, for a driver feeding the host itself. */
+  public hostOutputs(): Array<{ audioType: number; streamId: number; tag?: string }> {
+    const out: Array<{ audioType: number; streamId: number; tag?: string }> = []
+    for (const player of this.audioPlayers.values()) {
+      if (!this.hostFedPlayers.has(player)) continue
       const streamId = player.hostStreamId
       const audioType = this.outputAudioTypes.get(player)
-      if (streamId != null && audioType != null) out.push({ audioType, streamId })
+      if (streamId == null || audioType == null) continue
+      out.push({ audioType, streamId, tag: this.outputTags.get(player) })
     }
     return out
   }
 
-  public onHostOutput(cb: (audioType: number, streamId: number) => void): () => void {
+  public onHostOutput(cb: (audioType: number, streamId: number, tag?: string) => void): () => void {
     this.hostOutputListeners.add(cb)
     return () => {
       this.hostOutputListeners.delete(cb)

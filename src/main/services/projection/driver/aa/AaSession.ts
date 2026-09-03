@@ -191,6 +191,11 @@ export class AaSession extends EventEmitter implements IPhoneDriver {
     this._aa?.forceClusterKeyframe()
   }
 
+  // The volume hook for host-fed streams, the same shape CarPlay uses in cpStack.
+  setStreamVolume(audioType: number, level: number, rampMs: number): void {
+    this._mediaSink?.setHostVolume(audioType, level, rampMs)
+  }
+
   isWiredMode(): boolean {
     return this._wired
   }

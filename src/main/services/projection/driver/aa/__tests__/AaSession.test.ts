@@ -161,6 +161,31 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
+describe('AaSession: host volume hook', () => {
+  test('setStreamVolume forwards to the media sink, the same shape CarPlay uses', () => {
+    const setHostVolume = vi.fn()
+    const s = new AaSession({
+      transport: new MockSocket() as unknown as net.Socket,
+      getConfig: () => baseCfg(),
+      wired: false,
+      wiredBridge: null,
+      seed: baseSeed(),
+      mediaSink: {
+        feedPath: async () => '',
+        videoPlaneId: () => 1,
+        primeVideo: vi.fn(),
+        noteVideoStarted: vi.fn(),
+        audioOutputs: () => [],
+        onAudioOutput: () => () => {},
+        primeAudio: vi.fn(),
+        setHostVolume
+      }
+    })
+    s.setStreamVolume(3, 0.5, 40)
+    expect(setHostVolume).toHaveBeenCalledWith(3, 0.5, 40)
+  })
+})
+
 describe('AaSession: construction', () => {
   test('constructs an AAStack and adopts the socket via attachSocket', () => {
     const sock = new MockSocket() as unknown as net.Socket
