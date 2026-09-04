@@ -46,3 +46,30 @@ Gerekenler bu depoda ve sürüm sayfasında saklanır; f-io'nun sürümlerine ba
 
 4. Yukarıdaki shim adımlarını uygula ve `sudo reboot`.
 5. İsteğe bağlı: `~/.config/LIVI/config.json` içinde `"dashScreenActive": false` (Dash penceresini kapatır).
+
+## SD kart imajı (tam yedek)
+
+Çalışan kartın blok imajı Mac'te `~/Downloads/livi-pi3-8.3.0.img.gz` olarak alındı
+(64 GB kart, sıkıştırılmış ~3 GB). Depoya sığmaz; harici diske veya bulut depoya
+kopyalayın. SHA-256 özeti aşağıdaki "Doğrulama" satırında.
+
+Alma (Mac, kart `/dev/diskN`):
+
+```bash
+diskutil unmountDisk /dev/diskN
+sudo dd if=/dev/rdiskN bs=4m | gzip -1 > ~/Downloads/livi-pi3-8.3.0.img.gz
+```
+
+Geri yükleme (en az 64 GB kart, `/dev/diskN` doğru olduğundan emin olun, kart tamamen silinir):
+
+```bash
+diskutil unmountDisk /dev/diskN
+gunzip -c ~/Downloads/livi-pi3-8.3.0.img.gz | sudo dd of=/dev/rdiskN bs=4m
+diskutil eject /dev/diskN
+```
+
+Geri yüklenen kart Pi'de doğrudan açılır; Wi-Fi şifresi, eşleşmiş telefon ve
+tüm ayarlar imajın alındığı andaki gibidir.
+
+Doğrulama (4 Eylül 2026): açılmış boyut 64 088 965 120 bayt, kartla birebir.
+SHA-256 (`livi-pi3-8.3.0.img.gz`): `8f893615b2607ef24bdaa9ad8aa6e96c76f85a5d97a8b5f437c0a82875f28589`
