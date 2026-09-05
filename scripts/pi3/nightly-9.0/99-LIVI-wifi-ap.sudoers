@@ -1,0 +1,2 @@
+Cmnd_Alias LIVI_WIFI_AP = /usr/bin/systemctl start livi-wifi-ap.service, /usr/bin/systemctl stop livi-wifi-ap.service, /usr/bin/systemctl enable livi-wifi-ap.service, /usr/bin/systemctl disable livi-wifi-ap.service, /home/livilite/.config/LIVI/driver/livi-helperd --wifi-ap-teardown
+livilite ALL=(root) NOPASSWD: LIVI_WIFI_AP

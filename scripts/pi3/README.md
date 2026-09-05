@@ -73,3 +73,22 @@ tüm ayarlar imajın alındığı andaki gibidir.
 
 Doğrulama (4 Eylül 2026): açılmış boyut 64 088 965 120 bayt, kartla birebir.
 SHA-256 (`livi-pi3-8.3.0.img.gz`): `8f893615b2607ef24bdaa9ad8aa6e96c76f85a5d97a8b5f437c0a82875f28589`
+
+## LIVI 9.0 (nightly) notları
+
+5 Eylül 2026'da Pi 3 B+ üzerine f-io'nun `nightly` sürümü (9.0.0, Rust helperd) kuruldu ve
+Android Auto donanım çözmeyle çalıştı. 8.3.0 AppImage'ı Pi'de `~/LIVI/LIVI-8.3.0.AppImage`
+olarak yedekte; geri dönmek için onu `LIVI.AppImage` adına kopyalayıp reboot yeterli.
+
+Kurulum: `curl -fL -o install.sh https://raw.githubusercontent.com/f-io/LIVI/main/scripts/install/headless/install.sh && chmod +x install.sh && LIVI_CHANNEL=nightly ./install.sh`
+
+Bilinen farklar:
+- **Wi-Fi AP birimi (headless hata).** Uygulama `livi-wifi-ap.service` ve sudoers kuralını
+  `pkexec` ile kurmaya çalışır; Pi OS Lite'ta pkexec yoktur (`spawn pkexec ENOENT`) ve erişim
+  noktası hiç kalkmaz. `nightly-9.0/install-wifi-ap-unit.sh` aynı dosyaları elle kurar.
+  Upstream'e bildirilmeli: headless installer bu adımı da yapmalı.
+- **Cihaz kaydı.** 9.0 telefonları `~/.config/LIVI/devices.json` içinde tutar. Boşsa (yeni kurulum
+  veya listeden kaldırılmışsa) kablosuz Android Auto kendiliğinden başlamaz; Settings → Devices'ta
+  telefona tıklayınca el sıkışma başlar ve kayıt oluşur.
+- **Colorimetry shim** 9.0'ın gst-host'una da aynı `LIVI_GST_PRELOAD` ile yüklenir, `pi3.conf` korunur.
+- Açılış: arayüz ~67 sn (8.3.0'da 55). Ana süreç 9.0'da daha fazla iş yapıyor (helperd, cihaz tarama).
