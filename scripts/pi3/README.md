@@ -149,3 +149,21 @@ ve açılış hızlandırma için `boot-tuning/` adımları. Shim dosyaları esk
 Mevcut yayın: `v9.0.0-livilite.3`, SHA-256 `f7e532a1…bd5d66f6`, Pi bu dosyayı çalıştırıyor (kurulum scriptiyle kuruldu).
 
 **Etiket kuralı:** yayın etiketi düz `vX.Y.Z` olmalı (ör. `v9.0.1`). Güncelleme ekranı `^(\d+)\.(\d+)\.(\d+)$` ile okur; `-livilite.N` gibi ekler sürümü okunamaz yapar ve Update düğmesi pasif kalır. Ayrıca cihazda "Nightly" anahtarı kapalı olmalı, bu depoda nightly etiketi yok.
+
+## 2,4 GHz testi (Zero 2 W hazırlığı, 6 Eylül 2026)
+
+Pi Zero 2 W'nin kablosuz çipi yalnızca 2,4 GHz. Pi 3 B+ üzerinde erişim noktası `wifiType=2.4ghz`,
+kanal 6, 20 MHz'e alınıp kablosuz Android Auto + hareketli harita + Bluetooth telefon görüşmesi
+birlikte denendi (`wifi-monitor.sh`, 10 sn örnekler):
+
+| Ölçüm | Sonuç |
+|---|---|
+| Bağlantı hızı | 72 Mbit/s sabit, kısa anlarda 58–65 |
+| Video trafiği (harita hareketli) | tepe 3,4 Mbit/s |
+| Başarısız çerçeve | 10 sn'de en çok 5 |
+| Görüşme sırasında video | takılma yok (kullanıcı gözlemi) |
+| Sıcaklık | 49 → 58 °C (yük altında), soğutucusuz |
+
+Sonuç: Bluetooth ile aynı bantta çalışmak bu senaryoda sorun çıkarmadı; Zero 2 W'nin dahili çipi
+kablosuz Android Auto için yeterli görünüyor. Şehir içi parazit ayrı bir değişken, araçta gözlenmeli.
+5 GHz'e dönüş: `~/pi3-backup/config-5ghz.json` → `~/.config/LIVI/config.json`, reboot.

@@ -25,6 +25,13 @@ Durum: 5 Eylül 2026. Pi 3 B+ üzerinde LIVI 9.0.0 nightly çalışıyor.
 - [ ] Adım 6: `wifiDedicatedInterface: true` ile erişim noktasını açılışta kaldır, telefon bağlanma süresini ölç.
 - [ ] 9.0'ın arayüze 12 sn geç gelmesinin nedenini bul (ana süreç fazları).
 
+## Hedef donanım: Raspberry Pi Zero 2 W
+
+- [x] 2,4 GHz erişim noktası + Bluetooth görüşme testi Pi 3 B+ üzerinde yapıldı, sorunsuz (README).
+- [ ] Zero 2 W edin; 9.0.1 imajını olduğu gibi dene (Electron'un 512 MB'a sığmaması bekleniyor; compositor, helperd, AP ve video hattı doğrulanır).
+- [ ] Geliştirme erişimi: tek Wi-Fi AP olduğu için Mac'i LIVI'nin AP'sine bağlamak ya da OTG'den USB ağ (`g_ether`) kurmak.
+- [ ] LVGL planında bellek bütçesi: toplam < 350 MB, her aşamada Zero 2 W'de ölçülür.
+
 ## LVGL (bkz. `LVGL_PLAN.md`)
 
 - [x] Aşama 0.1: 9.0.0'ı Pi 3'te doğrula (nightly ile yapıldı, Android Auto donanım çözmeyle çalışıyor).
