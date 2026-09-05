@@ -246,49 +246,6 @@ fn install_decoder_probes(dec: &gst::Element, decoder_name: &str) {
     });
 }
 
-#[cfg(test)]
-mod colorimetry_tests {
-    use super::*;
-    use std::str::FromStr;
-
-    fn caps(s: &str) -> gst::Caps {
-        gst::init().unwrap();
-        gst::Caps::from_str(s).unwrap()
-    }
-
-    #[test]
-    fn lists_every_accepted_value() {
-        let c = caps("video/x-h264, colorimetry=(string){ bt709, 1:4:7:1 }; video/x-h264, colorimetry=(string)bt601");
-        assert_eq!(accepted_colorimetries(&c), ["bt709", "1:4:7:1", "bt601"]);
-        assert!(accepted_colorimetries(&caps("video/x-h264, width=(int)1280")).is_empty());
-    }
-
-    #[test]
-    fn flags_only_values_the_decoder_lacks() {
-        let accepted: Vec<String> = ["bt709", "1:4:7:1"].map(String::from).into();
-        assert_eq!(unaccepted_colorimetry(Some("2:4:16:3"), &accepted).as_deref(), Some("2:4:16:3"));
-        assert_eq!(unaccepted_colorimetry(Some("bt709"), &accepted), None);
-        assert_eq!(unaccepted_colorimetry(None, &accepted), None);
-        assert_eq!(unaccepted_colorimetry(Some("2:4:16:3"), &[]), None);
-    }
-
-    #[test]
-    fn prefers_bt709_then_falls_back_to_first() {
-        let a: Vec<String> = ["smpte240m", "1:4:7:1", "bt709"].map(String::from).into();
-        assert_eq!(replacement_colorimetry(&a).as_deref(), Some("bt709"));
-        let b: Vec<String> = ["smpte240m", "2:4:5:2"].map(String::from).into();
-        assert_eq!(replacement_colorimetry(&b).as_deref(), Some("smpte240m"));
-        assert_eq!(replacement_colorimetry(&[]), None);
-    }
-
-    #[test]
-    fn strips_colorimetry_but_keeps_the_rest() {
-        let c = without_colorimetry(&caps("video/x-h264, profile=(string)high, colorimetry=(string)bt709"));
-        let s = c.structure(0).unwrap();
-        assert!(!s.has_field("colorimetry"));
-        assert_eq!(s.get::<String>("profile").unwrap(), "high");
-    }
-}
 
 // The window view entry points in gst_video_mac.mm.
 #[cfg(target_os = "macos")]
@@ -554,4 +511,48 @@ pub fn probe(codec: &str) -> (bool, bool) {
     let hw = best.is_some_and(livi_video_codec::is_hw_decoder);
     let sw = exists(livi_video_codec::sw_decoder_for(codec).to_str().unwrap_or(""));
     (hw, sw)
+}
+
+#[cfg(test)]
+mod colorimetry_tests {
+    use super::*;
+    use std::str::FromStr;
+
+    fn caps(s: &str) -> gst::Caps {
+        gst::init().unwrap();
+        gst::Caps::from_str(s).unwrap()
+    }
+
+    #[test]
+    fn lists_every_accepted_value() {
+        let c = caps("video/x-h264, colorimetry=(string){ bt709, 1:4:7:1 }; video/x-h264, colorimetry=(string)bt601");
+        assert_eq!(accepted_colorimetries(&c), ["bt709", "1:4:7:1", "bt601"]);
+        assert!(accepted_colorimetries(&caps("video/x-h264, width=(int)1280")).is_empty());
+    }
+
+    #[test]
+    fn flags_only_values_the_decoder_lacks() {
+        let accepted: Vec<String> = ["bt709", "1:4:7:1"].map(String::from).into();
+        assert_eq!(unaccepted_colorimetry(Some("2:4:16:3"), &accepted).as_deref(), Some("2:4:16:3"));
+        assert_eq!(unaccepted_colorimetry(Some("bt709"), &accepted), None);
+        assert_eq!(unaccepted_colorimetry(None, &accepted), None);
+        assert_eq!(unaccepted_colorimetry(Some("2:4:16:3"), &[]), None);
+    }
+
+    #[test]
+    fn prefers_bt709_then_falls_back_to_first() {
+        let a: Vec<String> = ["smpte240m", "1:4:7:1", "bt709"].map(String::from).into();
+        assert_eq!(replacement_colorimetry(&a).as_deref(), Some("bt709"));
+        let b: Vec<String> = ["smpte240m", "2:4:5:2"].map(String::from).into();
+        assert_eq!(replacement_colorimetry(&b).as_deref(), Some("smpte240m"));
+        assert_eq!(replacement_colorimetry(&[]), None);
+    }
+
+    #[test]
+    fn strips_colorimetry_but_keeps_the_rest() {
+        let c = without_colorimetry(&caps("video/x-h264, profile=(string)high, colorimetry=(string)bt709"));
+        let s = c.structure(0).unwrap();
+        assert!(!s.has_field("colorimetry"));
+        assert_eq!(s.get::<String>("profile").unwrap(), "high");
+    }
 }
