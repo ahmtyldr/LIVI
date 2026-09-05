@@ -22,6 +22,8 @@
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json --composite false",
     "typecheck": "pnpm run typecheck:node && pnpm run typecheck:web",
+    "contracts:gen": "node scripts/contracts-gen.mts",
+    "contracts:check": "node scripts/contracts-gen.mts --check",
     "install:ci": "pnpm install --frozen-lockfile",
     "install:clean": "rm -rf node_modules pnpm-lock.yaml out dist coverage && pnpm install --no-frozen-lockfile",
     "build:app": "vite build",
@@ -90,6 +92,7 @@
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "typescript": "^7.0.2",
+    "typescript5": "npm:typescript@^5.9.3",
     "vite": "^8.2.2",
     "vite-plugin-electron": "^1.1.2",
     "vitest": "^4.1.11"

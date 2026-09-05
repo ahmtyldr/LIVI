@@ -51,6 +51,9 @@ jobs:
       - name: Install dependencies from lockfile
         run: pnpm install --frozen-lockfile --ignore-scripts
 
+      - name: Contracts up to date (contracts/ generated from the sources)
+        run: pnpm run contracts:check
+
       - name: Setup Rust
         shell: bash
         run: |

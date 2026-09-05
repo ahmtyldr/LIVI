@@ -27,14 +27,15 @@ riski yoktur, yeter ki ana süreç Electron olmadan çalışabilsin.
 Arayüzün ana süreçle tek konuşma yolu `src/preload/index.ts`. Bu dosya LVGL
 için de sözleşmedir:
 
-- **44 çağrı** (arayüz → ana süreç): `settings.get/save`, `ipc.start/stop/
+- **70 çağrı** (48 `invoke`, 8 `send`, 14 yerel dinleyici; arayüz → ana süreç): `settings.get/save`, `ipc.start/stop/
   restart`, `setVisible`, `sendTouch`, `sendMultiTouch`, `sendCommand`,
   `getDevices/selectDevice/cycleSession/forgetDevice`, Bluetooth eşleşme,
   dongle firmware, ses cihazları, `setVolume`, `requestCluster`, telemetri
   anlık görüntüsü, Wi-Fi/BT adaptör listeleri, güncelleme, `quit/restart`.
-- **6 olay** (ana süreç → arayüz): `usb-event`, `projection-event`,
+- **11 olay** (ana süreç → arayüz): `usb-event`, `projection-event`,
   `projection-audio-chunk` (görselleştirici için PCM), `cluster-video-resolution`,
-  `telemetry:update`, `app:media-key`.
+  `telemetry:update`, `app:media-key`, `settings`, `update:event`, `update:progress`,
+  `usb-reset-start`, `usb-reset-done`.
 
 Video arayüzden geçmez. Compositor, `videocfg/videoshow/claim/backdrop/gamma`
 komutlarıyla video düzlemini kendisi yerleştirir; arayüz projeksiyon
@@ -47,7 +48,7 @@ kolaylık: video, kamera ve renk kalibrasyonu için tek satır çizim kodu gerek
 |---|---|---|---|
 | Projection | Şeffaf alan, dokunma/çoklu dokunma, oturum değiştirme kaplaması | Şeffaf ekran + `lv_indev` dokunma iletimi | Düşük |
 | Devices | Cihaz listesi, pil/sinyal, slot rozetleri | `lv_list` + özel satır | Düşük |
-| Settings | 5 grup, şemadan üretilen 190 alan: 35 tuş bağlama, 34 sayı, 30 anahtar, 16 seçim, 7 kaydırıcı, 6 renk, 5 metin, 11 özel | Şema yorumlayıcı + 12 satır bileşeni | Orta |
+| Settings | 5 grup, şemadan üretilen 155 alan: 35 tuş bağlama, 34 sayı, 39 onay kutusu, 16 seçim, 7 kaydırıcı, 6 renk, 5 metin, 11 özel, 1 cihaz listesi, 1 sıralı liste | Şema yorumlayıcı + 12 satır bileşeni | Orta |
 | Media | Metadata, albüm kapağı, kontroller, FFT görselleştirici | `lv_image` + `lv_canvas` | Orta |
 | Telemetry | 4 dashboard, 21 widget (hız, devir, yakıt, sıcaklık, telltale, navigasyon) | `lv_arc`, `lv_bar`, `lv_canvas` | Yüksek |
 | Camera | Geri görüş kamerası (`getUserMedia`) | GStreamer `v4l2src` → compositor düzlemi (video ile aynı yol) | Orta |
@@ -92,8 +93,8 @@ Her aşamanın çıkışında Electron arayüzü hâlâ çalışır ve testler y
    `BAD_COLORIMETRY` eşleşmesini genelleştirerek kaynağa taşı.
 2. Derleme ortamı: Mac'te Lima ile arm64 Debian 13 VM (Apple Silicon'da
    native hızda). Pi 3'te derleme yapılmaz (1 GB RAM).
-3. Sözleşme çıkarımı: preload'dan JSON-RPC şeması, `Config.ts`'ten config
-   şeması, `routes/schemas/*.ts`'ten ayar şeması, `locales/*.json`. Bunlar
+3. Sözleşme çıkarımı (6 Eylül 2026'da tamamlandı): preload'dan JSON-RPC şeması,
+   `Config.ts`'ten config şeması, `routes/schemas/*.ts`'ten ayar şeması, `locales/*.json`. Bunlar
    `contracts/` altında üretilen dosyalar olur; iki arayüz de buradan beslenir.
    Şema tek kaynak olduğu için Electron'da eklenen bir ayar LVGL'de de
    otomatik çıkar.
@@ -213,7 +214,7 @@ doğrulanmış, Pi 3 düzeltmeleri kaynakta, 2,4 GHz + Bluetooth testi geçti.
 
 | # | Oturum | Yapılacak | Kabul ölçütü | Sizden |
 |---|---|---|---|---|
-| 1 | Sözleşme çıkarımı | `contracts/` altına üretilen dosyalar: preload'daki 44 çağrı + 6 olay (JSON şeması), `Config.ts` (199 anahtar), ayar şemaları (190 alan), çeviriler. `pnpm contracts:gen` + CI'da güncellik kontrolü. | Üretilen dosyalar depoda, CI yeşil. | Yok |
+| 1 | Sözleşme çıkarımı | `contracts/` altına üretilen dosyalar: preload'daki 70 çağrı + 11 olay (JSON), `Config.ts` (116 anahtar), ayar şemaları (155 alan), çeviriler. `pnpm contracts:gen` + CI'da güncellik kontrolü. | Üretilen dosyalar depoda, CI yeşil. | Yok |
 | 2 | UiBridge | Ana süreçte Unix soket JSON-RPC 2.0 sunucusu; 44 çağrı bire bir, 6 olay yayın, PCM ikili çerçeve. Küçük bir komut satırı istemcisi (`tools/ui-cli`). Electron modunda da açık. | Pi'de Electron çalışırken `ui-cli settings.get` ve `ui-cli ipc.getDevices` doğru cevap verir. | Yok |
 | 3 | Ana süreci ayır (1/2) | `UiHost` arayüzü; `app.getPath`, `dialog`, `shell`, `screen` sarmalayıcıları; 42 dosyanın Electron importları arayüz üzerinden. Electron modu değişmez. | Tüm mevcut testler yeşil, Pi'de Electron arayüzü aynen çalışır. | Pi'de kısa bir kullanım kontrolü |
 | 4 | Ana süreci ayır (2/2) | `LIVI_UI=lvgl`: BrowserWindow yok, düz Node 24. Headless paket: node binary + `out/main` + N-API eklentiler + helperd/compositor/gst-host; Actions'a ikinci artifact. | Pi 3'te headless ana süreç: USB tarar, AP kaldırır, telefon bağlanır, video düzlemi ekrana gelir; ana süreç RSS < 100 MB. | Telefonu bağlayıp ekrana bakmak |
@@ -238,7 +239,7 @@ Süre: 18 oturum, günde bir oturumla yaklaşık 4 hafta; parite cilası ve bili
 4. **Geliştirme erişimi Zero 2 W'de:** OTG portundan USB ağ (`g_ether`, varsayılan) ya da Mac'i LIVI'nin erişim noktasına bağlamak.
 
 ### İlk oturumun (1) somut çıktıları
-- `contracts/ui-api.json`: 44 çağrı ve 6 olayın adları, parametre ve dönüş tipleri (preload + `env.d.ts`'ten).
+- `contracts/ui-api.json`: 70 çağrı ve 11 olayın adları, parametre ve dönüş tipleri (preload + `env.d.ts`'ten).
 - `contracts/config.schema.json`: `Config.ts`'ten JSON Schema.
 - `contracts/settings-schema.json`: `routes/schemas/*.ts`'ten düz veri.
 - `contracts/locales/*.json`: mevcut dosyaların kopyası değil, sembolik bağ ya da üretim adımı.

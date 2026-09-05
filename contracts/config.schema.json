@@ -1,0 +1,1090 @@
+{
+  "$generated": "scripts/contracts-gen.ts — do not edit by hand; run `pnpm contracts:gen`",
+  "summary": {
+    "keys": 116,
+    "enums": 6
+  },
+  "keys": [
+    {
+      "name": "debugLogging",
+      "optional": false,
+      "ts": "boolean",
+      "kind": "boolean",
+      "default": false,
+      "doc": "Logging"
+    },
+    {
+      "name": "wirelessAaEnabled",
+      "optional": false,
+      "ts": "boolean",
+      "kind": "boolean",
+      "default": false,
+      "doc": "Wireless protocols"
+    },
+    {
+      "name": "wirelessCpEnabled",
+      "optional": false,
+      "ts": "boolean",
+      "kind": "boolean",
+      "default": false
+    },
+    {
+      "name": "wifiPassword",
+      "optional": false,
+      "ts": "string",
+      "kind": "string",
+      "default": "12345678",
+      "doc": "Wi-Fi + Bluetooth"
+    },
+    {
+      "name": "btAdapter",
+      "optional": false,
+      "ts": "string",
+      "kind": "string",
+      "default": "hci0"
+    },
+    {
+      "name": "wifiInterface",
+      "optional": false,
+      "ts": "string",
+      "kind": "string",
+      "default": "wlan0"
+    },
+    {
+      "name": "wifiDedicatedInterface",
+      "optional": false,
+      "ts": "boolean",
+      "kind": "boolean",
+      "default": false
+    },
+    {
+      "name": "wifiType",
+      "optional": false,
+      "ts": "'2.4ghz' | '5ghz'",
+      "kind": {
+        "literal": [
+          "2.4ghz",
+          "5ghz"
+        ]
+      },
+      "default": "5ghz"
+    },
+    {
+      "name": "wifiChannel",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 36
+    },
+    {
+      "name": "wifiChannelWidth",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 40
+    },
+    {
+      "name": "country",
+      "optional": false,
+      "ts": "string",
+      "kind": "string",
+      "default": "DE"
+    },
+    {
+      "name": "carPlaySourceVersion",
+      "optional": false,
+      "ts": "string",
+      "kind": "string",
+      "default": "950.7.1",
+      "doc": "AirPlay protocol version we advertise"
+    },
+    {
+      "name": "carPlayMfiI2cBus",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 2,
+      "doc": "CarPlay MFi coprocessor: i2c bus, power-enable GPIO (-1 = no power pin)"
+    },
+    {
+      "name": "carPlayMfiPowerGpio",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": -1
+    },
+    {
+      "name": "gpsEnabled",
+      "optional": false,
+      "ts": "boolean",
+      "kind": "boolean",
+      "default": false,
+      "doc": "Serial GNSS receiver"
+    },
+    {
+      "name": "gpsDevice",
+      "optional": false,
+      "ts": "string",
+      "kind": "string",
+      "default": "/dev/ttyAMA0"
+    },
+    {
+      "name": "gpsBaudRate",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 38400
+    },
+    {
+      "name": "timezone",
+      "optional": false,
+      "ts": "string",
+      "kind": "string",
+      "default": "",
+      "doc": "Last zone derived from a fix. Applied at startup so the clock reads right before the receiver has a position again."
+    },
+    {
+      "name": "projectionWidth",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 1280,
+      "doc": "Main stream"
+    },
+    {
+      "name": "projectionHeight",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 720
+    },
+    {
+      "name": "projectionFps",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 60
+    },
+    {
+      "name": "projectionDpi",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 0
+    },
+    {
+      "name": "projectionViewAreaTop",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 0,
+      "doc": "View Area = the rendered stream region"
+    },
+    {
+      "name": "projectionViewAreaBottom",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 0
+    },
+    {
+      "name": "projectionViewAreaLeft",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 0
+    },
+    {
+      "name": "projectionViewAreaRight",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 0
+    },
+    {
+      "name": "projectionSafeAreaTop",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 0,
+      "doc": "Safe Area = where the phone keeps nav hints/UI inside the view area. drawOutside = CarPlay drawUIOutsideSafeArea (main display only)"
+    },
+    {
+      "name": "projectionSafeAreaBottom",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 0
+    },
+    {
+      "name": "projectionSafeAreaLeft",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 0
+    },
+    {
+      "name": "projectionSafeAreaRight",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 0
+    },
+    {
+      "name": "projectionSafeAreaDrawOutside",
+      "optional": false,
+      "ts": "boolean",
+      "kind": "boolean",
+      "default": true
+    },
+    {
+      "name": "clusterWidth",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 1280,
+      "doc": "Cluster stream"
+    },
+    {
+      "name": "clusterHeight",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 720
+    },
+    {
+      "name": "clusterFps",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 60
+    },
+    {
+      "name": "clusterDpi",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 0
+    },
+    {
+      "name": "clusterViewAreaTop",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 0,
+      "doc": "View Area = the rendered stream region"
+    },
+    {
+      "name": "clusterViewAreaBottom",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 0
+    },
+    {
+      "name": "clusterViewAreaLeft",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 0
+    },
+    {
+      "name": "clusterViewAreaRight",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 0
+    },
+    {
+      "name": "clusterSafeAreaTop",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 60,
+      "doc": "Safe Area = where the phone keeps nav hints/UI inside the view area"
+    },
+    {
+      "name": "clusterSafeAreaBottom",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 10
+    },
+    {
+      "name": "clusterSafeAreaLeft",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 300
+    },
+    {
+      "name": "clusterSafeAreaRight",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 300
+    },
+    {
+      "name": "lastPhoneWorkMode",
+      "optional": false,
+      "ts": "PhoneWorkMode",
+      "kind": {
+        "enum": "PhoneWorkMode"
+      },
+      "default": 2,
+      "doc": "Phone session state"
+    },
+    {
+      "name": "lastConnectedAaBtMac",
+      "optional": true,
+      "ts": "string",
+      "kind": "string",
+      "default": ""
+    },
+    {
+      "name": "phoneConfig",
+      "optional": false,
+      "ts": "Partial<Record<number, PhoneTypeConfig>>",
+      "kind": "object",
+      "default": {}
+    },
+    {
+      "name": "darkMode",
+      "optional": false,
+      "ts": "boolean",
+      "kind": "boolean",
+      "default": true,
+      "doc": "Theme / vehicle identity"
+    },
+    {
+      "name": "displayBrightness",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 1
+    },
+    {
+      "name": "displayBrightnessAuto",
+      "optional": false,
+      "ts": "boolean",
+      "kind": "boolean",
+      "default": true
+    },
+    {
+      "name": "nightMode",
+      "optional": false,
+      "ts": "boolean",
+      "kind": "boolean",
+      "default": true
+    },
+    {
+      "name": "carName",
+      "optional": false,
+      "ts": "string",
+      "kind": "string",
+      "default": "LIVI"
+    },
+    {
+      "name": "oemName",
+      "optional": false,
+      "ts": "string",
+      "kind": "string",
+      "default": "App"
+    },
+    {
+      "name": "hand",
+      "optional": false,
+      "ts": "HandDriveType",
+      "kind": {
+        "enum": "HandDriveType"
+      },
+      "default": 0
+    },
+    {
+      "name": "carType",
+      "optional": true,
+      "ts": "CarType",
+      "kind": {
+        "enum": "CarType"
+      },
+      "default": 1
+    },
+    {
+      "name": "evConnectorTypes",
+      "optional": true,
+      "ts": "EvConnectorType[]",
+      "kind": "array",
+      "default": []
+    },
+    {
+      "name": "samplingFrequency",
+      "optional": false,
+      "ts": "0 | 1",
+      "kind": {
+        "union": "0 | 1"
+      },
+      "default": 1,
+      "doc": "Audio"
+    },
+    {
+      "name": "UseBTPhone",
+      "optional": false,
+      "ts": "boolean",
+      "kind": "boolean",
+      "default": false
+    },
+    {
+      "name": "disableAudioOutput",
+      "optional": false,
+      "ts": "boolean",
+      "kind": "boolean",
+      "default": false
+    },
+    {
+      "name": "huVolume",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 0.95
+    },
+    {
+      "name": "huVolumeLinkSystem",
+      "optional": false,
+      "ts": "boolean",
+      "kind": "boolean",
+      "default": true
+    },
+    {
+      "name": "audioVolume",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 0.95
+    },
+    {
+      "name": "navVolume",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 0.95
+    },
+    {
+      "name": "voiceAssistantVolume",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 0.95
+    },
+    {
+      "name": "callVolume",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 0.95
+    },
+    {
+      "name": "systemSoundsVolume",
+      "optional": true,
+      "ts": "number",
+      "kind": "number",
+      "default": 0.75
+    },
+    {
+      "name": "audioOutputDevice",
+      "optional": true,
+      "ts": "string",
+      "kind": "string",
+      "default": ""
+    },
+    {
+      "name": "audioOutputDeviceLabel",
+      "optional": true,
+      "ts": "string",
+      "kind": "string",
+      "default": ""
+    },
+    {
+      "name": "audioInputDevice",
+      "optional": true,
+      "ts": "string",
+      "kind": "string",
+      "default": ""
+    },
+    {
+      "name": "audioInputDeviceLabel",
+      "optional": true,
+      "ts": "string",
+      "kind": "string",
+      "default": ""
+    },
+    {
+      "name": "visualAudioDelayMs",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 0
+    },
+    {
+      "name": "autoConn",
+      "optional": false,
+      "ts": "boolean",
+      "kind": "boolean",
+      "default": true,
+      "doc": "Auto-connect + auto-switch"
+    },
+    {
+      "name": "autoSwitchOnReverse",
+      "optional": false,
+      "ts": "boolean",
+      "kind": "boolean",
+      "default": true
+    },
+    {
+      "name": "startPage",
+      "optional": false,
+      "ts": "string",
+      "kind": "string",
+      "default": "/",
+      "doc": "LIVI UI"
+    },
+    {
+      "name": "language",
+      "optional": false,
+      "ts": "string",
+      "kind": "string",
+      "default": "en"
+    },
+    {
+      "name": "kiosk",
+      "optional": false,
+      "ts": "WindowAssignment",
+      "kind": {
+        "alias": "WindowAssignment",
+        "ts": "{ main: boolean dash: boolean aux: boolean }"
+      },
+      "default": {
+        "main": false,
+        "dash": false,
+        "aux": false
+      }
+    },
+    {
+      "name": "uiZoomPercent",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 100
+    },
+    {
+      "name": "appearanceMode",
+      "optional": false,
+      "ts": "AppearanceMode",
+      "kind": {
+        "alias": "AppearanceMode",
+        "ts": "'auto' | 'night' | 'day'"
+      },
+      "default": "auto"
+    },
+    {
+      "name": "displayMode",
+      "optional": false,
+      "ts": "string",
+      "kind": "string",
+      "default": "",
+      "doc": "Panel mode as \"WIDTHxHEIGHT\", empty leaves the display at the mode it came up in"
+    },
+    {
+      "name": "displayGamma",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 1,
+      "doc": "Display calibration, applied as the Pi compositor output gamma LUT"
+    },
+    {
+      "name": "displayContrast",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 1
+    },
+    {
+      "name": "displayColorR",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 1
+    },
+    {
+      "name": "displayColorG",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 1
+    },
+    {
+      "name": "displayColorB",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 1
+    },
+    {
+      "name": "cameraId",
+      "optional": false,
+      "ts": "string",
+      "kind": "string",
+      "default": "",
+      "doc": "Camera + dashboards + media slots"
+    },
+    {
+      "name": "camera",
+      "optional": false,
+      "ts": "WindowAssignment",
+      "kind": {
+        "alias": "WindowAssignment",
+        "ts": "{ main: boolean dash: boolean aux: boolean }"
+      },
+      "default": {
+        "main": true,
+        "dash": false,
+        "aux": false
+      }
+    },
+    {
+      "name": "cameraMirror",
+      "optional": false,
+      "ts": "boolean",
+      "kind": "boolean",
+      "default": false
+    },
+    {
+      "name": "cameraRotation",
+      "optional": false,
+      "ts": "0 | 90 | 180 | 270",
+      "kind": {
+        "union": "0 | 90 | 180 | 270"
+      },
+      "default": 0
+    },
+    {
+      "name": "media",
+      "optional": false,
+      "ts": "WindowAssignment",
+      "kind": {
+        "alias": "WindowAssignment",
+        "ts": "{ main: boolean dash: boolean aux: boolean }"
+      },
+      "default": {
+        "main": true,
+        "dash": false,
+        "aux": false
+      }
+    },
+    {
+      "name": "dashboards",
+      "optional": false,
+      "ts": "DashboardsConfig",
+      "kind": {
+        "alias": "DashboardsConfig",
+        "ts": "Record<TelemetryDashboardId, DashboardSlotConfig>"
+      },
+      "default": {
+        "dash1": {
+          "main": true,
+          "dash": false,
+          "aux": false,
+          "pos": 1
+        },
+        "dash2": {
+          "main": true,
+          "dash": false,
+          "aux": false,
+          "pos": 2
+        },
+        "dash3": {
+          "main": true,
+          "dash": false,
+          "aux": false,
+          "pos": 3
+        },
+        "dash4": {
+          "main": true,
+          "dash": false,
+          "aux": false,
+          "pos": 4
+        }
+      }
+    },
+    {
+      "name": "custom",
+      "optional": false,
+      "ts": "WindowAssignment",
+      "kind": {
+        "alias": "WindowAssignment",
+        "ts": "{ main: boolean dash: boolean aux: boolean }"
+      },
+      "default": {
+        "main": false,
+        "dash": false,
+        "aux": false
+      }
+    },
+    {
+      "name": "customUrl",
+      "optional": false,
+      "ts": "string",
+      "kind": "string",
+      "default": ""
+    },
+    {
+      "name": "mainScreenBounds",
+      "optional": true,
+      "ts": "WindowBounds",
+      "kind": {
+        "alias": "WindowBounds",
+        "ts": "{ x: number y: number width: number height: number }"
+      },
+      "default": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      },
+      "doc": "Multi-window bounds"
+    },
+    {
+      "name": "dashScreenBounds",
+      "optional": true,
+      "ts": "WindowBounds",
+      "kind": {
+        "alias": "WindowBounds",
+        "ts": "{ x: number y: number width: number height: number }"
+      },
+      "default": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      }
+    },
+    {
+      "name": "auxScreenBounds",
+      "optional": true,
+      "ts": "WindowBounds",
+      "kind": {
+        "alias": "WindowBounds",
+        "ts": "{ x: number y: number width: number height: number }"
+      },
+      "default": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      }
+    },
+    {
+      "name": "mainScreenWidth",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 1280
+    },
+    {
+      "name": "mainScreenHeight",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 720
+    },
+    {
+      "name": "dashScreenActive",
+      "optional": false,
+      "ts": "boolean",
+      "kind": "boolean",
+      "default": false
+    },
+    {
+      "name": "dashScreenWidth",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 1280
+    },
+    {
+      "name": "dashScreenHeight",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 720
+    },
+    {
+      "name": "auxScreenActive",
+      "optional": false,
+      "ts": "boolean",
+      "kind": "boolean",
+      "default": false
+    },
+    {
+      "name": "auxScreenWidth",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 800
+    },
+    {
+      "name": "auxScreenHeight",
+      "optional": false,
+      "ts": "number",
+      "kind": "number",
+      "default": 480
+    },
+    {
+      "name": "lastKnownGps",
+      "optional": true,
+      "ts": "LastKnownGps",
+      "kind": {
+        "alias": "LastKnownGps",
+        "ts": "{ lat: number lng: number alt?: number heading?: number ts: number }"
+      }
+    },
+    {
+      "name": "dongleToolsIp",
+      "optional": true,
+      "ts": "string",
+      "kind": "string",
+      "default": ""
+    },
+    {
+      "name": "primaryColorDark",
+      "optional": true,
+      "ts": "string",
+      "kind": "string",
+      "default": "",
+      "doc": "Theme overrides"
+    },
+    {
+      "name": "primaryColorLight",
+      "optional": true,
+      "ts": "string",
+      "kind": "string",
+      "default": ""
+    },
+    {
+      "name": "highlightColorLight",
+      "optional": true,
+      "ts": "string",
+      "kind": "string",
+      "default": ""
+    },
+    {
+      "name": "highlightColorDark",
+      "optional": true,
+      "ts": "string",
+      "kind": "string",
+      "default": ""
+    },
+    {
+      "name": "backgroundColorDark",
+      "optional": true,
+      "ts": "string",
+      "kind": "string",
+      "default": ""
+    },
+    {
+      "name": "backgroundColorLight",
+      "optional": true,
+      "ts": "string",
+      "kind": "string",
+      "default": ""
+    },
+    {
+      "name": "dongleIcon120",
+      "optional": true,
+      "ts": "string",
+      "kind": "string",
+      "default": "",
+      "doc": "Dongle icon overrides"
+    },
+    {
+      "name": "dongleIcon180",
+      "optional": true,
+      "ts": "string",
+      "kind": "string",
+      "default": ""
+    },
+    {
+      "name": "dongleIcon256",
+      "optional": true,
+      "ts": "string",
+      "kind": "string",
+      "default": ""
+    },
+    {
+      "name": "updateNightly",
+      "optional": false,
+      "ts": "boolean",
+      "kind": "boolean",
+      "default": false,
+      "doc": "Take the rolling build of main instead of the latest release"
+    },
+    {
+      "name": "dismissedPackages",
+      "optional": false,
+      "ts": "string[]",
+      "kind": "array",
+      "default": [],
+      "doc": "System packages the user chose not to be asked about again"
+    },
+    {
+      "name": "bindings",
+      "optional": false,
+      "ts": "KeyBindings",
+      "kind": {
+        "alias": "KeyBindings",
+        "ts": "{ // D-PAD up: string down: string left: string right: string selectUp: string selectDown: string back: string // Rotary Knob knobLeft: string knobRight: string knobUp: string knobDown: string // Media Control home: string cycleSession: string playPause: string play: string pause: string next: string prev: string // Phone acceptPhone: string rejectPhone: string phoneKey0: string phoneKey1: string phoneKey2: string phoneKey3: string phoneKey4: string phoneKey5: string phoneKey6: string phoneKey7: string phoneKey8: string phoneKey9: string phoneKeyStar: string phoneKeyHash: string phoneKeyHookSwitch: string // Voice voiceAssistant: string voiceAssistantRelease: string }"
+      },
+      "default": {
+        "up": "ArrowUp",
+        "down": "ArrowDown",
+        "left": "ArrowLeft",
+        "right": "ArrowRight",
+        "selectUp": "",
+        "selectDown": "Enter",
+        "back": "Backspace",
+        "knobLeft": "",
+        "knobRight": "",
+        "knobUp": "",
+        "knobDown": "",
+        "home": "KeyH",
+        "cycleSession": "KeyS",
+        "playPause": "KeyP",
+        "play": "",
+        "pause": "",
+        "next": "KeyN",
+        "prev": "KeyB",
+        "acceptPhone": "KeyA",
+        "rejectPhone": "KeyR",
+        "phoneKey0": "Digit0",
+        "phoneKey1": "Digit1",
+        "phoneKey2": "Digit2",
+        "phoneKey3": "Digit3",
+        "phoneKey4": "Digit4",
+        "phoneKey5": "Digit5",
+        "phoneKey6": "Digit6",
+        "phoneKey7": "Digit7",
+        "phoneKey8": "Digit8",
+        "phoneKey9": "Digit9",
+        "phoneKeyStar": "",
+        "phoneKeyHash": "",
+        "phoneKeyHookSwitch": "",
+        "voiceAssistant": "KeyV",
+        "voiceAssistantRelease": ""
+      },
+      "doc": "Key bindings"
+    }
+  ],
+  "enums": {
+    "HandDriveType": {
+      "LHD": 0,
+      "RHD": 1
+    },
+    "MicType": {
+      "CarMic": 0,
+      "DongleMic": 1,
+      "PhoneMic": 2
+    },
+    "PhoneWorkMode": {
+      "CarPlay": 2,
+      "Android": 4
+    },
+    "PhoneType": {
+      "AndroidMirror": 1,
+      "CarPlay": 3,
+      "iPhoneMirror": 4,
+      "AndroidAuto": 5,
+      "HiCar": 6
+    },
+    "CarType": {
+      "Unknown": 0,
+      "Gasoline": 1,
+      "DieselWinter": 3,
+      "Diesel": 4,
+      "Biodiesel": 5,
+      "E85": 6,
+      "LPG": 7,
+      "CNG": 8,
+      "LNG": 9,
+      "Electric": 10,
+      "HybridGasoline": 101,
+      "HybridDiesel": 102,
+      "Hydrogen": 11,
+      "Other": 12
+    },
+    "EvConnectorType": {
+      "Unknown": 0,
+      "J1772": 1,
+      "Mennekes": 2,
+      "Chademo": 3,
+      "Combo1": 4,
+      "Combo2": 5,
+      "TeslaSupercharger": 8,
+      "Gbt": 9,
+      "Other": 101
+    }
+  },
+  "constants": {
+    "CAR_NAME_MAX": 20,
+    "WIFI_PASSWORD_MIN": 8,
+    "WIFI_PASSWORD_MAX": 63,
+    "DEFAULT_BINDINGS": {
+      "up": "ArrowUp",
+      "down": "ArrowDown",
+      "left": "ArrowLeft",
+      "right": "ArrowRight",
+      "selectUp": "",
+      "selectDown": "Enter",
+      "back": "Backspace",
+      "knobLeft": "",
+      "knobRight": "",
+      "knobUp": "",
+      "knobDown": "",
+      "home": "KeyH",
+      "cycleSession": "KeyS",
+      "playPause": "KeyP",
+      "play": "",
+      "pause": "",
+      "next": "KeyN",
+      "prev": "KeyB",
+      "acceptPhone": "KeyA",
+      "rejectPhone": "KeyR",
+      "phoneKey0": "Digit0",
+      "phoneKey1": "Digit1",
+      "phoneKey2": "Digit2",
+      "phoneKey3": "Digit3",
+      "phoneKey4": "Digit4",
+      "phoneKey5": "Digit5",
+      "phoneKey6": "Digit6",
+      "phoneKey7": "Digit7",
+      "phoneKey8": "Digit8",
+      "phoneKey9": "Digit9",
+      "phoneKeyStar": "",
+      "phoneKeyHash": "",
+      "phoneKeyHookSwitch": "",
+      "voiceAssistant": "KeyV",
+      "voiceAssistantRelease": ""
+    }
+  },
+  "aliases": {
+    "PhoneTypeConfig": "{ frameInterval: number | null }",
+    "TelemetryDashboardId": "'dash1' | 'dash2' | 'dash3' | 'dash4'",
+    "WindowId": "'main' | 'dash' | 'aux'",
+    "WindowAssignment": "{ main: boolean dash: boolean aux: boolean }",
+    "DashboardSlotConfig": "WindowAssignment & { pos: number }",
+    "DashboardsConfig": "Record<TelemetryDashboardId, DashboardSlotConfig>",
+    "LastKnownGps": "{ lat: number lng: number alt?: number heading?: number ts: number }",
+    "AppearanceMode": "'auto' | 'night' | 'day'",
+    "WindowBounds": "{ x: number y: number width: number height: number }",
+    "KeyBindings": "{ // D-PAD up: string down: string left: string right: string selectUp: string selectDown: string back: string // Rotary Knob knobLeft: string knobRight: string knobUp: string knobDown: string // Media Control home: string cycleSession: string playPause: string play: string pause: string next: string prev: string // Phone acceptPhone: string rejectPhone: string phoneKey0: string phoneKey1: string phoneKey2: string phoneKey3: string phoneKey4: string phoneKey5: string phoneKey6: string phoneKey7: string phoneKey8: string phoneKey9: string phoneKeyStar: string phoneKeyHash: string phoneKeyHookSwitch: string // Voice voiceAssistant: string voiceAssistantRelease: string }"
+  }
+}

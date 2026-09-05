@@ -1,0 +1,3338 @@
+{
+  "$generated": "scripts/contracts-gen.ts — do not edit by hand; run `pnpm contracts:gen`",
+  "summary": {
+    "fields": 155,
+    "byType": {
+      "route": 44,
+      "btDeviceList": 1,
+      "string": 5,
+      "select": 16,
+      "checkbox": 39,
+      "number": 34,
+      "posList": 1,
+      "custom": 11,
+      "keybinding": 35,
+      "slider": 7,
+      "color": 6
+    },
+    "customComponents": [
+      "About",
+      "Camera",
+      "ColorCalibration",
+      "ContrastGammaCalibration",
+      "GpsHwInfo",
+      "GpsInfo",
+      "IconUploader",
+      "PowerOff",
+      "Restart",
+      "SoftwareUpdate",
+      "USBDongle"
+    ]
+  },
+  "fields": [
+    {
+      "path": "bluetoothPairedDevices",
+      "type": "btDeviceList",
+      "route": "new-settings/devices",
+      "labelKey": "settings.devices"
+    },
+    {
+      "path": "carName",
+      "type": "string",
+      "route": "new-settings/general/connections",
+      "labelKey": "settings.carName"
+    },
+    {
+      "path": "oemName",
+      "type": "string",
+      "route": "new-settings/general/connections",
+      "labelKey": "settings.uiName"
+    },
+    {
+      "path": "wifiType",
+      "type": "select",
+      "route": "new-settings/general/connections/wifi",
+      "labelKey": "settings.wifiFrequency"
+    },
+    {
+      "path": "wifiPassword",
+      "type": "string",
+      "route": "new-settings/general/connections/wifi",
+      "labelKey": "settings.wifiPassword"
+    },
+    {
+      "path": "wifiChannel",
+      "type": "select",
+      "route": "new-settings/general/connections/wifi",
+      "labelKey": "settings.wifiChannel"
+    },
+    {
+      "path": "wifiChannelWidth",
+      "type": "select",
+      "route": "new-settings/general/connections/wifi",
+      "labelKey": "settings.wifiChannelWidth"
+    },
+    {
+      "path": "country",
+      "type": "select",
+      "route": "new-settings/general/connections/wifi",
+      "labelKey": "settings.wifiCountry"
+    },
+    {
+      "path": "wifiInterface",
+      "type": "select",
+      "route": "new-settings/general/connections/wifi",
+      "labelKey": "settings.wifiInterface"
+    },
+    {
+      "path": "btAdapter",
+      "type": "select",
+      "route": "new-settings/general/connections/wifi",
+      "labelKey": "settings.btAdapter"
+    },
+    {
+      "path": "wifiDedicatedInterface",
+      "type": "checkbox",
+      "route": "new-settings/general/connections/wifi",
+      "labelKey": "settings.wifiDedicatedInterface"
+    },
+    {
+      "path": "wirelessAaEnabled",
+      "type": "checkbox",
+      "route": "new-settings/general/connections",
+      "labelKey": "settings.wirelessAaEnabled"
+    },
+    {
+      "path": "wirelessCpEnabled",
+      "type": "checkbox",
+      "route": "new-settings/general/connections",
+      "labelKey": "settings.wirelessCpEnabled"
+    },
+    {
+      "path": "autoConn",
+      "type": "checkbox",
+      "route": "new-settings/general/connections",
+      "labelKey": "settings.autoConnect"
+    },
+    {
+      "path": "displayMode",
+      "type": "select",
+      "route": "new-settings/general/windowSettings/mainScreen",
+      "labelKey": "settings.displayMode"
+    },
+    {
+      "path": "mainScreenWidth",
+      "type": "number",
+      "route": "new-settings/general/windowSettings/mainScreen",
+      "labelKey": "settings.mainScreenWidth"
+    },
+    {
+      "path": "mainScreenHeight",
+      "type": "number",
+      "route": "new-settings/general/windowSettings/mainScreen",
+      "labelKey": "settings.mainScreenHeight"
+    },
+    {
+      "path": "kiosk.main",
+      "type": "checkbox",
+      "route": "new-settings/general/windowSettings/mainScreen",
+      "labelKey": "settings.fullscreen"
+    },
+    {
+      "path": "dashScreenActive",
+      "type": "checkbox",
+      "route": "new-settings/general/windowSettings/dashScreen",
+      "labelKey": "settings.dashScreenActive"
+    },
+    {
+      "path": "dashScreenWidth",
+      "type": "number",
+      "route": "new-settings/general/windowSettings/dashScreen",
+      "labelKey": "settings.dashScreenWidth"
+    },
+    {
+      "path": "dashScreenHeight",
+      "type": "number",
+      "route": "new-settings/general/windowSettings/dashScreen",
+      "labelKey": "settings.dashScreenHeight"
+    },
+    {
+      "path": "kiosk.dash",
+      "type": "checkbox",
+      "route": "new-settings/general/windowSettings/dashScreen",
+      "labelKey": "settings.fullscreen"
+    },
+    {
+      "path": "auxScreenActive",
+      "type": "checkbox",
+      "route": "new-settings/general/windowSettings/auxScreen",
+      "labelKey": "settings.auxScreenActive"
+    },
+    {
+      "path": "auxScreenWidth",
+      "type": "number",
+      "route": "new-settings/general/windowSettings/auxScreen",
+      "labelKey": "settings.auxScreenWidth"
+    },
+    {
+      "path": "auxScreenHeight",
+      "type": "number",
+      "route": "new-settings/general/windowSettings/auxScreen",
+      "labelKey": "settings.auxScreenHeight"
+    },
+    {
+      "path": "kiosk.aux",
+      "type": "checkbox",
+      "route": "new-settings/general/windowSettings/auxScreen",
+      "labelKey": "settings.fullscreen"
+    },
+    {
+      "path": "dashboards",
+      "type": "posList",
+      "route": "new-settings/general/tabSettings/dashboards",
+      "labelKey": "settings.telemetryDashboards"
+    },
+    {
+      "path": "dashboards.dash1.main",
+      "type": "checkbox",
+      "route": "new-settings/general/tabSettings/dashboards/dash1",
+      "labelKey": "settings.mainScreen"
+    },
+    {
+      "path": "dashboards.dash1.dash",
+      "type": "checkbox",
+      "route": "new-settings/general/tabSettings/dashboards/dash1",
+      "labelKey": "settings.dashScreen"
+    },
+    {
+      "path": "dashboards.dash1.aux",
+      "type": "checkbox",
+      "route": "new-settings/general/tabSettings/dashboards/dash1",
+      "labelKey": "settings.auxScreen"
+    },
+    {
+      "path": "dashboards.dash2.main",
+      "type": "checkbox",
+      "route": "new-settings/general/tabSettings/dashboards/dash2",
+      "labelKey": "settings.mainScreen"
+    },
+    {
+      "path": "dashboards.dash2.dash",
+      "type": "checkbox",
+      "route": "new-settings/general/tabSettings/dashboards/dash2",
+      "labelKey": "settings.dashScreen"
+    },
+    {
+      "path": "dashboards.dash2.aux",
+      "type": "checkbox",
+      "route": "new-settings/general/tabSettings/dashboards/dash2",
+      "labelKey": "settings.auxScreen"
+    },
+    {
+      "path": "dashboards.dash3.main",
+      "type": "checkbox",
+      "route": "new-settings/general/tabSettings/dashboards/dash3",
+      "labelKey": "settings.mainScreen"
+    },
+    {
+      "path": "dashboards.dash3.dash",
+      "type": "checkbox",
+      "route": "new-settings/general/tabSettings/dashboards/dash3",
+      "labelKey": "settings.dashScreen"
+    },
+    {
+      "path": "dashboards.dash3.aux",
+      "type": "checkbox",
+      "route": "new-settings/general/tabSettings/dashboards/dash3",
+      "labelKey": "settings.auxScreen"
+    },
+    {
+      "path": "dashboards.dash4.main",
+      "type": "checkbox",
+      "route": "new-settings/general/tabSettings/dashboards/dash4",
+      "labelKey": "settings.mainScreen"
+    },
+    {
+      "path": "dashboards.dash4.dash",
+      "type": "checkbox",
+      "route": "new-settings/general/tabSettings/dashboards/dash4",
+      "labelKey": "settings.dashScreen"
+    },
+    {
+      "path": "dashboards.dash4.aux",
+      "type": "checkbox",
+      "route": "new-settings/general/tabSettings/dashboards/dash4",
+      "labelKey": "settings.auxScreen"
+    },
+    {
+      "path": "media.main",
+      "type": "checkbox",
+      "route": "new-settings/general/tabSettings/media",
+      "labelKey": "settings.mainScreen"
+    },
+    {
+      "path": "media.dash",
+      "type": "checkbox",
+      "route": "new-settings/general/tabSettings/media",
+      "labelKey": "settings.dashScreen"
+    },
+    {
+      "path": "media.aux",
+      "type": "checkbox",
+      "route": "new-settings/general/tabSettings/media",
+      "labelKey": "settings.auxScreen"
+    },
+    {
+      "path": "autoSwitchOnReverse",
+      "type": "checkbox",
+      "route": "new-settings/general/tabSettings/camera",
+      "labelKey": "settings.autoSwitchOnReverse"
+    },
+    {
+      "path": "camera.main",
+      "type": "checkbox",
+      "route": "new-settings/general/tabSettings/camera",
+      "labelKey": "settings.mainScreen"
+    },
+    {
+      "path": "camera.dash",
+      "type": "checkbox",
+      "route": "new-settings/general/tabSettings/camera",
+      "labelKey": "settings.dashScreen"
+    },
+    {
+      "path": "camera.aux",
+      "type": "checkbox",
+      "route": "new-settings/general/tabSettings/camera",
+      "labelKey": "settings.auxScreen"
+    },
+    {
+      "path": "cameraMirror",
+      "type": "checkbox",
+      "route": "new-settings/general/tabSettings/camera",
+      "labelKey": "settings.cameraMirror"
+    },
+    {
+      "path": "cameraRotation",
+      "type": "select",
+      "route": "new-settings/general/tabSettings/camera",
+      "labelKey": "settings.cameraRotation"
+    },
+    {
+      "path": "cameraId",
+      "type": "custom",
+      "route": "new-settings/general/tabSettings/camera/select",
+      "labelKey": "settings.camera"
+    },
+    {
+      "path": "custom.main",
+      "type": "checkbox",
+      "route": "new-settings/general/tabSettings/custom",
+      "labelKey": "settings.mainScreen"
+    },
+    {
+      "path": "custom.dash",
+      "type": "checkbox",
+      "route": "new-settings/general/tabSettings/custom",
+      "labelKey": "settings.dashScreen"
+    },
+    {
+      "path": "custom.aux",
+      "type": "checkbox",
+      "route": "new-settings/general/tabSettings/custom",
+      "labelKey": "settings.auxScreen"
+    },
+    {
+      "path": "customUrl",
+      "type": "string",
+      "route": "new-settings/general/tabSettings/custom",
+      "labelKey": "settings.customUrl"
+    },
+    {
+      "path": "bindings",
+      "type": "keybinding",
+      "route": "new-settings/general/keyBindings",
+      "labelKey": "settings.up"
+    },
+    {
+      "path": "bindings",
+      "type": "keybinding",
+      "route": "new-settings/general/keyBindings",
+      "labelKey": "settings.down"
+    },
+    {
+      "path": "bindings",
+      "type": "keybinding",
+      "route": "new-settings/general/keyBindings",
+      "labelKey": "settings.left"
+    },
+    {
+      "path": "bindings",
+      "type": "keybinding",
+      "route": "new-settings/general/keyBindings",
+      "labelKey": "settings.right"
+    },
+    {
+      "path": "bindings",
+      "type": "keybinding",
+      "route": "new-settings/general/keyBindings",
+      "labelKey": "settings.selectUp"
+    },
+    {
+      "path": "bindings",
+      "type": "keybinding",
+      "route": "new-settings/general/keyBindings",
+      "labelKey": "settings.selectDown"
+    },
+    {
+      "path": "bindings",
+      "type": "keybinding",
+      "route": "new-settings/general/keyBindings",
+      "labelKey": "settings.back"
+    },
+    {
+      "path": "bindings",
+      "type": "keybinding",
+      "route": "new-settings/general/keyBindings",
+      "labelKey": "settings.knobLeft"
+    },
+    {
+      "path": "bindings",
+      "type": "keybinding",
+      "route": "new-settings/general/keyBindings",
+      "labelKey": "settings.knobRight"
+    },
+    {
+      "path": "bindings",
+      "type": "keybinding",
+      "route": "new-settings/general/keyBindings",
+      "labelKey": "settings.knobUp"
+    },
+    {
+      "path": "bindings",
+      "type": "keybinding",
+      "route": "new-settings/general/keyBindings",
+      "labelKey": "settings.knobDown"
+    },
+    {
+      "path": "bindings",
+      "type": "keybinding",
+      "route": "new-settings/general/keyBindings",
+      "labelKey": "settings.home"
+    },
+    {
+      "path": "bindings",
+      "type": "keybinding",
+      "route": "new-settings/general/keyBindings",
+      "labelKey": "settings.cycleSession"
+    },
+    {
+      "path": "bindings",
+      "type": "keybinding",
+      "route": "new-settings/general/keyBindings",
+      "labelKey": "settings.playPause"
+    },
+    {
+      "path": "bindings",
+      "type": "keybinding",
+      "route": "new-settings/general/keyBindings",
+      "labelKey": "settings.play"
+    },
+    {
+      "path": "bindings",
+      "type": "keybinding",
+      "route": "new-settings/general/keyBindings",
+      "labelKey": "settings.pause"
+    },
+    {
+      "path": "bindings",
+      "type": "keybinding",
+      "route": "new-settings/general/keyBindings",
+      "labelKey": "settings.next"
+    },
+    {
+      "path": "bindings",
+      "type": "keybinding",
+      "route": "new-settings/general/keyBindings",
+      "labelKey": "settings.previous"
+    },
+    {
+      "path": "bindings",
+      "type": "keybinding",
+      "route": "new-settings/general/keyBindings",
+      "labelKey": "settings.acceptCall"
+    },
+    {
+      "path": "bindings",
+      "type": "keybinding",
+      "route": "new-settings/general/keyBindings",
+      "labelKey": "settings.rejectCall"
+    },
+    {
+      "path": "bindings",
+      "type": "keybinding",
+      "route": "new-settings/general/keyBindings",
+      "labelKey": "settings.phoneKey0"
+    },
+    {
+      "path": "bindings",
+      "type": "keybinding",
+      "route": "new-settings/general/keyBindings",
+      "labelKey": "settings.phoneKey1"
+    },
+    {
+      "path": "bindings",
+      "type": "keybinding",
+      "route": "new-settings/general/keyBindings",
+      "labelKey": "settings.phoneKey2"
+    },
+    {
+      "path": "bindings",
+      "type": "keybinding",
+      "route": "new-settings/general/keyBindings",
+      "labelKey": "settings.phoneKey3"
+    },
+    {
+      "path": "bindings",
+      "type": "keybinding",
+      "route": "new-settings/general/keyBindings",
+      "labelKey": "settings.phoneKey4"
+    },
+    {
+      "path": "bindings",
+      "type": "keybinding",
+      "route": "new-settings/general/keyBindings",
+      "labelKey": "settings.phoneKey5"
+    },
+    {
+      "path": "bindings",
+      "type": "keybinding",
+      "route": "new-settings/general/keyBindings",
+      "labelKey": "settings.phoneKey6"
+    },
+    {
+      "path": "bindings",
+      "type": "keybinding",
+      "route": "new-settings/general/keyBindings",
+      "labelKey": "settings.phoneKey7"
+    },
+    {
+      "path": "bindings",
+      "type": "keybinding",
+      "route": "new-settings/general/keyBindings",
+      "labelKey": "settings.phoneKey8"
+    },
+    {
+      "path": "bindings",
+      "type": "keybinding",
+      "route": "new-settings/general/keyBindings",
+      "labelKey": "settings.phoneKey9"
+    },
+    {
+      "path": "bindings",
+      "type": "keybinding",
+      "route": "new-settings/general/keyBindings",
+      "labelKey": "settings.phoneKeyStar"
+    },
+    {
+      "path": "bindings",
+      "type": "keybinding",
+      "route": "new-settings/general/keyBindings",
+      "labelKey": "settings.phoneKeyHash"
+    },
+    {
+      "path": "bindings",
+      "type": "keybinding",
+      "route": "new-settings/general/keyBindings",
+      "labelKey": "settings.phoneKeyHookSwitch"
+    },
+    {
+      "path": "bindings",
+      "type": "keybinding",
+      "route": "new-settings/general/keyBindings",
+      "labelKey": "settings.voiceAssistant"
+    },
+    {
+      "path": "bindings",
+      "type": "keybinding",
+      "route": "new-settings/general/keyBindings",
+      "labelKey": "settings.voiceAssistantRelease"
+    },
+    {
+      "path": "startPage",
+      "type": "select",
+      "route": "new-settings/general",
+      "labelKey": "settings.startPage"
+    },
+    {
+      "path": "visualAudioDelayMs",
+      "type": "number",
+      "route": "new-settings/general",
+      "labelKey": "settings.fftDelay"
+    },
+    {
+      "path": "hand",
+      "type": "select",
+      "route": "new-settings/general",
+      "labelKey": "settings.steeringWheelPosition"
+    },
+    {
+      "path": "uiZoomPercent",
+      "type": "number",
+      "route": "new-settings/general",
+      "labelKey": "settings.uiZoom"
+    },
+    {
+      "path": "language",
+      "type": "select",
+      "route": "new-settings/general",
+      "labelKey": "settings.language"
+    },
+    {
+      "path": "carPlayMfiI2cBus",
+      "type": "number",
+      "route": "new-settings/general/mfi",
+      "labelKey": "settings.i2cBus"
+    },
+    {
+      "path": "carPlayMfiPowerGpio",
+      "type": "number",
+      "route": "new-settings/general/mfi",
+      "labelKey": "settings.mfiPowerGpio"
+    },
+    {
+      "path": "gpsEnabled",
+      "type": "checkbox",
+      "route": "new-settings/general/gps",
+      "labelKey": "settings.gpsEnabled"
+    },
+    {
+      "path": "gpsDevice",
+      "type": "string",
+      "route": "new-settings/general/gps",
+      "labelKey": "settings.gpsDevice"
+    },
+    {
+      "path": "gpsBaudRate",
+      "type": "select",
+      "route": "new-settings/general/gps",
+      "labelKey": "settings.gpsBaudRate"
+    },
+    {
+      "path": "carName",
+      "type": "custom",
+      "route": "new-settings/general/gps/info",
+      "labelKey": "settings.gpsInfo"
+    },
+    {
+      "path": "carName",
+      "type": "custom",
+      "route": "new-settings/general/gps/hwinfo",
+      "labelKey": "settings.gpsHwInfo"
+    },
+    {
+      "path": "carName",
+      "type": "custom",
+      "route": "new-settings/general/usbDongle",
+      "labelKey": "settings.usbDongle"
+    },
+    {
+      "path": "huVolume",
+      "type": "slider",
+      "route": "new-settings/audio",
+      "labelKey": "settings.huVolume"
+    },
+    {
+      "path": "audioVolume",
+      "type": "slider",
+      "route": "new-settings/audio",
+      "labelKey": "settings.music"
+    },
+    {
+      "path": "navVolume",
+      "type": "slider",
+      "route": "new-settings/audio",
+      "labelKey": "settings.navigation"
+    },
+    {
+      "path": "voiceAssistantVolume",
+      "type": "slider",
+      "route": "new-settings/audio",
+      "labelKey": "settings.voiceAssistant"
+    },
+    {
+      "path": "callVolume",
+      "type": "slider",
+      "route": "new-settings/audio",
+      "labelKey": "settings.phoneCalls"
+    },
+    {
+      "path": "systemSoundsVolume",
+      "type": "slider",
+      "route": "new-settings/audio",
+      "labelKey": "settings.systemSounds"
+    },
+    {
+      "path": "audioOutputDevice",
+      "type": "select",
+      "route": "new-settings/audio",
+      "labelKey": "settings.audioOutputDevice"
+    },
+    {
+      "path": "audioInputDevice",
+      "type": "select",
+      "route": "new-settings/audio",
+      "labelKey": "settings.audioInputDevice"
+    },
+    {
+      "path": "samplingFrequency",
+      "type": "select",
+      "route": "new-settings/audio",
+      "labelKey": "settings.samplingFrequency"
+    },
+    {
+      "path": "huVolumeLinkSystem",
+      "type": "checkbox",
+      "route": "new-settings/audio",
+      "labelKey": "settings.huVolumeLinkSystem"
+    },
+    {
+      "path": "disableAudioOutput",
+      "type": "checkbox",
+      "route": "new-settings/audio",
+      "labelKey": "settings.disableAudio"
+    },
+    {
+      "path": "projectionWidth",
+      "type": "number",
+      "route": "new-settings/video/mainVideo",
+      "labelKey": "settings.projectionWidth"
+    },
+    {
+      "path": "projectionHeight",
+      "type": "number",
+      "route": "new-settings/video/mainVideo",
+      "labelKey": "settings.projectionHeight"
+    },
+    {
+      "path": "projectionFps",
+      "type": "number",
+      "route": "new-settings/video/mainVideo",
+      "labelKey": "settings.projectionFps"
+    },
+    {
+      "path": "projectionDpi",
+      "type": "number",
+      "route": "new-settings/video/mainVideo",
+      "labelKey": "settings.projectionDpi"
+    },
+    {
+      "path": "projectionViewAreaTop",
+      "type": "number",
+      "route": "new-settings/video/mainVideo/viewArea",
+      "labelKey": "settings.top"
+    },
+    {
+      "path": "projectionViewAreaBottom",
+      "type": "number",
+      "route": "new-settings/video/mainVideo/viewArea",
+      "labelKey": "settings.bottom"
+    },
+    {
+      "path": "projectionViewAreaLeft",
+      "type": "number",
+      "route": "new-settings/video/mainVideo/viewArea",
+      "labelKey": "settings.left"
+    },
+    {
+      "path": "projectionViewAreaRight",
+      "type": "number",
+      "route": "new-settings/video/mainVideo/viewArea",
+      "labelKey": "settings.right"
+    },
+    {
+      "path": "projectionSafeAreaTop",
+      "type": "number",
+      "route": "new-settings/video/mainVideo/safeArea",
+      "labelKey": "settings.top"
+    },
+    {
+      "path": "projectionSafeAreaBottom",
+      "type": "number",
+      "route": "new-settings/video/mainVideo/safeArea",
+      "labelKey": "settings.bottom"
+    },
+    {
+      "path": "projectionSafeAreaLeft",
+      "type": "number",
+      "route": "new-settings/video/mainVideo/safeArea",
+      "labelKey": "settings.left"
+    },
+    {
+      "path": "projectionSafeAreaRight",
+      "type": "number",
+      "route": "new-settings/video/mainVideo/safeArea",
+      "labelKey": "settings.right"
+    },
+    {
+      "path": "projectionSafeAreaDrawOutside",
+      "type": "checkbox",
+      "route": "new-settings/video/mainVideo/safeArea",
+      "labelKey": "settings.drawOutside"
+    },
+    {
+      "path": "clusterWidth",
+      "type": "number",
+      "route": "new-settings/video/clusterVideo",
+      "labelKey": "settings.clusterWidth"
+    },
+    {
+      "path": "clusterHeight",
+      "type": "number",
+      "route": "new-settings/video/clusterVideo",
+      "labelKey": "settings.clusterHeight"
+    },
+    {
+      "path": "clusterFps",
+      "type": "number",
+      "route": "new-settings/video/clusterVideo",
+      "labelKey": "settings.clusterFps"
+    },
+    {
+      "path": "clusterDpi",
+      "type": "number",
+      "route": "new-settings/video/clusterVideo",
+      "labelKey": "settings.clusterDpi"
+    },
+    {
+      "path": "clusterViewAreaTop",
+      "type": "number",
+      "route": "new-settings/video/clusterVideo/viewArea",
+      "labelKey": "settings.top"
+    },
+    {
+      "path": "clusterViewAreaBottom",
+      "type": "number",
+      "route": "new-settings/video/clusterVideo/viewArea",
+      "labelKey": "settings.bottom"
+    },
+    {
+      "path": "clusterViewAreaLeft",
+      "type": "number",
+      "route": "new-settings/video/clusterVideo/viewArea",
+      "labelKey": "settings.left"
+    },
+    {
+      "path": "clusterViewAreaRight",
+      "type": "number",
+      "route": "new-settings/video/clusterVideo/viewArea",
+      "labelKey": "settings.right"
+    },
+    {
+      "path": "clusterSafeAreaTop",
+      "type": "number",
+      "route": "new-settings/video/clusterVideo/safeArea",
+      "labelKey": "settings.top"
+    },
+    {
+      "path": "clusterSafeAreaBottom",
+      "type": "number",
+      "route": "new-settings/video/clusterVideo/safeArea",
+      "labelKey": "settings.bottom"
+    },
+    {
+      "path": "clusterSafeAreaLeft",
+      "type": "number",
+      "route": "new-settings/video/clusterVideo/safeArea",
+      "labelKey": "settings.left"
+    },
+    {
+      "path": "clusterSafeAreaRight",
+      "type": "number",
+      "route": "new-settings/video/clusterVideo/safeArea",
+      "labelKey": "settings.right"
+    },
+    {
+      "path": "displayBrightness",
+      "type": "slider",
+      "route": "new-settings/appearance",
+      "labelKey": "settings.displayBrightness"
+    },
+    {
+      "path": "displayBrightnessAuto",
+      "type": "checkbox",
+      "route": "new-settings/appearance",
+      "labelKey": "settings.displayBrightnessAuto"
+    },
+    {
+      "path": "darkMode",
+      "type": "checkbox",
+      "route": "new-settings/appearance",
+      "labelKey": "settings.darkMode"
+    },
+    {
+      "path": "appearanceMode",
+      "type": "select",
+      "route": "new-settings/appearance",
+      "labelKey": "settings.phoneAppearance"
+    },
+    {
+      "path": "primaryColorDark",
+      "type": "color",
+      "route": "new-settings/appearance/ui-colors",
+      "labelKey": "settings.primaryColorDark"
+    },
+    {
+      "path": "highlightColorDark",
+      "type": "color",
+      "route": "new-settings/appearance/ui-colors",
+      "labelKey": "settings.highlightColorDark"
+    },
+    {
+      "path": "backgroundColorDark",
+      "type": "color",
+      "route": "new-settings/appearance/ui-colors",
+      "labelKey": "settings.backgroundColorDark"
+    },
+    {
+      "path": "primaryColorLight",
+      "type": "color",
+      "route": "new-settings/appearance/ui-colors",
+      "labelKey": "settings.primaryColorLight"
+    },
+    {
+      "path": "highlightColorLight",
+      "type": "color",
+      "route": "new-settings/appearance/ui-colors",
+      "labelKey": "settings.highlightColorLight"
+    },
+    {
+      "path": "backgroundColorLight",
+      "type": "color",
+      "route": "new-settings/appearance/ui-colors",
+      "labelKey": "settings.backgroundColorLight"
+    },
+    {
+      "path": "displayGamma",
+      "type": "custom",
+      "route": "new-settings/appearance/display-contrast-gamma"
+    },
+    {
+      "path": "displayColorR",
+      "type": "custom",
+      "route": "new-settings/appearance/display-color"
+    },
+    {
+      "path": "dongleIcon180",
+      "type": "custom",
+      "route": "new-settings/appearance/ui-icon",
+      "labelKey": "settings.uiIcon"
+    },
+    {
+      "path": "carName",
+      "type": "custom",
+      "route": "new-settings/system/about",
+      "labelKey": "settings.about"
+    },
+    {
+      "path": "debugLogging",
+      "type": "checkbox",
+      "route": "new-settings/system/logs",
+      "labelKey": "settings.debugLogging"
+    },
+    {
+      "path": "carName",
+      "type": "custom",
+      "route": "new-settings/system/softwareUpdate",
+      "labelKey": "settings.softwareUpdate"
+    },
+    {
+      "path": "carName",
+      "type": "custom",
+      "route": "new-settings/system/restart",
+      "labelKey": "settings.restartSystem"
+    },
+    {
+      "path": "carName",
+      "type": "custom",
+      "route": "new-settings/system/poweroff",
+      "labelKey": "settings.powerOff"
+    }
+  ],
+  "tree": {
+    "type": "route",
+    "route": "new-settings",
+    "label": "Settings",
+    "labelKey": "settings.settingsTitle",
+    "path": "settings",
+    "children": [
+      {
+        "type": "route",
+        "route": "devices",
+        "label": "Devices",
+        "labelKey": "settings.devices",
+        "icon": "devices",
+        "path": "",
+        "children": [
+          {
+            "type": "btDeviceList",
+            "label": "Devices",
+            "labelKey": "settings.devices",
+            "path": "bluetoothPairedDevices"
+          }
+        ]
+      },
+      {
+        "route": "general",
+        "label": "General",
+        "labelKey": "settings.general",
+        "icon": "general",
+        "type": "route",
+        "path": "",
+        "children": [
+          {
+            "type": "route",
+            "route": "connections",
+            "label": "Connections",
+            "labelKey": "settings.connections",
+            "icon": "connections",
+            "path": "",
+            "children": [
+              {
+                "type": "string",
+                "label": "Car Name",
+                "labelKey": "settings.carName",
+                "icon": "carName",
+                "path": "carName",
+                "displayValue": true,
+                "page": {
+                  "title": "Car Name",
+                  "labelTitle": "settings.carName"
+                }
+              },
+              {
+                "type": "string",
+                "label": "UI Name",
+                "labelKey": "settings.uiName",
+                "icon": "uiName",
+                "path": "oemName",
+                "displayValue": true,
+                "page": {
+                  "title": "UI Name",
+                  "labelTitle": "settings.uiName"
+                }
+              },
+              {
+                "type": "route",
+                "route": "wifi",
+                "label": "Wi-Fi",
+                "labelKey": "settings.wifi",
+                "icon": "wifi",
+                "path": "",
+                "children": [
+                  {
+                    "type": "select",
+                    "label": "Wi-Fi Frequency",
+                    "labelKey": "settings.wifiFrequency",
+                    "icon": "wifiFrequency",
+                    "path": "wifiType",
+                    "displayValue": true,
+                    "options": [
+                      {
+                        "label": "2.4 GHz",
+                        "value": "2.4ghz"
+                      },
+                      {
+                        "label": "5 GHz",
+                        "value": "5ghz"
+                      }
+                    ],
+                    "page": {
+                      "title": "Wi-Fi Frequency",
+                      "labelTitle": "settings.wifiFrequency"
+                    }
+                  },
+                  {
+                    "type": "string",
+                    "label": "Wi-Fi Password",
+                    "labelKey": "settings.wifiPassword",
+                    "icon": "wifiPassword",
+                    "path": "wifiPassword",
+                    "minLength": 8,
+                    "maxLength": 63,
+                    "displayValue": true,
+                    "page": {
+                      "title": "Wi-Fi Password",
+                      "labelTitle": "settings.wifiPassword"
+                    }
+                  },
+                  {
+                    "type": "select",
+                    "label": "Wi-Fi Channel",
+                    "labelKey": "settings.wifiChannel",
+                    "icon": "wifiChannel",
+                    "path": "wifiChannel",
+                    "displayValue": true,
+                    "options": [],
+                    "loadOptions": {
+                      "$fn": "loadWifiChannels"
+                    },
+                    "page": {
+                      "title": "Wi-Fi Channel",
+                      "labelTitle": "settings.wifiChannel"
+                    }
+                  },
+                  {
+                    "type": "select",
+                    "label": "Wi-Fi Channel Width",
+                    "labelKey": "settings.wifiChannelWidth",
+                    "icon": "wifiChannel",
+                    "path": "wifiChannelWidth",
+                    "displayValue": true,
+                    "options": [
+                      {
+                        "label": "20 MHz",
+                        "value": 20
+                      },
+                      {
+                        "label": "40 MHz",
+                        "value": 40
+                      },
+                      {
+                        "label": "80 MHz",
+                        "value": 80
+                      }
+                    ],
+                    "page": {
+                      "title": "Wi-Fi Channel Width",
+                      "labelTitle": "settings.wifiChannelWidth"
+                    }
+                  },
+                  {
+                    "type": "select",
+                    "label": "Wi-Fi Country",
+                    "labelKey": "settings.wifiCountry",
+                    "icon": "wifiCountry",
+                    "path": "country",
+                    "displayValue": true,
+                    "options": [],
+                    "loadOptions": {
+                      "$fn": "loadWifiCountryCodes"
+                    },
+                    "page": {
+                      "title": "Wi-Fi Country",
+                      "labelTitle": "settings.wifiCountry"
+                    }
+                  },
+                  {
+                    "type": "select",
+                    "label": "Wi-Fi Interface",
+                    "labelKey": "settings.wifiInterface",
+                    "icon": "wifiInterface",
+                    "path": "wifiInterface",
+                    "displayValue": true,
+                    "disabled": {
+                      "$expr": "window.app?.platform !== 'linux'"
+                    },
+                    "options": [],
+                    "loadOptions": {
+                      "$fn": "loadWifiInterfaces"
+                    },
+                    "page": {
+                      "title": "Wi-Fi Interface",
+                      "labelTitle": "settings.wifiInterface"
+                    }
+                  },
+                  {
+                    "type": "select",
+                    "label": "Bluetooth Interface",
+                    "labelKey": "settings.btAdapter",
+                    "icon": "btInterface",
+                    "path": "btAdapter",
+                    "displayValue": true,
+                    "disabled": {
+                      "$expr": "window.app?.platform !== 'linux'"
+                    },
+                    "options": [],
+                    "loadOptions": {
+                      "$fn": "loadBtAdapters"
+                    },
+                    "page": {
+                      "title": "Bluetooth Interface",
+                      "labelTitle": "settings.btAdapter"
+                    }
+                  },
+                  {
+                    "type": "checkbox",
+                    "label": "Dedicated Interface",
+                    "labelKey": "settings.wifiDedicatedInterface",
+                    "icon": "dedicatedInterface",
+                    "path": "wifiDedicatedInterface",
+                    "disabled": {
+                      "$expr": "window.app?.platform !== 'linux'"
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "checkbox",
+                "label": "Wireless Android Auto",
+                "labelKey": "settings.wirelessAaEnabled",
+                "icon": "wirelessAa",
+                "path": "wirelessAaEnabled",
+                "disabled": {
+                  "$expr": "window.app?.platform !== 'linux'"
+                }
+              },
+              {
+                "type": "checkbox",
+                "label": "Wireless CarPlay",
+                "labelKey": "settings.wirelessCpEnabled",
+                "icon": "wirelessCp",
+                "path": "wirelessCpEnabled",
+                "disabled": {
+                  "$expr": "window.app?.platform !== 'linux'"
+                }
+              },
+              {
+                "type": "checkbox",
+                "label": "Auto Connect",
+                "labelKey": "settings.autoConnect",
+                "icon": "autoConnect",
+                "path": "autoConn"
+              }
+            ]
+          },
+          {
+            "type": "route",
+            "route": "windowSettings",
+            "label": "Window Settings",
+            "labelKey": "settings.windowSettings",
+            "icon": "windowSettings",
+            "path": "",
+            "children": [
+              {
+                "type": "route",
+                "label": "Main Screen",
+                "labelKey": "settings.mainScreen",
+                "icon": "mainScreen",
+                "route": "mainScreen",
+                "path": "",
+                "children": [
+                  {
+                    "type": "select",
+                    "label": "Display Mode",
+                    "labelKey": "settings.displayMode",
+                    "icon": "displayMode",
+                    "path": "displayMode",
+                    "displayValue": true,
+                    "options": [
+                      {
+                        "value": "",
+                        "label": "Panel default",
+                        "labelKey": "settings.displayModeDefault"
+                      }
+                    ],
+                    "loadOptions": {
+                      "$fn": "loadDisplayModes"
+                    },
+                    "page": {
+                      "title": "Display Mode",
+                      "labelTitle": "settings.displayMode"
+                    }
+                  },
+                  {
+                    "type": "number",
+                    "label": "Width",
+                    "labelKey": "settings.mainScreenWidth",
+                    "icon": "width",
+                    "path": "mainScreenWidth",
+                    "min": 300,
+                    "max": 4096,
+                    "step": 1,
+                    "displayValue": true,
+                    "page": {
+                      "title": "Main Screen Width",
+                      "labelTitle": "settings.mainScreenWidth"
+                    }
+                  },
+                  {
+                    "type": "number",
+                    "label": "Height",
+                    "labelKey": "settings.mainScreenHeight",
+                    "icon": "height",
+                    "path": "mainScreenHeight",
+                    "min": 200,
+                    "max": 2160,
+                    "step": 1,
+                    "displayValue": true,
+                    "page": {
+                      "title": "Main Screen Height",
+                      "labelTitle": "settings.mainScreenHeight"
+                    }
+                  },
+                  {
+                    "type": "checkbox",
+                    "label": "Fullscreen",
+                    "labelKey": "settings.fullscreen",
+                    "icon": "fullscreen",
+                    "path": "kiosk.main"
+                  }
+                ]
+              },
+              {
+                "type": "route",
+                "label": "Dash Screen",
+                "labelKey": "settings.dashScreen",
+                "icon": "dashScreen",
+                "route": "dashScreen",
+                "path": "",
+                "children": [
+                  {
+                    "type": "checkbox",
+                    "label": "Active",
+                    "labelKey": "settings.dashScreenActive",
+                    "icon": "active",
+                    "path": "dashScreenActive"
+                  },
+                  {
+                    "type": "number",
+                    "label": "Width",
+                    "labelKey": "settings.dashScreenWidth",
+                    "icon": "width",
+                    "path": "dashScreenWidth",
+                    "min": 300,
+                    "max": 4096,
+                    "step": 1,
+                    "displayValue": true,
+                    "page": {
+                      "title": "Dash Screen Width",
+                      "labelTitle": "settings.dashScreenWidth"
+                    }
+                  },
+                  {
+                    "type": "number",
+                    "label": "Height",
+                    "labelKey": "settings.dashScreenHeight",
+                    "icon": "height",
+                    "path": "dashScreenHeight",
+                    "min": 200,
+                    "max": 2160,
+                    "step": 1,
+                    "displayValue": true,
+                    "page": {
+                      "title": "Dash Screen Height",
+                      "labelTitle": "settings.dashScreenHeight"
+                    }
+                  },
+                  {
+                    "type": "checkbox",
+                    "label": "Fullscreen",
+                    "labelKey": "settings.fullscreen",
+                    "icon": "fullscreen",
+                    "path": "kiosk.dash"
+                  }
+                ]
+              },
+              {
+                "type": "route",
+                "label": "Aux Screen",
+                "labelKey": "settings.auxScreen",
+                "icon": "auxScreen",
+                "route": "auxScreen",
+                "path": "",
+                "children": [
+                  {
+                    "type": "checkbox",
+                    "label": "Active",
+                    "labelKey": "settings.auxScreenActive",
+                    "icon": "active",
+                    "path": "auxScreenActive"
+                  },
+                  {
+                    "type": "number",
+                    "label": "Width",
+                    "labelKey": "settings.auxScreenWidth",
+                    "icon": "width",
+                    "path": "auxScreenWidth",
+                    "min": 300,
+                    "max": 4096,
+                    "step": 1,
+                    "displayValue": true,
+                    "page": {
+                      "title": "Aux Screen Width",
+                      "labelTitle": "settings.auxScreenWidth"
+                    }
+                  },
+                  {
+                    "type": "number",
+                    "label": "Height",
+                    "labelKey": "settings.auxScreenHeight",
+                    "icon": "height",
+                    "path": "auxScreenHeight",
+                    "min": 200,
+                    "max": 2160,
+                    "step": 1,
+                    "displayValue": true,
+                    "page": {
+                      "title": "Aux Screen Height",
+                      "labelTitle": "settings.auxScreenHeight"
+                    }
+                  },
+                  {
+                    "type": "checkbox",
+                    "label": "Fullscreen",
+                    "labelKey": "settings.fullscreen",
+                    "icon": "fullscreen",
+                    "path": "kiosk.aux"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "route",
+            "label": "Tab Settings",
+            "labelKey": "settings.tabSettings",
+            "icon": "tabSettings",
+            "route": "tabSettings",
+            "path": "",
+            "children": [
+              {
+                "type": "route",
+                "label": "Dashboards",
+                "labelKey": "settings.telemetryDashboards",
+                "icon": "dashboards",
+                "route": "dashboards",
+                "path": "",
+                "children": [
+                  {
+                    "type": "posList",
+                    "label": "Dashboards",
+                    "labelKey": "settings.telemetryDashboards",
+                    "path": "dashboards",
+                    "items": [
+                      {
+                        "id": "dash1",
+                        "label": "Dash 1",
+                        "labelKey": "settings.telemetryDash1"
+                      },
+                      {
+                        "id": "dash2",
+                        "label": "Dash 2",
+                        "labelKey": "settings.telemetryDash2"
+                      },
+                      {
+                        "id": "dash3",
+                        "label": "Dash 3",
+                        "labelKey": "settings.telemetryDash3"
+                      },
+                      {
+                        "id": "dash4",
+                        "label": "Dash 4",
+                        "labelKey": "settings.telemetryDash4"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "route",
+                    "label": "Dash 1",
+                    "labelKey": "settings.telemetryDash1",
+                    "route": "dash1",
+                    "path": "",
+                    "hidden": true,
+                    "children": [
+                      {
+                        "type": "checkbox",
+                        "label": "Main",
+                        "labelKey": "settings.mainScreen",
+                        "icon": "mainScreen",
+                        "path": "dashboards.dash1.main"
+                      },
+                      {
+                        "type": "checkbox",
+                        "label": "Dash",
+                        "labelKey": "settings.dashScreen",
+                        "icon": "dashScreen",
+                        "path": "dashboards.dash1.dash"
+                      },
+                      {
+                        "type": "checkbox",
+                        "label": "Aux",
+                        "labelKey": "settings.auxScreen",
+                        "icon": "auxScreen",
+                        "path": "dashboards.dash1.aux"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "route",
+                    "label": "Dash 2",
+                    "labelKey": "settings.telemetryDash2",
+                    "route": "dash2",
+                    "path": "",
+                    "hidden": true,
+                    "children": [
+                      {
+                        "type": "checkbox",
+                        "label": "Main",
+                        "labelKey": "settings.mainScreen",
+                        "icon": "mainScreen",
+                        "path": "dashboards.dash2.main"
+                      },
+                      {
+                        "type": "checkbox",
+                        "label": "Dash",
+                        "labelKey": "settings.dashScreen",
+                        "icon": "dashScreen",
+                        "path": "dashboards.dash2.dash"
+                      },
+                      {
+                        "type": "checkbox",
+                        "label": "Aux",
+                        "labelKey": "settings.auxScreen",
+                        "icon": "auxScreen",
+                        "path": "dashboards.dash2.aux"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "route",
+                    "label": "Dash 3",
+                    "labelKey": "settings.telemetryDash3",
+                    "route": "dash3",
+                    "path": "",
+                    "hidden": true,
+                    "children": [
+                      {
+                        "type": "checkbox",
+                        "label": "Main",
+                        "labelKey": "settings.mainScreen",
+                        "icon": "mainScreen",
+                        "path": "dashboards.dash3.main"
+                      },
+                      {
+                        "type": "checkbox",
+                        "label": "Dash",
+                        "labelKey": "settings.dashScreen",
+                        "icon": "dashScreen",
+                        "path": "dashboards.dash3.dash"
+                      },
+                      {
+                        "type": "checkbox",
+                        "label": "Aux",
+                        "labelKey": "settings.auxScreen",
+                        "icon": "auxScreen",
+                        "path": "dashboards.dash3.aux"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "route",
+                    "label": "Dash 4",
+                    "labelKey": "settings.telemetryDash4",
+                    "route": "dash4",
+                    "path": "",
+                    "hidden": true,
+                    "children": [
+                      {
+                        "type": "checkbox",
+                        "label": "Main",
+                        "labelKey": "settings.mainScreen",
+                        "icon": "mainScreen",
+                        "path": "dashboards.dash4.main"
+                      },
+                      {
+                        "type": "checkbox",
+                        "label": "Dash",
+                        "labelKey": "settings.dashScreen",
+                        "icon": "dashScreen",
+                        "path": "dashboards.dash4.dash"
+                      },
+                      {
+                        "type": "checkbox",
+                        "label": "Aux",
+                        "labelKey": "settings.auxScreen",
+                        "icon": "auxScreen",
+                        "path": "dashboards.dash4.aux"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "route",
+                "label": "Media",
+                "labelKey": "settings.media",
+                "icon": "media",
+                "route": "media",
+                "path": "",
+                "children": [
+                  {
+                    "type": "checkbox",
+                    "label": "Main",
+                    "labelKey": "settings.mainScreen",
+                    "icon": "mainScreen",
+                    "path": "media.main"
+                  },
+                  {
+                    "type": "checkbox",
+                    "label": "Dash",
+                    "labelKey": "settings.dashScreen",
+                    "icon": "dashScreen",
+                    "path": "media.dash"
+                  },
+                  {
+                    "type": "checkbox",
+                    "label": "Aux",
+                    "labelKey": "settings.auxScreen",
+                    "icon": "auxScreen",
+                    "path": "media.aux"
+                  }
+                ]
+              },
+              {
+                "type": "route",
+                "label": "Reverse Camera",
+                "labelKey": "settings.reverseCamera",
+                "icon": "reverseCamera",
+                "route": "camera",
+                "path": "",
+                "displayValue": true,
+                "children": [
+                  {
+                    "type": "checkbox",
+                    "label": "Automatic on reverse gear",
+                    "labelKey": "settings.autoSwitchOnReverse",
+                    "icon": "autoReverse",
+                    "path": "autoSwitchOnReverse"
+                  },
+                  {
+                    "type": "checkbox",
+                    "label": "Main",
+                    "labelKey": "settings.mainScreen",
+                    "icon": "mainScreen",
+                    "path": "camera.main"
+                  },
+                  {
+                    "type": "checkbox",
+                    "label": "Dash",
+                    "labelKey": "settings.dashScreen",
+                    "icon": "dashScreen",
+                    "path": "camera.dash"
+                  },
+                  {
+                    "type": "checkbox",
+                    "label": "Aux",
+                    "labelKey": "settings.auxScreen",
+                    "icon": "auxScreen",
+                    "path": "camera.aux"
+                  },
+                  {
+                    "type": "checkbox",
+                    "label": "Mirror",
+                    "labelKey": "settings.cameraMirror",
+                    "icon": "cameraMirror",
+                    "path": "cameraMirror"
+                  },
+                  {
+                    "type": "select",
+                    "label": "Rotation",
+                    "labelKey": "settings.cameraRotation",
+                    "icon": "cameraRotation",
+                    "path": "cameraRotation",
+                    "displayValue": true,
+                    "options": [
+                      {
+                        "label": "0°",
+                        "value": 0
+                      },
+                      {
+                        "label": "90°",
+                        "value": 90
+                      },
+                      {
+                        "label": "180°",
+                        "value": 180
+                      },
+                      {
+                        "label": "270°",
+                        "value": 270
+                      }
+                    ],
+                    "page": {
+                      "title": "Camera Rotation",
+                      "labelTitle": "settings.cameraRotation"
+                    }
+                  },
+                  {
+                    "type": "route",
+                    "label": "Camera",
+                    "labelKey": "settings.camera",
+                    "icon": "camera",
+                    "route": "select",
+                    "path": "",
+                    "children": [
+                      {
+                        "path": "cameraId",
+                        "type": "custom",
+                        "label": "Camera",
+                        "labelKey": "settings.camera",
+                        "component": {
+                          "$component": "Camera"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "route",
+                "label": "Custom Tab",
+                "labelKey": "settings.customTab",
+                "icon": "customTab",
+                "route": "custom",
+                "path": "",
+                "displayValue": true,
+                "children": [
+                  {
+                    "type": "checkbox",
+                    "label": "Main",
+                    "labelKey": "settings.mainScreen",
+                    "icon": "mainScreen",
+                    "path": "custom.main"
+                  },
+                  {
+                    "type": "checkbox",
+                    "label": "Dash",
+                    "labelKey": "settings.dashScreen",
+                    "icon": "dashScreen",
+                    "path": "custom.dash"
+                  },
+                  {
+                    "type": "checkbox",
+                    "label": "Aux",
+                    "labelKey": "settings.auxScreen",
+                    "icon": "auxScreen",
+                    "path": "custom.aux"
+                  },
+                  {
+                    "type": "string",
+                    "label": "Address",
+                    "labelKey": "settings.customUrl",
+                    "icon": "customUrl",
+                    "path": "customUrl",
+                    "format": "url",
+                    "displayValue": true,
+                    "page": {
+                      "title": "Address",
+                      "labelTitle": "settings.customUrl"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "route",
+            "label": "Key Bindings",
+            "labelKey": "settings.keyBindings",
+            "icon": "keyBindings",
+            "route": "keyBindings",
+            "path": "",
+            "children": [
+              {
+                "type": "keybinding",
+                "label": "Up",
+                "labelKey": "settings.up",
+                "path": "bindings",
+                "bindingKey": "up"
+              },
+              {
+                "type": "keybinding",
+                "label": "Down",
+                "labelKey": "settings.down",
+                "path": "bindings",
+                "bindingKey": "down"
+              },
+              {
+                "type": "keybinding",
+                "label": "Left",
+                "labelKey": "settings.left",
+                "path": "bindings",
+                "bindingKey": "left"
+              },
+              {
+                "type": "keybinding",
+                "label": "Right",
+                "labelKey": "settings.right",
+                "path": "bindings",
+                "bindingKey": "right"
+              },
+              {
+                "type": "keybinding",
+                "label": "Select Up",
+                "labelKey": "settings.selectUp",
+                "path": "bindings",
+                "bindingKey": "selectUp"
+              },
+              {
+                "type": "keybinding",
+                "label": "Select Down",
+                "labelKey": "settings.selectDown",
+                "path": "bindings",
+                "bindingKey": "selectDown"
+              },
+              {
+                "type": "keybinding",
+                "label": "Back",
+                "labelKey": "settings.back",
+                "path": "bindings",
+                "bindingKey": "back"
+              },
+              {
+                "type": "keybinding",
+                "label": "Knob Left",
+                "labelKey": "settings.knobLeft",
+                "path": "bindings",
+                "bindingKey": "knobLeft"
+              },
+              {
+                "type": "keybinding",
+                "label": "Knob Right",
+                "labelKey": "settings.knobRight",
+                "path": "bindings",
+                "bindingKey": "knobRight"
+              },
+              {
+                "type": "keybinding",
+                "label": "Knob Up",
+                "labelKey": "settings.knobUp",
+                "path": "bindings",
+                "bindingKey": "knobUp"
+              },
+              {
+                "type": "keybinding",
+                "label": "Knob Down",
+                "labelKey": "settings.knobDown",
+                "path": "bindings",
+                "bindingKey": "knobDown"
+              },
+              {
+                "type": "keybinding",
+                "label": "Home",
+                "labelKey": "settings.home",
+                "path": "bindings",
+                "bindingKey": "home"
+              },
+              {
+                "type": "keybinding",
+                "label": "Cycle Session",
+                "labelKey": "settings.cycleSession",
+                "path": "bindings",
+                "bindingKey": "cycleSession"
+              },
+              {
+                "type": "keybinding",
+                "label": "Play/Pause",
+                "labelKey": "settings.playPause",
+                "path": "bindings",
+                "bindingKey": "playPause"
+              },
+              {
+                "type": "keybinding",
+                "label": "Play",
+                "labelKey": "settings.play",
+                "path": "bindings",
+                "bindingKey": "play"
+              },
+              {
+                "type": "keybinding",
+                "label": "Pause",
+                "labelKey": "settings.pause",
+                "path": "bindings",
+                "bindingKey": "pause"
+              },
+              {
+                "type": "keybinding",
+                "label": "Next",
+                "labelKey": "settings.next",
+                "path": "bindings",
+                "bindingKey": "next"
+              },
+              {
+                "type": "keybinding",
+                "label": "Previous",
+                "labelKey": "settings.previous",
+                "path": "bindings",
+                "bindingKey": "prev"
+              },
+              {
+                "type": "keybinding",
+                "label": "Accept Call",
+                "labelKey": "settings.acceptCall",
+                "path": "bindings",
+                "bindingKey": "acceptPhone"
+              },
+              {
+                "type": "keybinding",
+                "label": "Reject Call",
+                "labelKey": "settings.rejectCall",
+                "path": "bindings",
+                "bindingKey": "rejectPhone"
+              },
+              {
+                "type": "keybinding",
+                "label": "Phone Key 0",
+                "labelKey": "settings.phoneKey0",
+                "path": "bindings",
+                "bindingKey": "phoneKey0"
+              },
+              {
+                "type": "keybinding",
+                "label": "Phone Key 1",
+                "labelKey": "settings.phoneKey1",
+                "path": "bindings",
+                "bindingKey": "phoneKey1"
+              },
+              {
+                "type": "keybinding",
+                "label": "Phone Key 2",
+                "labelKey": "settings.phoneKey2",
+                "path": "bindings",
+                "bindingKey": "phoneKey2"
+              },
+              {
+                "type": "keybinding",
+                "label": "Phone Key 3",
+                "labelKey": "settings.phoneKey3",
+                "path": "bindings",
+                "bindingKey": "phoneKey3"
+              },
+              {
+                "type": "keybinding",
+                "label": "Phone Key 4",
+                "labelKey": "settings.phoneKey4",
+                "path": "bindings",
+                "bindingKey": "phoneKey4"
+              },
+              {
+                "type": "keybinding",
+                "label": "Phone Key 5",
+                "labelKey": "settings.phoneKey5",
+                "path": "bindings",
+                "bindingKey": "phoneKey5"
+              },
+              {
+                "type": "keybinding",
+                "label": "Phone Key 6",
+                "labelKey": "settings.phoneKey6",
+                "path": "bindings",
+                "bindingKey": "phoneKey6"
+              },
+              {
+                "type": "keybinding",
+                "label": "Phone Key 7",
+                "labelKey": "settings.phoneKey7",
+                "path": "bindings",
+                "bindingKey": "phoneKey7"
+              },
+              {
+                "type": "keybinding",
+                "label": "Phone Key 8",
+                "labelKey": "settings.phoneKey8",
+                "path": "bindings",
+                "bindingKey": "phoneKey8"
+              },
+              {
+                "type": "keybinding",
+                "label": "Phone Key 9",
+                "labelKey": "settings.phoneKey9",
+                "path": "bindings",
+                "bindingKey": "phoneKey9"
+              },
+              {
+                "type": "keybinding",
+                "label": "Phone Key *",
+                "labelKey": "settings.phoneKeyStar",
+                "path": "bindings",
+                "bindingKey": "phoneKeyStar"
+              },
+              {
+                "type": "keybinding",
+                "label": "Phone Key #",
+                "labelKey": "settings.phoneKeyHash",
+                "path": "bindings",
+                "bindingKey": "phoneKeyHash"
+              },
+              {
+                "type": "keybinding",
+                "label": "Hook Switch",
+                "labelKey": "settings.phoneKeyHookSwitch",
+                "path": "bindings",
+                "bindingKey": "phoneKeyHookSwitch"
+              },
+              {
+                "type": "keybinding",
+                "label": "Voice Assistant",
+                "labelKey": "settings.voiceAssistant",
+                "path": "bindings",
+                "bindingKey": "voiceAssistant"
+              },
+              {
+                "type": "keybinding",
+                "label": "Voice Assistant Release",
+                "labelKey": "settings.voiceAssistantRelease",
+                "path": "bindings",
+                "bindingKey": "voiceAssistantRelease"
+              }
+            ]
+          },
+          {
+            "type": "select",
+            "label": "Start Page",
+            "labelKey": "settings.startPage",
+            "icon": "startPage",
+            "path": "startPage",
+            "displayValue": true,
+            "options": [
+              {
+                "label": {
+                  "$fn": "label"
+                },
+                "labelKey": {
+                  "$fn": "labelKey"
+                },
+                "value": {
+                  "$fn": "path"
+                }
+              },
+              {
+                "label": {
+                  "$fn": "label"
+                },
+                "labelKey": {
+                  "$fn": "labelKey"
+                },
+                "value": {
+                  "$fn": "path"
+                }
+              },
+              {
+                "label": {
+                  "$fn": "label"
+                },
+                "labelKey": {
+                  "$fn": "labelKey"
+                },
+                "value": {
+                  "$fn": "path"
+                }
+              },
+              {
+                "label": {
+                  "$fn": "label"
+                },
+                "labelKey": {
+                  "$fn": "labelKey"
+                },
+                "value": {
+                  "$fn": "path"
+                }
+              },
+              {
+                "label": {
+                  "$fn": "label"
+                },
+                "labelKey": {
+                  "$fn": "labelKey"
+                },
+                "value": {
+                  "$fn": "path"
+                }
+              },
+              {
+                "label": {
+                  "$fn": "label"
+                },
+                "labelKey": {
+                  "$fn": "labelKey"
+                },
+                "value": {
+                  "$fn": "path"
+                }
+              }
+            ],
+            "page": {
+              "title": "Start Page",
+              "labelTitle": "settings.startPage"
+            }
+          },
+          {
+            "type": "number",
+            "label": "FFT Delay",
+            "labelKey": "settings.fftDelay",
+            "icon": "fftDelay",
+            "path": "visualAudioDelayMs",
+            "displayValue": true,
+            "valueTransform": {
+              "toView": {
+                "$fn": "(v: number) => v"
+              },
+              "fromView": {
+                "$fn": "(v: number) => v"
+              },
+              "format": {
+                "$fn": "(v: number) => `${v} ms`"
+              }
+            },
+            "page": {
+              "title": "FFT Visualization Delay",
+              "labelTitle": "settings.fftDelay"
+            }
+          },
+          {
+            "type": "select",
+            "label": "Steering wheel position",
+            "labelKey": "settings.steeringWheelPosition",
+            "icon": "steering",
+            "path": "hand",
+            "displayValue": true,
+            "options": [
+              {
+                "label": "LHD",
+                "labelKey": "settings.lhdr",
+                "value": 0
+              },
+              {
+                "label": "RHD",
+                "labelKey": "settings.rhdr",
+                "value": 1
+              }
+            ],
+            "page": {
+              "title": "Steering wheel position",
+              "labelTitle": "settings.steeringWheelPosition"
+            }
+          },
+          {
+            "type": "number",
+            "label": "UI Zoom",
+            "labelKey": "settings.uiZoom",
+            "icon": "uiZoom",
+            "path": "uiZoomPercent",
+            "displayValue": true,
+            "min": 50,
+            "max": 200,
+            "step": 10,
+            "valueTransform": {
+              "toView": {
+                "$fn": "(v: number) => v"
+              },
+              "fromView": {
+                "$fn": "(v: number) => v"
+              },
+              "format": {
+                "$fn": "(v: number) => `${v}%`"
+              }
+            },
+            "page": {
+              "title": "UI Zoom",
+              "labelTitle": "settings.uiZoom"
+            }
+          },
+          {
+            "type": "select",
+            "label": "Language",
+            "labelKey": "settings.language",
+            "icon": "language",
+            "path": "language",
+            "displayValue": true,
+            "options": [
+              {
+                "label": "English",
+                "labelKey": "settings.english",
+                "value": "en"
+              },
+              {
+                "label": "German",
+                "labelKey": "settings.german",
+                "value": "de"
+              },
+              {
+                "label": "Ukrainian",
+                "labelKey": "settings.ukrainian",
+                "value": "ua"
+              },
+              {
+                "label": "French",
+                "labelKey": "settings.french",
+                "value": "fr"
+              }
+            ],
+            "page": {
+              "title": "Language",
+              "labelTitle": "settings.language"
+            }
+          },
+          {
+            "type": "route",
+            "label": "MFi",
+            "labelKey": "settings.mfi",
+            "icon": "mfi",
+            "route": "mfi",
+            "path": "",
+            "children": [
+              {
+                "type": "number",
+                "label": "I2C Bus",
+                "labelKey": "settings.i2cBus",
+                "icon": "i2cBus",
+                "path": "carPlayMfiI2cBus",
+                "min": 0,
+                "max": 20,
+                "step": 1,
+                "default": 2,
+                "displayValue": true,
+                "page": {
+                  "title": "I2C Bus",
+                  "labelTitle": "settings.i2cBus"
+                }
+              },
+              {
+                "type": "number",
+                "label": "Power Pin",
+                "labelKey": "settings.mfiPowerGpio",
+                "icon": "powerPin",
+                "path": "carPlayMfiPowerGpio",
+                "min": -1,
+                "max": 27,
+                "step": 1,
+                "default": -1,
+                "displayValue": true,
+                "valueTransform": {
+                  "toView": {
+                    "$fn": "(v: number) => v"
+                  },
+                  "fromView": {
+                    "$fn": "(v: number) => v"
+                  },
+                  "format": {
+                    "$fn": "(v: number) => (v < 0 ? '-' : `${v}`)"
+                  }
+                },
+                "page": {
+                  "title": "Power Pin",
+                  "labelTitle": "settings.mfiPowerGpio"
+                }
+              }
+            ]
+          },
+          {
+            "type": "route",
+            "label": "GPS",
+            "labelKey": "settings.gps",
+            "icon": "gps",
+            "route": "gps",
+            "path": "",
+            "children": [
+              {
+                "type": "checkbox",
+                "label": "Enable",
+                "labelKey": "settings.gpsEnabled",
+                "icon": "gpsEnabled",
+                "path": "gpsEnabled"
+              },
+              {
+                "type": "string",
+                "label": "Device",
+                "labelKey": "settings.gpsDevice",
+                "icon": "gpsDevice",
+                "path": "gpsDevice",
+                "page": {
+                  "title": "Device",
+                  "labelTitle": "settings.gpsDevice"
+                }
+              },
+              {
+                "type": "select",
+                "label": "Baud Rate",
+                "labelKey": "settings.gpsBaudRate",
+                "icon": "gpsBaudRate",
+                "path": "gpsBaudRate",
+                "options": [
+                  {
+                    "label": "4800",
+                    "value": 4800
+                  },
+                  {
+                    "label": "9600",
+                    "value": 9600
+                  },
+                  {
+                    "label": "19200",
+                    "value": 19200
+                  },
+                  {
+                    "label": "38400",
+                    "value": 38400
+                  },
+                  {
+                    "label": "57600",
+                    "value": 57600
+                  },
+                  {
+                    "label": "115200",
+                    "value": 115200
+                  }
+                ],
+                "page": {
+                  "title": "Baud Rate",
+                  "labelTitle": "settings.gpsBaudRate"
+                }
+              },
+              {
+                "type": "route",
+                "label": "GPS Data",
+                "labelKey": "settings.gpsInfo",
+                "icon": "gpsInfo",
+                "route": "info",
+                "path": "",
+                "children": [
+                  {
+                    "type": "custom",
+                    "label": "GPS Data",
+                    "labelKey": "settings.gpsInfo",
+                    "path": "carName",
+                    "component": {
+                      "$component": "GpsInfo"
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "route",
+                "label": "HW Info",
+                "labelKey": "settings.gpsHwInfo",
+                "icon": "gpsHwInfo",
+                "route": "hwinfo",
+                "path": "",
+                "children": [
+                  {
+                    "type": "custom",
+                    "label": "HW Info",
+                    "labelKey": "settings.gpsHwInfo",
+                    "path": "carName",
+                    "component": {
+                      "$component": "GpsHwInfo"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "route",
+            "label": "USB Dongle",
+            "labelKey": "settings.usbDongle",
+            "icon": "usbDongle",
+            "route": "usbDongle",
+            "path": "",
+            "children": [
+              {
+                "type": "custom",
+                "label": "USB Dongle",
+                "labelKey": "settings.usbDongle",
+                "path": "carName",
+                "component": {
+                  "$component": "USBDongle"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "route",
+        "route": "audio",
+        "label": "Audio",
+        "labelKey": "settings.audio",
+        "icon": "audio",
+        "path": "",
+        "children": [
+          {
+            "type": "slider",
+            "label": "Head Unit",
+            "labelKey": "settings.huVolume",
+            "icon": "huVolume",
+            "path": "huVolume",
+            "displayValue": true,
+            "displayValueUnit": "%",
+            "valueTransform": {
+              "toView": {
+                "$fn": "(v) => Math.round((v ?? 1) * 100)"
+              },
+              "fromView": {
+                "$fn": "(v, prev) => { const next = v / 100 if (!Number.isFinite(next)) return prev ?? 1 return next }"
+              },
+              "format": {
+                "$fn": "(v) => `${v} %`"
+              }
+            },
+            "page": {
+              "title": "Head Unit",
+              "labelTitle": "settings.huVolume"
+            }
+          },
+          {
+            "type": "slider",
+            "label": "Music",
+            "labelKey": "settings.music",
+            "icon": "music",
+            "path": "audioVolume",
+            "displayValue": true,
+            "displayValueUnit": "%",
+            "valueTransform": {
+              "toView": {
+                "$fn": "(v) => Math.round((v ?? 1) * 100)"
+              },
+              "fromView": {
+                "$fn": "(v, prev) => { const next = v / 100 if (!Number.isFinite(next)) return prev ?? 1 return next }"
+              },
+              "format": {
+                "$fn": "(v) => `${v} %`"
+              }
+            },
+            "page": {
+              "title": "Music",
+              "labelTitle": "settings.music"
+            }
+          },
+          {
+            "type": "slider",
+            "label": "Navigation",
+            "labelKey": "settings.navigation",
+            "icon": "navigation",
+            "path": "navVolume",
+            "displayValue": true,
+            "displayValueUnit": "%",
+            "valueTransform": {
+              "toView": {
+                "$fn": "(v) => Math.round((v ?? 1) * 100)"
+              },
+              "fromView": {
+                "$fn": "(v, prev) => { const next = v / 100 if (!Number.isFinite(next)) return prev ?? 1 return next }"
+              },
+              "format": {
+                "$fn": "(v) => `${v} %`"
+              }
+            },
+            "page": {
+              "title": "Navigation",
+              "labelTitle": "settings.navigation"
+            }
+          },
+          {
+            "type": "slider",
+            "label": "Voice Assistant",
+            "labelKey": "settings.voiceAssistant",
+            "icon": "voiceAssistant",
+            "path": "voiceAssistantVolume",
+            "displayValue": true,
+            "displayValueUnit": "%",
+            "valueTransform": {
+              "toView": {
+                "$fn": "(v) => Math.round((v ?? 1) * 100)"
+              },
+              "fromView": {
+                "$fn": "(v, prev) => { const next = v / 100 if (!Number.isFinite(next)) return prev ?? 1 return next }"
+              },
+              "format": {
+                "$fn": "(v) => `${v} %`"
+              }
+            },
+            "page": {
+              "title": "Voice Assistant",
+              "labelTitle": "settings.voiceAssistant"
+            }
+          },
+          {
+            "type": "slider",
+            "label": "Phone Calls",
+            "labelKey": "settings.phoneCalls",
+            "icon": "phoneCalls",
+            "path": "callVolume",
+            "displayValue": true,
+            "displayValueUnit": "%",
+            "valueTransform": {
+              "toView": {
+                "$fn": "(v) => Math.round((v ?? 1) * 100)"
+              },
+              "fromView": {
+                "$fn": "(v, prev) => { const next = v / 100 if (!Number.isFinite(next)) return prev ?? 1 return next }"
+              },
+              "format": {
+                "$fn": "(v) => `${v} %`"
+              }
+            },
+            "page": {
+              "title": "Phone Calls",
+              "labelTitle": "settings.phoneCalls"
+            }
+          },
+          {
+            "type": "slider",
+            "label": "System Sounds",
+            "labelKey": "settings.systemSounds",
+            "icon": "systemSounds",
+            "path": "systemSoundsVolume",
+            "displayValue": true,
+            "displayValueUnit": "%",
+            "valueTransform": {
+              "toView": {
+                "$fn": "(v) => Math.round((v ?? 1) * 100)"
+              },
+              "fromView": {
+                "$fn": "(v, prev) => { const next = v / 100 if (!Number.isFinite(next)) return prev ?? 1 return next }"
+              },
+              "format": {
+                "$fn": "(v) => `${v} %`"
+              }
+            },
+            "page": {
+              "title": "System Sounds",
+              "labelTitle": "settings.systemSounds"
+            }
+          },
+          {
+            "type": "select",
+            "label": "Audio Output",
+            "labelKey": "settings.audioOutputDevice",
+            "icon": "audioOutput",
+            "path": "audioOutputDevice",
+            "labelPath": "audioOutputDeviceLabel",
+            "displayValue": true,
+            "options": [
+              {
+                "value": "",
+                "label": "System default",
+                "labelKey": "settings.audioDeviceSystemDefault"
+              }
+            ],
+            "loadOptions": {
+              "$fn": "loadAudioOutputDevices"
+            },
+            "page": {
+              "title": "Audio Output",
+              "labelTitle": "settings.audioOutputDevice"
+            }
+          },
+          {
+            "type": "select",
+            "label": "Audio Input",
+            "labelKey": "settings.audioInputDevice",
+            "icon": "audioInput",
+            "path": "audioInputDevice",
+            "labelPath": "audioInputDeviceLabel",
+            "displayValue": true,
+            "options": [
+              {
+                "value": "",
+                "label": "System default",
+                "labelKey": "settings.audioDeviceSystemDefault"
+              }
+            ],
+            "loadOptions": {
+              "$fn": "loadAudioInputDevices"
+            },
+            "page": {
+              "title": "Audio Input",
+              "labelTitle": "settings.audioInputDevice"
+            }
+          },
+          {
+            "type": "select",
+            "label": "Sampling Frequency",
+            "labelKey": "settings.samplingFrequency",
+            "icon": "samplingFrequency",
+            "path": "samplingFrequency",
+            "displayValue": true,
+            "options": [
+              {
+                "label": "44.1 kHz",
+                "value": 0
+              },
+              {
+                "label": "48 kHz",
+                "value": 1
+              }
+            ],
+            "page": {
+              "title": "Sampling Frequency",
+              "labelTitle": "settings.samplingFrequency"
+            }
+          },
+          {
+            "type": "checkbox",
+            "label": "Link Head Unit to System Volume",
+            "labelKey": "settings.huVolumeLinkSystem",
+            "icon": "volumeLink",
+            "path": "huVolumeLinkSystem"
+          },
+          {
+            "type": "checkbox",
+            "label": "Disable Audio",
+            "labelKey": "settings.disableAudio",
+            "icon": "audioOff",
+            "path": "disableAudioOutput"
+          }
+        ]
+      },
+      {
+        "type": "route",
+        "route": "video",
+        "label": "Video",
+        "labelKey": "settings.video",
+        "icon": "video",
+        "path": "",
+        "children": [
+          {
+            "type": "route",
+            "label": "Main Video",
+            "labelKey": "settings.mainVideo",
+            "icon": "mainVideo",
+            "route": "mainVideo",
+            "path": "",
+            "children": [
+              {
+                "type": "number",
+                "label": "Width",
+                "labelKey": "settings.projectionWidth",
+                "icon": "width",
+                "path": "projectionWidth",
+                "min": 300,
+                "max": 4096,
+                "step": 1,
+                "displayValue": true,
+                "page": {
+                  "title": "Main Video Width",
+                  "labelTitle": "settings.projectionWidth"
+                }
+              },
+              {
+                "type": "number",
+                "label": "Height",
+                "labelKey": "settings.projectionHeight",
+                "icon": "height",
+                "path": "projectionHeight",
+                "min": 200,
+                "max": 2160,
+                "step": 1,
+                "displayValue": true,
+                "page": {
+                  "title": "Main Video Height",
+                  "labelTitle": "settings.projectionHeight"
+                }
+              },
+              {
+                "type": "number",
+                "label": "FPS",
+                "labelKey": "settings.projectionFps",
+                "icon": "fps",
+                "path": "projectionFps",
+                "min": 20,
+                "max": 60,
+                "step": 1,
+                "displayValue": true,
+                "page": {
+                  "title": "Main Video FPS",
+                  "labelTitle": "settings.projectionFps"
+                }
+              },
+              {
+                "type": "number",
+                "label": "DPI",
+                "labelKey": "settings.projectionDpi",
+                "icon": "dpi",
+                "path": "projectionDpi",
+                "min": 0,
+                "max": 640,
+                "step": 1,
+                "displayValue": true,
+                "page": {
+                  "title": "Main Video DPI",
+                  "labelTitle": "settings.projectionDpi"
+                }
+              },
+              {
+                "type": "route",
+                "label": "View Area",
+                "labelKey": "settings.viewArea",
+                "icon": "viewArea",
+                "route": "viewArea",
+                "path": "",
+                "children": [
+                  {
+                    "type": "number",
+                    "label": "Top",
+                    "labelKey": "settings.top",
+                    "icon": "edgeTop",
+                    "path": "projectionViewAreaTop",
+                    "min": 0,
+                    "max": 2160,
+                    "step": 2,
+                    "displayValue": true,
+                    "page": {
+                      "title": "Main Screen View Area Top",
+                      "labelTitle": "settings.top"
+                    }
+                  },
+                  {
+                    "type": "number",
+                    "label": "Bottom",
+                    "labelKey": "settings.bottom",
+                    "icon": "edgeBottom",
+                    "path": "projectionViewAreaBottom",
+                    "min": 0,
+                    "max": 2160,
+                    "step": 2,
+                    "displayValue": true,
+                    "page": {
+                      "title": "Main Screen View Area Bottom",
+                      "labelTitle": "settings.bottom"
+                    }
+                  },
+                  {
+                    "type": "number",
+                    "label": "Left",
+                    "labelKey": "settings.left",
+                    "icon": "edgeLeft",
+                    "path": "projectionViewAreaLeft",
+                    "min": 0,
+                    "max": 4096,
+                    "step": 2,
+                    "displayValue": true,
+                    "page": {
+                      "title": "Main Screen View Area Left",
+                      "labelTitle": "settings.left"
+                    }
+                  },
+                  {
+                    "type": "number",
+                    "label": "Right",
+                    "labelKey": "settings.right",
+                    "icon": "edgeRight",
+                    "path": "projectionViewAreaRight",
+                    "min": 0,
+                    "max": 4096,
+                    "step": 2,
+                    "displayValue": true,
+                    "page": {
+                      "title": "Main Screen View Area Right",
+                      "labelTitle": "settings.right"
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "route",
+                "label": "Safe Area",
+                "labelKey": "settings.safeArea",
+                "icon": "safeArea",
+                "route": "safeArea",
+                "path": "",
+                "children": [
+                  {
+                    "type": "number",
+                    "label": "Top",
+                    "labelKey": "settings.top",
+                    "icon": "edgeTop",
+                    "path": "projectionSafeAreaTop",
+                    "min": 0,
+                    "max": 2160,
+                    "step": 2,
+                    "displayValue": true,
+                    "page": {
+                      "title": "Main Screen Safe Area Top",
+                      "labelTitle": "settings.top"
+                    }
+                  },
+                  {
+                    "type": "number",
+                    "label": "Bottom",
+                    "labelKey": "settings.bottom",
+                    "icon": "edgeBottom",
+                    "path": "projectionSafeAreaBottom",
+                    "min": 0,
+                    "max": 2160,
+                    "step": 2,
+                    "displayValue": true,
+                    "page": {
+                      "title": "Main Screen Safe Area Bottom",
+                      "labelTitle": "settings.bottom"
+                    }
+                  },
+                  {
+                    "type": "number",
+                    "label": "Left",
+                    "labelKey": "settings.left",
+                    "icon": "edgeLeft",
+                    "path": "projectionSafeAreaLeft",
+                    "min": 0,
+                    "max": 4096,
+                    "step": 2,
+                    "displayValue": true,
+                    "page": {
+                      "title": "Main Screen Safe Area Left",
+                      "labelTitle": "settings.left"
+                    }
+                  },
+                  {
+                    "type": "number",
+                    "label": "Right",
+                    "labelKey": "settings.right",
+                    "icon": "edgeRight",
+                    "path": "projectionSafeAreaRight",
+                    "min": 0,
+                    "max": 4096,
+                    "step": 2,
+                    "displayValue": true,
+                    "page": {
+                      "title": "Main Screen Safe Area Right",
+                      "labelTitle": "settings.right"
+                    }
+                  },
+                  {
+                    "type": "checkbox",
+                    "label": "Draw Outside",
+                    "labelKey": "settings.drawOutside",
+                    "icon": "drawOutside",
+                    "path": "projectionSafeAreaDrawOutside"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "route",
+            "label": "Cluster Video",
+            "labelKey": "settings.clusterVideo",
+            "icon": "clusterVideo",
+            "route": "clusterVideo",
+            "path": "",
+            "children": [
+              {
+                "type": "number",
+                "label": "Width",
+                "labelKey": "settings.clusterWidth",
+                "icon": "width",
+                "path": "clusterWidth",
+                "min": 300,
+                "max": 4096,
+                "step": 1,
+                "displayValue": true,
+                "page": {
+                  "title": "Cluster Video Width",
+                  "labelTitle": "settings.clusterWidth"
+                }
+              },
+              {
+                "type": "number",
+                "label": "Height",
+                "labelKey": "settings.clusterHeight",
+                "icon": "height",
+                "path": "clusterHeight",
+                "min": 200,
+                "max": 2160,
+                "step": 1,
+                "displayValue": true,
+                "page": {
+                  "title": "Cluster Video Height",
+                  "labelTitle": "settings.clusterHeight"
+                }
+              },
+              {
+                "type": "number",
+                "label": "FPS",
+                "labelKey": "settings.clusterFps",
+                "icon": "fps",
+                "path": "clusterFps",
+                "min": 20,
+                "max": 60,
+                "step": 1,
+                "displayValue": true,
+                "page": {
+                  "title": "Cluster Video FPS",
+                  "labelTitle": "settings.clusterFps"
+                }
+              },
+              {
+                "type": "number",
+                "label": "DPI",
+                "labelKey": "settings.clusterDpi",
+                "icon": "dpi",
+                "path": "clusterDpi",
+                "min": 0,
+                "max": 640,
+                "step": 1,
+                "displayValue": true,
+                "page": {
+                  "title": "Cluster Video DPI",
+                  "labelTitle": "settings.clusterDpi"
+                }
+              },
+              {
+                "type": "route",
+                "label": "View Area",
+                "labelKey": "settings.viewArea",
+                "icon": "viewArea",
+                "route": "viewArea",
+                "path": "",
+                "children": [
+                  {
+                    "type": "number",
+                    "label": "Top",
+                    "labelKey": "settings.top",
+                    "icon": "edgeTop",
+                    "path": "clusterViewAreaTop",
+                    "min": 0,
+                    "max": 2160,
+                    "step": 2,
+                    "displayValue": true,
+                    "page": {
+                      "title": "Cluster Screen View Area Top",
+                      "labelTitle": "settings.top"
+                    }
+                  },
+                  {
+                    "type": "number",
+                    "label": "Bottom",
+                    "labelKey": "settings.bottom",
+                    "icon": "edgeBottom",
+                    "path": "clusterViewAreaBottom",
+                    "min": 0,
+                    "max": 2160,
+                    "step": 2,
+                    "displayValue": true,
+                    "page": {
+                      "title": "Cluster Screen View Area Bottom",
+                      "labelTitle": "settings.bottom"
+                    }
+                  },
+                  {
+                    "type": "number",
+                    "label": "Left",
+                    "labelKey": "settings.left",
+                    "icon": "edgeLeft",
+                    "path": "clusterViewAreaLeft",
+                    "min": 0,
+                    "max": 4096,
+                    "step": 2,
+                    "displayValue": true,
+                    "page": {
+                      "title": "Cluster Screen View Area Left",
+                      "labelTitle": "settings.left"
+                    }
+                  },
+                  {
+                    "type": "number",
+                    "label": "Right",
+                    "labelKey": "settings.right",
+                    "icon": "edgeRight",
+                    "path": "clusterViewAreaRight",
+                    "min": 0,
+                    "max": 4096,
+                    "step": 2,
+                    "displayValue": true,
+                    "page": {
+                      "title": "Cluster Screen View Area Right",
+                      "labelTitle": "settings.right"
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "route",
+                "label": "Safe Area",
+                "labelKey": "settings.safeArea",
+                "icon": "safeArea",
+                "route": "safeArea",
+                "path": "",
+                "children": [
+                  {
+                    "type": "number",
+                    "label": "Top",
+                    "labelKey": "settings.top",
+                    "icon": "edgeTop",
+                    "path": "clusterSafeAreaTop",
+                    "min": 0,
+                    "max": 2160,
+                    "step": 2,
+                    "displayValue": true,
+                    "page": {
+                      "title": "Cluster Screen Safe Area Top",
+                      "labelTitle": "settings.top"
+                    }
+                  },
+                  {
+                    "type": "number",
+                    "label": "Bottom",
+                    "labelKey": "settings.bottom",
+                    "icon": "edgeBottom",
+                    "path": "clusterSafeAreaBottom",
+                    "min": 0,
+                    "max": 2160,
+                    "step": 2,
+                    "displayValue": true,
+                    "page": {
+                      "title": "Cluster Screen Safe Area Bottom",
+                      "labelTitle": "settings.bottom"
+                    }
+                  },
+                  {
+                    "type": "number",
+                    "label": "Left",
+                    "labelKey": "settings.left",
+                    "icon": "edgeLeft",
+                    "path": "clusterSafeAreaLeft",
+                    "min": 0,
+                    "max": 4096,
+                    "step": 2,
+                    "displayValue": true,
+                    "page": {
+                      "title": "Cluster Screen Safe Area Left",
+                      "labelTitle": "settings.left"
+                    }
+                  },
+                  {
+                    "type": "number",
+                    "label": "Right",
+                    "labelKey": "settings.right",
+                    "icon": "edgeRight",
+                    "path": "clusterSafeAreaRight",
+                    "min": 0,
+                    "max": 4096,
+                    "step": 2,
+                    "displayValue": true,
+                    "page": {
+                      "title": "Cluster Screen Safe Area Right",
+                      "labelTitle": "settings.right"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "route",
+        "route": "appearance",
+        "label": "Appearance",
+        "labelKey": "settings.appearance",
+        "icon": "appearance",
+        "path": "",
+        "children": [
+          {
+            "type": "slider",
+            "label": "Display Brightness",
+            "labelKey": "settings.displayBrightness",
+            "icon": "displayBrightness",
+            "path": "displayBrightness",
+            "displayValue": true,
+            "displayValueUnit": "%",
+            "valueTransform": {
+              "toView": {
+                "$fn": "(v) => Math.round((v ?? 1) * 100)"
+              },
+              "fromView": {
+                "$fn": "(v, prev) => { const next = v / 100 if (!Number.isFinite(next)) return prev ?? 1 return next }"
+              },
+              "format": {
+                "$fn": "(v) => `${v} %`"
+              }
+            },
+            "page": {
+              "title": "Display Brightness",
+              "labelTitle": "settings.displayBrightness"
+            }
+          },
+          {
+            "type": "checkbox",
+            "label": "Auto Brightness",
+            "labelKey": "settings.displayBrightnessAuto",
+            "icon": "displayBrightnessAuto",
+            "path": "displayBrightnessAuto"
+          },
+          {
+            "type": "checkbox",
+            "label": "Dark Mode",
+            "labelKey": "settings.darkMode",
+            "icon": "darkMode",
+            "path": "darkMode"
+          },
+          {
+            "type": "select",
+            "label": "Phone Appearance",
+            "labelKey": "settings.phoneAppearance",
+            "icon": "phoneAppearance",
+            "path": "appearanceMode",
+            "displayValue": true,
+            "options": [
+              {
+                "label": "Auto",
+                "labelKey": "settings.phoneAppearanceAuto",
+                "value": "auto"
+              },
+              {
+                "label": "Day",
+                "labelKey": "settings.phoneAppearanceDay",
+                "value": "day"
+              },
+              {
+                "label": "Night",
+                "labelKey": "settings.phoneAppearanceNight",
+                "value": "night"
+              }
+            ],
+            "page": {
+              "title": "Phone Appearance",
+              "labelTitle": "settings.phoneAppearance"
+            }
+          },
+          {
+            "type": "route",
+            "label": "UI Colors",
+            "route": "ui-colors",
+            "icon": "uiColors",
+            "path": "",
+            "children": [
+              {
+                "type": "color",
+                "label": "Primary Color Dark",
+                "labelKey": "settings.primaryColorDark",
+                "path": "primaryColorDark",
+                "displayValue": true,
+                "page": {
+                  "title": "Primary Color Dark",
+                  "labelTitle": "settings.primaryColorDark"
+                }
+              },
+              {
+                "type": "color",
+                "label": "Highlight Color Dark",
+                "labelKey": "settings.highlightColorDark",
+                "path": "highlightColorDark",
+                "displayValue": true,
+                "page": {
+                  "title": "Highlight Color Dark",
+                  "labelTitle": "settings.highlightColorDark"
+                }
+              },
+              {
+                "type": "color",
+                "label": "Background Color Dark",
+                "labelKey": "settings.backgroundColorDark",
+                "path": "backgroundColorDark",
+                "displayValue": true,
+                "page": {
+                  "title": "Background Color Dark",
+                  "labelTitle": "settings.backgroundColorDark"
+                }
+              },
+              {
+                "type": "color",
+                "label": "Primary Color Light",
+                "labelKey": "settings.primaryColorLight",
+                "path": "primaryColorLight",
+                "displayValue": true,
+                "page": {
+                  "title": "Primary Color Light",
+                  "labelTitle": "settings.primaryColorLight"
+                }
+              },
+              {
+                "type": "color",
+                "label": "Highlight Color Light",
+                "labelKey": "settings.highlightColorLight",
+                "path": "highlightColorLight",
+                "displayValue": true,
+                "page": {
+                  "title": "Highlight Color Light",
+                  "labelTitle": "settings.highlightColorLight"
+                }
+              },
+              {
+                "type": "color",
+                "label": "Background Color Light",
+                "labelKey": "settings.backgroundColorLight",
+                "path": "backgroundColorLight",
+                "displayValue": true,
+                "page": {
+                  "title": "Background Color Light",
+                  "labelTitle": "settings.backgroundColorLight"
+                }
+              }
+            ]
+          },
+          {
+            "type": "route",
+            "label": "Contrast / Gamma",
+            "route": "display-contrast-gamma",
+            "icon": "contrastGamma",
+            "path": "",
+            "children": [
+              {
+                "type": "custom",
+                "label": "Contrast / Gamma",
+                "path": "displayGamma",
+                "component": {
+                  "$component": "ContrastGammaCalibration"
+                }
+              }
+            ]
+          },
+          {
+            "type": "route",
+            "label": "Color",
+            "route": "display-color",
+            "icon": "displayColor",
+            "path": "",
+            "children": [
+              {
+                "type": "custom",
+                "label": "Color",
+                "path": "displayColorR",
+                "component": {
+                  "$component": "ColorCalibration"
+                }
+              }
+            ]
+          },
+          {
+            "type": "route",
+            "label": "UI Icon",
+            "labelKey": "settings.uiIcon",
+            "icon": "uiIcon",
+            "route": "ui-icon",
+            "path": "",
+            "children": [
+              {
+                "type": "custom",
+                "label": "UI Icon",
+                "labelKey": "settings.uiIcon",
+                "path": "dongleIcon180",
+                "component": {
+                  "$component": "IconUploader"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "route": "system",
+        "label": "System",
+        "labelKey": "settings.system",
+        "icon": "system",
+        "type": "route",
+        "path": "",
+        "children": [
+          {
+            "type": "route",
+            "label": "About",
+            "labelKey": "settings.about",
+            "icon": "about",
+            "route": "about",
+            "path": "",
+            "children": [
+              {
+                "type": "custom",
+                "label": "About",
+                "labelKey": "settings.about",
+                "path": "carName",
+                "component": {
+                  "$component": "About"
+                }
+              }
+            ]
+          },
+          {
+            "type": "route",
+            "label": "Logs",
+            "labelKey": "settings.logs",
+            "icon": "logs",
+            "route": "logs",
+            "path": "",
+            "children": [
+              {
+                "type": "checkbox",
+                "label": "Debug",
+                "labelKey": "settings.debugLogging",
+                "icon": "debugLogging",
+                "path": "debugLogging"
+              }
+            ]
+          },
+          {
+            "type": "route",
+            "label": "Software Update",
+            "labelKey": "settings.softwareUpdate",
+            "icon": "softwareUpdate",
+            "route": "softwareUpdate",
+            "path": "",
+            "children": [
+              {
+                "type": "custom",
+                "label": "Software Update",
+                "labelKey": "settings.softwareUpdate",
+                "path": "carName",
+                "component": {
+                  "$component": "SoftwareUpdate"
+                }
+              }
+            ]
+          },
+          {
+            "type": "route",
+            "label": "Restart System",
+            "labelKey": "settings.restartSystem",
+            "icon": "restart",
+            "route": "restart",
+            "path": "",
+            "children": [
+              {
+                "type": "custom",
+                "label": "Restart System",
+                "labelKey": "settings.restartSystem",
+                "path": "carName",
+                "component": {
+                  "$component": "Restart"
+                }
+              }
+            ]
+          },
+          {
+            "type": "route",
+            "label": "Power Off",
+            "labelKey": "settings.powerOff",
+            "icon": "poweroff",
+            "route": "poweroff",
+            "path": "",
+            "children": [
+              {
+                "type": "custom",
+                "label": "Power Off",
+                "labelKey": "settings.powerOff",
+                "path": "carName",
+                "component": {
+                  "$component": "PowerOff"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

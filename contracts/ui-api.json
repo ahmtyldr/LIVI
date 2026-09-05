@@ -1,0 +1,747 @@
+{
+  "$generated": "scripts/contracts-gen.ts — do not edit by hand; run `pnpm contracts:gen`",
+  "summary": {
+    "calls": 70,
+    "invoke": 48,
+    "send": 8,
+    "local": 14,
+    "events": 11
+  },
+  "calls": [
+    {
+      "name": "projection.quit",
+      "params": [],
+      "returns": "Promise<void>",
+      "transport": "invoke",
+      "channel": "quit"
+    },
+    {
+      "name": "projection.onUSBResetStatus",
+      "params": [
+        {
+          "name": "callback",
+          "type": "ApiCallback",
+          "optional": false
+        }
+      ],
+      "returns": "(() => void)",
+      "transport": "local"
+    },
+    {
+      "name": "projection.usb.forceReset",
+      "params": [],
+      "returns": "Promise<boolean>",
+      "transport": "invoke",
+      "channel": "usb-force-reset"
+    },
+    {
+      "name": "projection.usb.detectDongle",
+      "params": [],
+      "returns": "Promise<boolean>",
+      "transport": "invoke",
+      "channel": "usb-detect-dongle"
+    },
+    {
+      "name": "projection.usb.getDeviceInfo",
+      "params": [],
+      "returns": "Promise<UsbDeviceInfo>",
+      "transport": "invoke",
+      "channel": "projection:usbDevice"
+    },
+    {
+      "name": "projection.usb.getLastEvent",
+      "params": [],
+      "returns": "Promise<UsbLastEvent>",
+      "transport": "invoke",
+      "channel": "usb-last-event"
+    },
+    {
+      "name": "projection.usb.getSysdefaultPrettyName",
+      "params": [],
+      "returns": "Promise<string>",
+      "transport": "invoke",
+      "channel": "get-sysdefault-mic-label"
+    },
+    {
+      "name": "projection.usb.uploadIcons",
+      "params": [],
+      "returns": "unknown",
+      "transport": "invoke",
+      "channel": "projection-upload-icons"
+    },
+    {
+      "name": "projection.usb.uploadLiviScripts",
+      "params": [],
+      "returns": "unknown",
+      "transport": "invoke",
+      "channel": "projection-upload-livi-scripts"
+    },
+    {
+      "name": "projection.usb.listenForEvents",
+      "params": [
+        {
+          "name": "callback",
+          "type": "ApiCallback",
+          "optional": false
+        }
+      ],
+      "returns": "(() => void)",
+      "transport": "local"
+    },
+    {
+      "name": "projection.settings.get",
+      "params": [],
+      "returns": "Promise<Config>",
+      "transport": "invoke",
+      "channel": "getSettings"
+    },
+    {
+      "name": "projection.settings.save",
+      "params": [
+        {
+          "name": "settings",
+          "type": "Partial<Config>",
+          "optional": false
+        }
+      ],
+      "returns": "Promise<void>",
+      "transport": "invoke",
+      "channel": "save-settings",
+      "channelArgs": "settings"
+    },
+    {
+      "name": "projection.settings.onUpdate",
+      "params": [
+        {
+          "name": "callback",
+          "type": "ApiCallback<[Config]>",
+          "optional": false
+        }
+      ],
+      "returns": "(() => void)",
+      "transport": "local"
+    },
+    {
+      "name": "projection.audio.listSinks",
+      "params": [],
+      "returns": "Promise< Array<{ id: string; name: string; isDefault: boolean; offline?: boolean }> >",
+      "transport": "invoke",
+      "channel": "audio:listSinks"
+    },
+    {
+      "name": "projection.audio.listSources",
+      "params": [],
+      "returns": "Promise< Array<{ id: string; name: string; isDefault: boolean; offline?: boolean }> >",
+      "transport": "invoke",
+      "channel": "audio:listSources"
+    },
+    {
+      "name": "projection.ipc.start",
+      "params": [],
+      "returns": "Promise<void>",
+      "transport": "invoke",
+      "channel": "projection-start"
+    },
+    {
+      "name": "projection.ipc.stop",
+      "params": [],
+      "returns": "Promise<void>",
+      "transport": "invoke",
+      "channel": "projection-stop"
+    },
+    {
+      "name": "projection.ipc.restart",
+      "params": [],
+      "returns": "Promise<void>",
+      "transport": "invoke",
+      "channel": "projection-restart"
+    },
+    {
+      "name": "projection.ipc.setVisible",
+      "params": [
+        {
+          "name": "visible",
+          "type": "boolean",
+          "optional": false
+        }
+      ],
+      "returns": "Promise<void>",
+      "transport": "invoke",
+      "channel": "projection-set-visible",
+      "channelArgs": "visible"
+    },
+    {
+      "name": "projection.ipc.sendFrame",
+      "params": [],
+      "returns": "Promise<void>",
+      "transport": "invoke",
+      "channel": "projection-sendframe"
+    },
+    {
+      "name": "projection.ipc.setBluetoothPairedList",
+      "params": [
+        {
+          "name": "listText",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "returns": "Promise<{ ok: boolean }>",
+      "transport": "invoke",
+      "channel": "projection-bt-pairedlist-set",
+      "channelArgs": "listText"
+    },
+    {
+      "name": "projection.ipc.connectBluetoothPairedDevice",
+      "params": [
+        {
+          "name": "mac",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "returns": "Promise<{ ok: boolean }>",
+      "transport": "invoke",
+      "channel": "projection-bt-connect-device",
+      "channelArgs": "mac"
+    },
+    {
+      "name": "projection.ipc.forgetBluetoothPairedDevice",
+      "params": [
+        {
+          "name": "mac",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "returns": "Promise<{ ok: boolean }>",
+      "transport": "invoke",
+      "channel": "projection-bt-forget-device",
+      "channelArgs": "mac"
+    },
+    {
+      "name": "projection.ipc.dongleFirmware",
+      "params": [
+        {
+          "name": "action",
+          "type": "'check' | 'download' | 'upload' | 'status'",
+          "optional": false
+        }
+      ],
+      "returns": "Promise<unknown>",
+      "transport": "invoke",
+      "channel": "dongle-fw",
+      "channelArgs": "{ action }"
+    },
+    {
+      "name": "projection.ipc.switchTransport",
+      "params": [],
+      "returns": "Promise<{ ok: boolean; active: 'dongle' | 'aa' | 'cp' | null }>",
+      "transport": "invoke",
+      "channel": "transport:switch"
+    },
+    {
+      "name": "projection.ipc.getTransportState",
+      "params": [],
+      "returns": "Promise<TransportSnapshot>",
+      "transport": "invoke",
+      "channel": "transport:state"
+    },
+    {
+      "name": "projection.ipc.getDevices",
+      "params": [],
+      "returns": "Promise< Array<{ id: string; name?: string; model?: string; protocol?: 'carplay' | 'androidauto'; lastTransport?: string; status: 'active' | 'available' | 'offline'; batteryLevel?: number; batteryCharging?: boolean; signalStrength?: number; carrierName?: string }> >",
+      "transport": "invoke",
+      "channel": "devices:list"
+    },
+    {
+      "name": "projection.ipc.selectDevice",
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "returns": "Promise<{ ok: boolean }>",
+      "transport": "invoke",
+      "channel": "devices:select",
+      "channelArgs": "id"
+    },
+    {
+      "name": "projection.ipc.cycleSession",
+      "params": [],
+      "returns": "Promise<void>",
+      "transport": "invoke",
+      "channel": "devices:cycle"
+    },
+    {
+      "name": "projection.ipc.forgetDevice",
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "returns": "Promise<{ ok: boolean }>",
+      "transport": "invoke",
+      "channel": "devices:forget",
+      "channelArgs": "id"
+    },
+    {
+      "name": "projection.ipc.sendTouch",
+      "params": [
+        {
+          "name": "x",
+          "type": "number",
+          "optional": false
+        },
+        {
+          "name": "y",
+          "type": "number",
+          "optional": false
+        },
+        {
+          "name": "action",
+          "type": "number",
+          "optional": false
+        }
+      ],
+      "returns": "void",
+      "transport": "send",
+      "channel": "projection-touch",
+      "channelArgs": "{ x, y, action }"
+    },
+    {
+      "name": "projection.ipc.sendMultiTouch",
+      "params": [
+        {
+          "name": "points",
+          "type": "MultiTouchPoint[]",
+          "optional": false
+        }
+      ],
+      "returns": "void",
+      "transport": "send",
+      "channel": "projection-multi-touch",
+      "channelArgs": "points"
+    },
+    {
+      "name": "projection.ipc.sendCommand",
+      "params": [
+        {
+          "name": "key",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "returns": "void",
+      "transport": "send",
+      "channel": "projection-command",
+      "channelArgs": "key"
+    },
+    {
+      "name": "projection.ipc.onEvent",
+      "params": [
+        {
+          "name": "callback",
+          "type": "ApiCallback",
+          "optional": false
+        }
+      ],
+      "returns": "(() => void)",
+      "transport": "local"
+    },
+    {
+      "name": "projection.ipc.readMedia",
+      "params": [],
+      "returns": "Promise<unknown>",
+      "transport": "invoke",
+      "channel": "projection-media-read"
+    },
+    {
+      "name": "projection.ipc.readNavigation",
+      "params": [],
+      "returns": "Promise<unknown>",
+      "transport": "invoke",
+      "channel": "projection-navigation-read"
+    },
+    {
+      "name": "projection.ipc.onAudioChunk",
+      "params": [
+        {
+          "name": "handler",
+          "type": "ChunkHandler",
+          "optional": false
+        }
+      ],
+      "returns": "void",
+      "transport": "local"
+    },
+    {
+      "name": "projection.ipc.offAudioChunk",
+      "params": [
+        {
+          "name": "handler",
+          "type": "ChunkHandler",
+          "optional": false
+        }
+      ],
+      "returns": "void",
+      "transport": "local"
+    },
+    {
+      "name": "projection.ipc.setVolume",
+      "params": [
+        {
+          "name": "stream",
+          "type": "'music' | 'nav' | 'voiceAssistant' | 'call'",
+          "optional": false
+        },
+        {
+          "name": "volume",
+          "type": "number",
+          "optional": false
+        }
+      ],
+      "returns": "void",
+      "transport": "send",
+      "channel": "projection-set-volume",
+      "channelArgs": "{ stream, volume }"
+    },
+    {
+      "name": "projection.ipc.setVisualizerEnabled",
+      "params": [
+        {
+          "name": "enabled",
+          "type": "boolean",
+          "optional": false
+        }
+      ],
+      "returns": "void",
+      "transport": "send",
+      "channel": "projection-set-visualizer-enabled",
+      "channelArgs": "!!enabled"
+    },
+    {
+      "name": "projection.ipc.requestCluster",
+      "params": [
+        {
+          "name": "enabled",
+          "type": "boolean",
+          "optional": false
+        }
+      ],
+      "returns": "Promise<{ ok: boolean; enabled: boolean }>",
+      "transport": "invoke",
+      "channel": "cluster:request",
+      "channelArgs": "enabled"
+    },
+    {
+      "name": "projection.ipc.clusterRepaintNudge",
+      "params": [],
+      "returns": "Promise<{ ok: boolean }>",
+      "transport": "invoke",
+      "channel": "cluster:repaint-nudge"
+    },
+    {
+      "name": "projection.ipc.onClusterResolution",
+      "params": [
+        {
+          "name": "handler",
+          "type": "ChunkHandler",
+          "optional": false
+        }
+      ],
+      "returns": "(() => void)",
+      "transport": "local"
+    },
+    {
+      "name": "projection.ipc.onTelemetry",
+      "params": [
+        {
+          "name": "handler",
+          "type": "(payload: unknown) => void",
+          "optional": false
+        }
+      ],
+      "returns": "void",
+      "transport": "local"
+    },
+    {
+      "name": "projection.ipc.offTelemetry",
+      "params": [
+        {
+          "name": "handler",
+          "type": "(payload: unknown) => void",
+          "optional": false
+        }
+      ],
+      "returns": "void",
+      "transport": "local"
+    },
+    {
+      "name": "projection.ipc.getTelemetrySnapshot",
+      "params": [],
+      "returns": "Promise<unknown>",
+      "transport": "invoke",
+      "channel": "telemetry:snapshot"
+    },
+    {
+      "name": "app.platform",
+      "params": [],
+      "returns": "value: process.platform",
+      "transport": "local"
+    },
+    {
+      "name": "app.compositor",
+      "params": [],
+      "returns": "value: process.env.LIVI_COMPOSITOR === '1'",
+      "transport": "local"
+    },
+    {
+      "name": "app.getVersion",
+      "params": [],
+      "returns": "Promise<string>",
+      "transport": "invoke",
+      "channel": "app:getVersion"
+    },
+    {
+      "name": "app.listDisplayModes",
+      "params": [],
+      "returns": "Promise<string[]>",
+      "transport": "invoke",
+      "channel": "app:listDisplayModes"
+    },
+    {
+      "name": "app.listWifiChannels",
+      "params": [],
+      "returns": "Promise<number[]>",
+      "transport": "invoke",
+      "channel": "app:listWifiChannels"
+    },
+    {
+      "name": "app.listWifiCountryCodes",
+      "params": [],
+      "returns": "Promise<string[]>",
+      "transport": "invoke",
+      "channel": "app:listWifiCountryCodes"
+    },
+    {
+      "name": "app.listWifiInterfaces",
+      "params": [],
+      "returns": "Promise<string[]>",
+      "transport": "invoke",
+      "channel": "app:listWifiInterfaces"
+    },
+    {
+      "name": "app.listBtAdapters",
+      "params": [],
+      "returns": "Promise<string[]>",
+      "transport": "invoke",
+      "channel": "app:listBtAdapters"
+    },
+    {
+      "name": "app.getLatestRelease",
+      "params": [],
+      "returns": "Promise<{ version?: string; url?: string }>",
+      "transport": "invoke",
+      "channel": "app:getLatestRelease"
+    },
+    {
+      "name": "app.performUpdate",
+      "params": [
+        {
+          "name": "imageUrl",
+          "type": "string",
+          "optional": true
+        }
+      ],
+      "returns": "Promise<void>",
+      "transport": "invoke",
+      "channel": "app:performUpdate",
+      "channelArgs": "imageUrl"
+    },
+    {
+      "name": "app.onUpdateEvent",
+      "params": [
+        {
+          "name": "cb",
+          "type": "(payload: UpdateEvent) => void",
+          "optional": false
+        }
+      ],
+      "returns": "(() => void)",
+      "transport": "local"
+    },
+    {
+      "name": "app.onUpdateProgress",
+      "params": [
+        {
+          "name": "cb",
+          "type": "(payload: UpdateProgress) => void",
+          "optional": false
+        }
+      ],
+      "returns": "(() => void)",
+      "transport": "local"
+    },
+    {
+      "name": "app.resetDongleIcons",
+      "params": [],
+      "returns": "Promise<{ dongleIcon120?: string; dongleIcon180?: string; dongleIcon256?: string }>",
+      "transport": "invoke",
+      "channel": "settings:reset-dongle-icons"
+    },
+    {
+      "name": "app.beginInstall",
+      "params": [],
+      "returns": "Promise<void>",
+      "transport": "invoke",
+      "channel": "app:beginInstall"
+    },
+    {
+      "name": "app.abortUpdate",
+      "params": [],
+      "returns": "Promise<void>",
+      "transport": "invoke",
+      "channel": "app:abortUpdate"
+    },
+    {
+      "name": "app.customPageUrl",
+      "params": [],
+      "returns": "Promise<string | null>",
+      "transport": "invoke",
+      "channel": "app:customPageUrl"
+    },
+    {
+      "name": "app.customIconUrl",
+      "params": [],
+      "returns": "Promise<string | null>",
+      "transport": "invoke",
+      "channel": "app:customIconUrl"
+    },
+    {
+      "name": "app.quitApp",
+      "params": [],
+      "returns": "Promise<void>",
+      "transport": "invoke",
+      "channel": "app:quitApp"
+    },
+    {
+      "name": "app.restartApp",
+      "params": [],
+      "returns": "Promise<void>",
+      "transport": "invoke",
+      "channel": "app:restartApp"
+    },
+    {
+      "name": "app.openExternal",
+      "params": [
+        {
+          "name": "url",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "returns": "Promise<{ ok: boolean; error?: string }>",
+      "transport": "invoke",
+      "channel": "app:openExternal",
+      "channelArgs": "url"
+    },
+    {
+      "name": "app.notifyUserActivity",
+      "params": [],
+      "returns": "void",
+      "transport": "send",
+      "channel": "app:user-activity"
+    },
+    {
+      "name": "app.reportPath",
+      "params": [
+        {
+          "name": "path",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "returns": "void",
+      "transport": "send",
+      "channel": "ui:path",
+      "channelArgs": "path"
+    },
+    {
+      "name": "app.broadcastMediaKey",
+      "params": [
+        {
+          "name": "command",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "returns": "void",
+      "transport": "send",
+      "channel": "app:media-key",
+      "channelArgs": "command"
+    },
+    {
+      "name": "app.onMediaKey",
+      "params": [
+        {
+          "name": "handler",
+          "type": "MediaKeyHandler",
+          "optional": false
+        }
+      ],
+      "returns": "(() => void)",
+      "transport": "local"
+    }
+  ],
+  "events": [
+    {
+      "channel": "app:media-key",
+      "via": "preload"
+    },
+    {
+      "channel": "cluster-video-resolution",
+      "via": "preload"
+    },
+    {
+      "channel": "projection-audio-chunk",
+      "via": "preload"
+    },
+    {
+      "channel": "projection-event",
+      "via": "preload"
+    },
+    {
+      "channel": "settings",
+      "via": "projection.settings.onUpdate"
+    },
+    {
+      "channel": "telemetry:update",
+      "via": "preload"
+    },
+    {
+      "channel": "update:event",
+      "via": "app.onUpdateEvent"
+    },
+    {
+      "channel": "update:progress",
+      "via": "app.onUpdateProgress"
+    },
+    {
+      "channel": "usb-event",
+      "via": "preload"
+    },
+    {
+      "channel": "usb-reset-done",
+      "via": "projection.onUSBResetStatus"
+    },
+    {
+      "channel": "usb-reset-start",
+      "via": "projection.onUSBResetStatus"
+    }
+  ]
+}
