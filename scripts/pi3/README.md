@@ -128,3 +128,20 @@ Not: `livi-wifi-ap.service` içeriği uygulamanın beklediğiyle **birebir** ayn
 "LIVI needs a boot service so the projection Wi-Fi AP starts with the device" penceresi çıkar ve
 "Install" pkexec olmadığı için sessizce başarısız olur. Depodaki kopya bu depodan derlenen sürümle eşleşir;
 f-io nightly (dev dalı) ExecStop/TimeoutStopSec satırları da ekliyor.
+
+## Yamalar kaynağa taşındı (5 Eylül 2026)
+
+`v9.0.0-livilite.3` ve sonrası için bu klasördeki elle adımlar **gerekmez**:
+- Colorimetry düzeltmesi `native/livi-gst-video/rust/player/src/lib.rs` içinde (commit 30044c12). Shim ve
+  `LIVI_GST_PRELOAD` satırı kaldırıldı; `pi3.conf` yalnızca `UPDATE_REPO` taşıyor.
+- Wi-Fi AP servisi kurulum scripti tarafından yazılıyor (commit b4160096).
+
+Sıfırdan kurulum artık tek komut (bu deponun scripti ve yayını):
+
+```bash
+curl -fL -o install.sh https://raw.githubusercontent.com/ahmtyldr/LIVI/main/scripts/install/headless/install.sh
+chmod +x install.sh && LIVI_REPO=ahmtyldr/LIVI ./install.sh && sudo reboot
+```
+
+Sonra `pi3.conf` için: `printf '[Service]\nEnvironment=UPDATE_REPO=ahmtyldr/LIVI\n' | sudo tee /etc/systemd/system/livi-kiosk.service.d/pi3.conf`
+ve açılış hızlandırma için `boot-tuning/` adımları. Shim dosyaları eski sürümler için burada kalıyor.

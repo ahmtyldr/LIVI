@@ -14,8 +14,8 @@ Durum: 5 Eylül 2026. Pi 3 B+ üzerinde LIVI 9.0.0 nightly çalışıyor.
 
 ## Kaynağa taşınacak düzeltmeler (shim ve elle kurulumların yerine)
 
-- [ ] `native/livi-gst-video/rust/player/src/lib.rs`: `BAD_COLORIMETRY` tek değer yerine, çözücünün kabul listesinde olmayan her değeri yakalasın (Pi 3'te `2:4:16:3`).
-- [ ] Headless kurulum scripti `livi-wifi-ap.service` ve `99-LIVI-wifi-ap` sudoers dosyasını da yazsın (uygulama pkexec ile kuramıyor).
+- [x] `native/livi-gst-video/rust/player/src/lib.rs`: çözücünün kabul listesinde olmayan her colorimetry değeri yakalanıyor (commit 30044c12; Pi 3'te shim olmadan doğrulandı).
+- [x] Kurulum scriptleri `livi-wifi-ap.service` dosyasını yazıyor (commit b4160096; Pi'de doğrulandı). Sudoers gerekmedi: helperd root çalışıyor.
 - [ ] İkisini f-io'ya PR olarak sun.
 
 ## Açılış süresi (kaldığı yer: adım 3 tamam, arayüz 55 sn / 9.0'da 67 sn)
