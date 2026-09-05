@@ -16,7 +16,7 @@ Durum: 5 Eylül 2026. Pi 3 B+ üzerinde LIVI 9.0.0 nightly çalışıyor.
 
 - [x] `native/livi-gst-video/rust/player/src/lib.rs`: çözücünün kabul listesinde olmayan her colorimetry değeri yakalanıyor (commit 30044c12; Pi 3'te shim olmadan doğrulandı).
 - [x] Kurulum scriptleri `livi-wifi-ap.service` dosyasını yazıyor (commit b4160096; Pi'de doğrulandı). Sudoers gerekmedi: helperd root çalışıyor.
-- [ ] İkisini f-io'ya PR olarak sun.
+- Karar (5 Eylül 2026): f-io'ya PR gönderilmeyecek; bu depo bağımsız bir proje olarak ilerler. Upstream'den değişiklik alma isteğe bağlı ve elle yapılır.
 
 ## Açılış süresi (kaldığı yer: adım 3 tamam, arayüz 55 sn / 9.0'da 67 sn)
 
