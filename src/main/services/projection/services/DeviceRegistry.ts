@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
+import { userDataDir } from '@main/host/paths'
 import { writeFileAtomicAsync } from '@shared/utils'
-import { app } from 'electron'
 
 export type LinkTransport = 'bt' | 'wifi' | 'usb'
 
@@ -109,7 +109,7 @@ export class DeviceRegistry {
 
   private get file(): string {
     if (!this.resolvedFile) {
-      this.resolvedFile = this.fileOverride ?? path.join(app.getPath('userData'), 'devices.json')
+      this.resolvedFile = this.fileOverride ?? path.join(userDataDir(), 'devices.json')
     }
     return this.resolvedFile
   }

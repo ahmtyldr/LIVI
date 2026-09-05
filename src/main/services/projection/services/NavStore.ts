@@ -1,6 +1,6 @@
+import { userDataDir } from '@main/host/paths'
 import type { NavLocale } from '@shared/utils'
 import { translateNavigation } from '@shared/utils'
-import { app } from 'electron'
 import fs from 'fs'
 import path from 'path'
 import type { IPhoneDriver } from '../driver/IPhoneDriver'
@@ -22,7 +22,7 @@ export class NavStore {
   constructor(private readonly deps: NavStoreDeps) {}
 
   private file(): string {
-    return path.join(app.getPath('userData'), 'navigationData.json')
+    return path.join(userDataDir(), 'navigationData.json')
   }
 
   private write(payload: PersistedNavigationPayload): void {

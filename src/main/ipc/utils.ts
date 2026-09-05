@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process'
 import os from 'node:os'
 import { CONFIG_PATH } from '@main/config/paths'
 import { setDebugLogging } from '@main/constants'
+import { getUiHost } from '@main/host/ui'
 import { runtimeStateProps, UpdateEventPayload } from '@main/types'
 import { applyNullDeletes, pushSettingsToRenderer, sizesEqual } from '@main/utils'
 import { getMainWindow } from '@main/window/createWindow'
@@ -45,13 +46,11 @@ export async function getMacDesiredOwner(dstApp: string): Promise<{ user: string
 }
 
 export function sendUpdateEvent(payload: UpdateEventPayload) {
-  const mainWindow = getMainWindow()
-  mainWindow?.webContents.send('update:event', payload)
+  getUiHost().broadcast('update:event', payload)
 }
 
 export function sendUpdateProgress(payload: Extract<UpdateEventPayload, { phase: 'download' }>) {
-  const mainWindow = getMainWindow()
-  mainWindow?.webContents.send('update:progress', payload)
+  getUiHost().broadcast('update:progress', payload)
 }
 
 export function saveSettings(runtimeState: runtimeStateProps, next: Partial<Config>) {

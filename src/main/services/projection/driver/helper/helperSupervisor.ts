@@ -4,8 +4,8 @@ import { EventEmitter } from 'node:events'
 import { chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync, renameSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { DEBUG } from '@main/constants'
+import { userDataDir } from '@main/host/paths'
 import type { Config } from '@shared/types'
-import { app } from 'electron'
 import { loadOrCreateIdentity } from '../cp/stack/identity'
 
 const HELPER_BIN = 'livi-helperd'
@@ -20,7 +20,7 @@ function isInsideAppImageMount(p: string): boolean {
 // Staged via temp + rename: the AP boot service runs this binary, and writing the
 // executing inode in place raises ETXTBSY — rename swaps the path atomically instead.
 function stageHelperBin(src: string): string {
-  const dest = join(app.getPath('userData'), 'driver', HELPER_BIN)
+  const dest = join(userDataDir(), 'driver', HELPER_BIN)
   const digest = (p: string): string => createHash('sha256').update(readFileSync(p)).digest('hex')
   if (!existsSync(dest) || digest(dest) !== digest(src)) {
     mkdirSync(dirname(dest), { recursive: true })
@@ -65,7 +65,7 @@ function resolveHelperBin(): string {
         console.warn(`[helper] staging failed: ${(err as Error).message}`)
         // root can never exec from the user's FUSE mount — a previously staged
         // copy, even an older build, is the only path sudo can run.
-        const staged = join(app.getPath('userData'), 'driver', HELPER_BIN)
+        const staged = join(userDataDir(), 'driver', HELPER_BIN)
         if (existsSync(staged)) return staged
         return resBin
       }

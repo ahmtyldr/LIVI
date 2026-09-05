@@ -1,3 +1,4 @@
+import { isPackaged } from '@main/host/paths'
 import { NullDeleteKey, runtimeStateProps } from '@main/types'
 import { broadcastToRenderers } from '@main/window/broadcast'
 import type { Config } from '@shared/types'
@@ -6,7 +7,7 @@ import { NULL_DELETES } from './constants'
 
 export const isMacPlatform = () => process.platform === 'darwin'
 
-export const isDev = () => !app.isPackaged
+export const isDev = () => !isPackaged()
 
 export function applyNullDeletes(merged: Config, next: Partial<Config>) {
   const nextAny = next as Record<string, unknown>

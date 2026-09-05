@@ -1,4 +1,4 @@
-import { app } from 'electron'
+import { userDataDir } from '@main/host/paths'
 import fs from 'fs'
 import path from 'path'
 import type { IPhoneDriver } from '../driver/IPhoneDriver'
@@ -43,7 +43,7 @@ export class MediaStore {
   }
 
   private file(): string {
-    return path.join(app.getPath('userData'), 'mediaData.json')
+    return path.join(userDataDir(), 'mediaData.json')
   }
 
   private write(payload: PersistedMediaPayload): void {

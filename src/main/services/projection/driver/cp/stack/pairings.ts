@@ -7,11 +7,11 @@
 
 import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { userDataDir } from '@main/host/paths'
 import { writeFileAtomic } from '@shared/utils'
-import { app } from 'electron'
 
 function dir(): string {
-  return join(app.getPath('userData'), 'cp')
+  return join(userDataDir(), 'cp')
 }
 function file(): string {
   return join(dir(), 'pairings.json')

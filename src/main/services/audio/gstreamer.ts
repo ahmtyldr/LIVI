@@ -1,4 +1,4 @@
-import { app } from 'electron'
+import { appRoot, isPackaged } from '@main/host/paths'
 import fs from 'fs'
 import path from 'path'
 
@@ -16,7 +16,7 @@ function platformDir(): string | null {
 export function resolveGStreamerRoot(): string | null {
   const dir = platformDir()
   if (!dir) return null
-  const base = app.isPackaged ? process.resourcesPath : path.join(app.getAppPath(), 'assets')
+  const base = isPackaged() ? process.resourcesPath : path.join(appRoot(), 'assets')
   const bundled = path.join(base, 'gstreamer', dir)
   return fs.existsSync(bundled) ? bundled : null
 }

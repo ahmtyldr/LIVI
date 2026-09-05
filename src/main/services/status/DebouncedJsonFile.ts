@@ -2,7 +2,7 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
-import { app } from 'electron'
+import { userDataDir } from '@main/host/paths'
 
 export type DebouncedJsonFileOpts = {
   debounceMs?: number
@@ -63,7 +63,7 @@ export class DebouncedJsonFile {
   }
 
   private target(): string {
-    this.file ??= path.join(app.getPath('userData'), this.name)
+    this.file ??= path.join(userDataDir(), this.name)
     return this.file
   }
 }

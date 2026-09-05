@@ -1,3 +1,4 @@
+import { getUiHost } from '@main/host/ui'
 import { registerIpcHandle, registerIpcOn } from '@main/ipc/register'
 import {
   CUSTOM_ICON_URL,
@@ -14,7 +15,6 @@ import { broadcastToRenderers } from '@main/window/broadcast'
 import { getMainWindow } from '@main/window/createWindow'
 import { restoreKioskAfterWmExit } from '@main/window/utils'
 import { spawn } from 'child_process'
-import { app, shell } from 'electron'
 
 let restartInProgress = false
 
@@ -30,7 +30,7 @@ export async function restartApp(
   try {
     if (hostPowerAvailable()) {
       requestPowerAction('reboot')
-      app.quit()
+      getUiHost().quit()
       return
     }
 
@@ -71,7 +71,7 @@ export async function restartApp(
     if (compositorRestart()) {
       await new Promise((r) => setTimeout(r, 100))
       runtimeState.isQuitting = true
-      app.quit()
+      getUiHost().quit()
       return
     }
 
@@ -84,10 +84,10 @@ export async function restartApp(
       delete cleanEnv.OWD
       spawn(appImage, [], { detached: true, stdio: 'ignore', env: cleanEnv }).unref()
     } else {
-      app.relaunch()
+      getUiHost().relaunch()
     }
 
-    app.quit()
+    getUiHost().quit()
   } finally {
     restartInProgress = false
   }
@@ -106,7 +106,7 @@ export function registerAppIpc(runtimeState: runtimeStateProps, services: Servic
             mainWindow!.setFullScreen(false)
           })()
         : mainWindow?.hide()
-      : app.quit()
+      : getUiHost().quit()
   )
 
   registerIpcHandle('app:customPageUrl', async () => {
@@ -121,7 +121,7 @@ export function registerAppIpc(runtimeState: runtimeStateProps, services: Servic
   registerIpcHandle('app:quitApp', () => {
     if (runtimeState.isQuitting) return
     if (hostPowerAvailable()) requestPowerAction('poweroff')
-    app.quit()
+    getUiHost().quit()
   })
 
   // App Restart
@@ -147,7 +147,7 @@ export function registerAppIpc(runtimeState: runtimeStateProps, services: Servic
     if (!url) return { ok: false, error: 'Empty URL' }
     if (!/^https?:\/\//i.test(url)) return { ok: false, error: 'Only http/https URLs are allowed' }
 
-    await shell.openExternal(url)
+    await getUiHost().openExternal(url)
     return { ok: true }
   })
 }

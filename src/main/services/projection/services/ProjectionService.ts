@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process'
+import { userDataDir } from '@main/host/paths'
 import { configEvents } from '@main/ipc/utils'
 import { SystemSound } from '@main/services/audio'
 import { broadcastToSecondaryRenderers } from '@main/window/broadcast'
@@ -9,7 +10,7 @@ import { PhoneWorkMode } from '@shared/types'
 import { isInputCommand } from '@shared/types/InputCommand'
 import type { NavLocale } from '@shared/utils'
 import { clusterTargetScreens, isClusterDisplayed } from '@shared/utils'
-import { app, WebContents, webContents } from 'electron'
+import { WebContents, webContents } from 'electron'
 import fs from 'fs'
 import path from 'path'
 import {
@@ -1318,7 +1319,7 @@ export class ProjectionService {
 
   private async reloadConfigFromDisk(): Promise<void> {
     try {
-      const configPath = path.join(app.getPath('userData'), 'config.json')
+      const configPath = path.join(userDataDir(), 'config.json')
       if (!fs.existsSync(configPath)) return
       const userConfig = JSON.parse(fs.readFileSync(configPath, 'utf8')) as Config
       this.config = { ...this.config, ...userConfig }
@@ -1338,7 +1339,7 @@ export class ProjectionService {
 
   private uploadIcons() {
     try {
-      const configPath = path.join(app.getPath('userData'), 'config.json')
+      const configPath = path.join(userDataDir(), 'config.json')
 
       let cfg: Config = { ...(DEFAULT_CONFIG as Config), ...this.config }
 

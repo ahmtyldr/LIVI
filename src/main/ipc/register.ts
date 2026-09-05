@@ -34,6 +34,14 @@ export function registerIpcOn<TArgs extends unknown[] = unknown[]>(
   ipcMain.on(channel, listener as Parameters<typeof ipcMain.on>[1])
 }
 
+/** Removes whatever was registered for `channel`, on ipcMain and here. */
+export function unregisterIpc(channel: string): void {
+  invokeHandlers.delete(channel)
+  eventListeners.delete(channel)
+  ipcMain.removeHandler(channel)
+  ipcMain.removeAllListeners(channel)
+}
+
 /** The channels a handler or listener has been registered for. */
 export function registeredChannels(): { invoke: string[]; send: string[] } {
   return { invoke: [...invokeHandlers.keys()], send: [...eventListeners.keys()] }

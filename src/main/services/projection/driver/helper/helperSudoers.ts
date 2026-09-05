@@ -2,13 +2,15 @@ import { execFileSync, spawn } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import { join } from 'node:path'
-import { app, BrowserWindow, dialog } from 'electron'
+import { appRoot, userDataDir } from '@main/host/paths'
+import { showMessageBox } from '@main/host/ui'
+import type { BrowserWindow } from 'electron'
 
 const RULE_FILE = '/etc/sudoers.d/99-LIVI-bt'
 const TEMPLATE_FILENAME = '99-LIVI-bt.sudoers.template'
 const SENTINEL_VERSION = 'v2'
 function sentinelPath(): string {
-  return join(app.getPath('userData'), `bt-sudoers-${SENTINEL_VERSION}.installed`)
+  return join(userDataDir(), `bt-sudoers-${SENTINEL_VERSION}.installed`)
 }
 
 function resolveTemplatePath(): string {
@@ -17,7 +19,7 @@ function resolveTemplatePath(): string {
     const packaged = join(resources, TEMPLATE_FILENAME)
     if (existsSync(packaged)) return packaged
   }
-  return join(app.getAppPath(), 'assets', 'linux', TEMPLATE_FILENAME)
+  return join(appRoot(), 'assets', 'linux', TEMPLATE_FILENAME)
 }
 
 function loadTemplate(): string {
@@ -103,7 +105,7 @@ export async function checkAndInstallHelperSudoers(window: BrowserWindow): Promi
     return
   }
 
-  const { response } = await dialog.showMessageBox(window, {
+  const { response } = await showMessageBox(window, {
     type: 'question',
     title: 'Wireless Projection — Permission Required',
     message:
@@ -124,7 +126,7 @@ export async function checkAndInstallHelperSudoers(window: BrowserWindow): Promi
     } catch (e) {
       console.warn('[helperSudoers] could not write sentinel:', (e as Error).message)
     }
-    await dialog.showMessageBox(window, {
+    await showMessageBox(window, {
       type: 'info',
       title: 'Done',
       message: 'Wireless projection permissions installed.',
@@ -133,7 +135,7 @@ export async function checkAndInstallHelperSudoers(window: BrowserWindow): Promi
   } catch (err) {
     console.error('[helperSudoers] installation failed:', err)
     const content = buildRuleContent()
-    await dialog.showMessageBox(window, {
+    await showMessageBox(window, {
       type: 'error',
       title: 'Installation Failed',
       message: 'Could not install the sudoers drop-in.',

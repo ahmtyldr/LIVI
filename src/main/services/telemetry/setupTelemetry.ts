@@ -15,13 +15,12 @@
  *
  */
 
-import { registerIpcHandle, registerIpcOn } from '@main/ipc/register'
+import { registerIpcHandle, registerIpcOn, unregisterIpc } from '@main/ipc/register'
 import { configEvents } from '@main/ipc/utils'
 import type { ProjectionService } from '@main/services/projection/services/ProjectionService'
 import { getAllRendererWebContents } from '@main/window/broadcast'
 import type { Config } from '@shared/types'
 import type { TelemetryPayload } from '@shared/types/Telemetry'
-import { ipcMain } from 'electron'
 import { attachAaAdapter } from './adapters/aaAdapter'
 import { attachBlinkerSound } from './adapters/blinkerSoundAdapter'
 import { attachCpAdapter } from './adapters/cpAdapter'
@@ -138,8 +137,8 @@ export function setupTelemetry({
   return {
     store,
     dispose: (): void => {
-      ipcMain.removeAllListeners('telemetry:push')
-      ipcMain.removeHandler('telemetry:snapshot')
+      unregisterIpc('telemetry:push')
+      unregisterIpc('telemetry:snapshot')
       configEvents.off('changed', onConfigChanged)
       gpsPersist.off()
       volumePersist.off()

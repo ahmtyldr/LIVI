@@ -5,7 +5,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import util from 'node:util'
-import { app } from 'electron'
+import { userDataDir } from '@main/host/paths'
 
 const MAX_LOG_BYTES = 8 * 1024 * 1024
 const KEEP_SESSIONS = 5
@@ -31,7 +31,7 @@ function rotate(dir: string): void {
 }
 
 function openLogStream(): fs.WriteStream | null {
-  const dir = path.join(app.getPath('userData'), 'log')
+  const dir = path.join(userDataDir(), 'log')
   fs.mkdirSync(dir, { recursive: true })
   rotate(dir)
   written = 0

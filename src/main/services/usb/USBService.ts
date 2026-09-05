@@ -1,6 +1,6 @@
+import { getUiHost } from '@main/host/ui'
 import { registerIpcHandle } from '@main/ipc/register'
 import { Microphone } from '@main/services/audio'
-import { BrowserWindow } from 'electron'
 import { usb } from 'usb'
 import { isAccessoryMode } from '../projection/driver/aa/stack/aoap/handshake.js'
 import { ProjectionService } from '../projection/services/ProjectionService'
@@ -276,9 +276,7 @@ export class USBService {
       type: connected ? 'plugged' : 'unplugged',
       device: { vendorId, productId, deviceName: '' }
     }
-    BrowserWindow.getAllWindows().forEach((win) => {
-      win.webContents.send('usb-event', payload)
-    })
+    getUiHost().broadcast('usb-event', payload)
   }
 
   private broadcastGenericUsbEvent(event: { type: 'attach' | 'detach'; device: Device }) {
@@ -288,7 +286,7 @@ export class USBService {
       type: event.type,
       device: { vendorId, productId, deviceName: '' }
     }
-    BrowserWindow.getAllWindows().forEach((win) => win.webContents.send('usb-event', payload))
+    getUiHost().broadcast('usb-event', payload)
   }
 
   private broadcastGenericUsbEventNoDevice(type: 'attach' | 'detach') {
@@ -296,7 +294,7 @@ export class USBService {
       type,
       device: { vendorId: null, productId: null, deviceName: '' }
     }
-    BrowserWindow.getAllWindows().forEach((win) => win.webContents.send('usb-event', payload))
+    getUiHost().broadcast('usb-event', payload)
   }
 
   private notifyDeviceChangeNoDevice(connected: boolean): void {
@@ -304,9 +302,7 @@ export class USBService {
       type: connected ? 'plugged' : 'unplugged',
       device: { vendorId: null, productId: null, deviceName: '' }
     }
-    BrowserWindow.getAllWindows().forEach((win) => {
-      win.webContents.send('usb-event', payload)
-    })
+    getUiHost().broadcast('usb-event', payload)
   }
 
   private registerIpcHandlers() {
@@ -421,7 +417,7 @@ export class USBService {
   }
 
   private notifyReset(type: 'usb-reset-start' | 'usb-reset-done', ok: boolean) {
-    BrowserWindow.getAllWindows().forEach((win) => win.webContents.send(type, ok))
+    getUiHost().broadcast(type, ok)
   }
 
   public async forceReset(): Promise<boolean> {

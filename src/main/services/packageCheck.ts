@@ -2,7 +2,9 @@ import { execFile, execFileSync, spawn } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
-import { app, type BrowserWindow, dialog } from 'electron'
+import { appRoot } from '@main/host/paths'
+import { showMessageBox } from '@main/host/ui'
+import type { BrowserWindow } from 'electron'
 
 const execFileAsync = promisify(execFile)
 
@@ -17,7 +19,7 @@ export type PackageEntry = {
 function manifestPath(): string | null {
   const candidates = [
     join(process.resourcesPath ?? '', 'packages.txt'),
-    join(app.getAppPath(), 'scripts', 'install', 'packages.txt'),
+    join(appRoot(), 'scripts', 'install', 'packages.txt'),
     join(process.cwd(), 'scripts', 'install', 'packages.txt')
   ]
   return candidates.find((p) => existsSync(p)) ?? null
@@ -167,7 +169,7 @@ export async function checkMissingPackages(
   const canInstall = aptAvailable() && pkexecAvailable()
   const manualCmd = `sudo apt install ${names.join(' ')}`
 
-  const { response } = await dialog.showMessageBox(window, {
+  const { response } = await showMessageBox(window, {
     type: 'question',
     title: 'LIVI — Missing Packages',
     message: `${missing.length} component${missing.length > 1 ? 's are' : ' is'} missing for a complete LIVI setup.`,
@@ -193,7 +195,7 @@ export async function checkMissingPackages(
     await installPackages(names)
     const stillMissing = await missingPackages(missing)
     if (stillMissing.length) {
-      await dialog.showMessageBox(window, {
+      await showMessageBox(window, {
         type: 'warning',
         title: 'LIVI — Missing Packages',
         message: 'Some packages are still missing after the installation.',
@@ -202,7 +204,7 @@ export async function checkMissingPackages(
       })
       return {}
     }
-    await dialog.showMessageBox(window, {
+    await showMessageBox(window, {
       type: 'info',
       title: 'LIVI — Missing Packages',
       message: 'All packages installed. Restart LIVI to use the features they enable.',
@@ -210,7 +212,7 @@ export async function checkMissingPackages(
     })
   } catch (err) {
     console.error('[packageCheck] installation failed:', err)
-    await dialog.showMessageBox(window, {
+    await showMessageBox(window, {
       type: 'error',
       title: 'LIVI — Missing Packages',
       message: 'Could not install the packages.',

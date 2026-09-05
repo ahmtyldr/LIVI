@@ -2,14 +2,16 @@ import { spawn } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import os from 'node:os'
 import { join } from 'node:path'
-import { app, BrowserWindow, dialog } from 'electron'
+import { userDataDir } from '@main/host/paths'
+import { showMessageBox } from '@main/host/ui'
+import type { BrowserWindow } from 'electron'
 
 const UNIT_PATH = '/etc/systemd/system/livi-wifi-ap.service'
 
 // Early-boot AP ownership: the staged helper runs hostapd/dnsmasq before LIVI starts,
 // so a phone can associate the moment the device is powered.
 function unitContent(): string {
-  const helper = join(app.getPath('userData'), 'driver', 'livi-helperd')
+  const helper = join(userDataDir(), 'driver', 'livi-helperd')
   const user = os.userInfo().username
   return `[Unit]
 Description=LIVI wireless projection AP (early boot)
@@ -61,7 +63,7 @@ export async function checkAndInstallWifiApUnit(window: BrowserWindow): Promise<
   const wanted = unitContent()
   if (installedContent() === wanted) return
 
-  const { response } = await dialog.showMessageBox(window, {
+  const { response } = await showMessageBox(window, {
     type: 'question',
     title: 'Wireless Projection — Wi-Fi AP Service',
     message: 'LIVI needs a boot service so the projection Wi-Fi AP starts with the device.',

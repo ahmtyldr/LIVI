@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process'
 import net from 'node:net'
-import { app, BrowserWindow, type WebContents } from 'electron'
+import { isPackaged } from '@main/host/paths'
+import { BrowserWindow, type WebContents } from 'electron'
 import path from 'path'
 import { gstEnv, resolveBinary, resolveGStreamerRoot } from '../audio/gstreamer'
 import { gstHost, probeCodecsViaHost } from './gstHost'
@@ -344,7 +345,7 @@ function logGstRuntime(systemVersion?: string): void {
 }
 
 function prepareMacRuntime(): void {
-  if (process.platform !== 'darwin' || !app.isPackaged) return
+  if (process.platform !== 'darwin' || !isPackaged()) return
   const root = resolveGStreamerRoot()
   if (!root) return
   process.env.GST_PLUGIN_SYSTEM_PATH = ''

@@ -1,7 +1,7 @@
+import { userDataDir } from '@main/host/paths'
 import type { NavLocale } from '@shared/utils'
 import { navIdleText, translateNavigation } from '@shared/utils'
 import { execFile } from 'child_process'
-import { app } from 'electron'
 import fs from 'fs'
 import path from 'path'
 import type { ProjectionEvent } from '../projection/services/types'
@@ -95,7 +95,7 @@ export class CarBridgeService {
 
   private navFromDisk(): Record<string, unknown> | null {
     try {
-      const raw = fs.readFileSync(path.join(app.getPath('userData'), 'navigationData.json'), 'utf8')
+      const raw = fs.readFileSync(path.join(userDataDir(), 'navigationData.json'), 'utf8')
       const navi = JSON.parse(raw)?.payload?.navi
       return navi && typeof navi === 'object' ? navi : null
     } catch {
@@ -168,7 +168,7 @@ export class CarBridgeService {
 
   private mediaFromDisk(): Record<string, unknown> | null {
     try {
-      const raw = fs.readFileSync(path.join(app.getPath('userData'), 'mediaData.json'), 'utf8')
+      const raw = fs.readFileSync(path.join(userDataDir(), 'mediaData.json'), 'utf8')
       const media = JSON.parse(raw)?.payload?.media
       return media && typeof media === 'object' ? media : null
     } catch {

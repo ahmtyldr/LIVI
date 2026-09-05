@@ -14,7 +14,7 @@ import {
   applyAspectRatioWindowed,
   applyWindowedContentSize
 } from '@main/window/utils'
-import { screen } from 'electron'
+import { BrowserWindow, screen } from 'electron'
 import { existsSync, writeFileSync } from 'fs'
 import type { Mock } from 'vitest'
 
@@ -42,6 +42,7 @@ vi.mock('node:os', () => {
 })
 
 vi.mock('electron', () => ({
+  BrowserWindow: { getAllWindows: vi.fn(() => []) },
   screen: {
     getDisplayMatching: vi.fn(function () {
       return {
@@ -113,7 +114,9 @@ describe('ipc utils', () => {
 
   test('sendUpdateEvent forwards payload to renderer channel', async () => {
     const send = vi.fn()
-    mockedGetMainWindow.mockReturnValue({ webContents: { send } })
+    ;(BrowserWindow.getAllWindows as Mock).mockReturnValue([
+      { isDestroyed: () => false, webContents: { send } }
+    ])
 
     sendUpdateEvent({ phase: 'check' } as never)
 
@@ -122,13 +125,16 @@ describe('ipc utils', () => {
 
   test('sendUpdateEvent does nothing when no main window exists', async () => {
     mockedGetMainWindow.mockReturnValue(null)
+    ;(BrowserWindow.getAllWindows as Mock).mockReturnValue([])
 
     expect(() => sendUpdateEvent({ phase: 'check' } as never)).not.toThrow()
   })
 
   test('sendUpdateProgress forwards payload to renderer progress channel', async () => {
     const send = vi.fn()
-    mockedGetMainWindow.mockReturnValue({ webContents: { send } })
+    ;(BrowserWindow.getAllWindows as Mock).mockReturnValue([
+      { isDestroyed: () => false, webContents: { send } }
+    ])
 
     sendUpdateProgress({ phase: 'download', percent: 25 } as never)
 
@@ -137,6 +143,7 @@ describe('ipc utils', () => {
 
   test('sendUpdateProgress does nothing when no main window exists', async () => {
     mockedGetMainWindow.mockReturnValue(null)
+    ;(BrowserWindow.getAllWindows as Mock).mockReturnValue([])
 
     expect(() => sendUpdateProgress({ phase: 'download', percent: 25 } as never)).not.toThrow()
   })

@@ -1,5 +1,6 @@
+import { userDataDir } from '@main/host/paths'
 import type { BoxInfoPayload } from '@shared/types'
-import { app, net } from 'electron'
+import { net } from 'electron'
 import { createWriteStream, existsSync, promises as fsp } from 'fs'
 import { basename, join } from 'path'
 import type { DongleDriver } from './dongleDriver.js'
@@ -177,7 +178,7 @@ export class FirmwareUpdateService {
       const req = check.request
       if (!req) return { ok: false, error: 'Missing request payload from checkForUpdate()' }
 
-      const userData = app.getPath('userData')
+      const userData = userDataDir()
       const fwDir = join(userData, 'firmware')
       await fsp.mkdir(fwDir, { recursive: true })
 
@@ -425,7 +426,7 @@ export class FirmwareUpdateService {
   }
 
   private async getFirmwareDir(): Promise<string> {
-    const userData = app.getPath('userData')
+    const userData = userDataDir()
     const fwDir = join(userData, 'firmware')
     await fsp.mkdir(fwDir, { recursive: true })
     return fwDir

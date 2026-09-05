@@ -10,8 +10,8 @@
 import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { userDataDir } from '@main/host/paths'
 import { writeFileAtomic } from '@shared/utils'
-import { app } from 'electron'
 import { ed25519Generate } from './crypto'
 
 export interface CpIdentity {
@@ -26,7 +26,7 @@ export interface CpIdentity {
 let cached: CpIdentity | null = null
 
 function identityFile(): string {
-  return join(app.getPath('userData'), 'cp', 'identity.json')
+  return join(userDataDir(), 'cp', 'identity.json')
 }
 
 export function loadOrCreateIdentity(): CpIdentity {
@@ -48,7 +48,7 @@ export function loadOrCreateIdentity(): CpIdentity {
   const kp = ed25519Generate()
   const pairingId = randomUUID()
   try {
-    mkdirSync(join(app.getPath('userData'), 'cp'), { recursive: true })
+    mkdirSync(join(userDataDir(), 'cp'), { recursive: true })
     writeFileAtomic(
       file,
       JSON.stringify({

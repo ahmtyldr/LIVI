@@ -5,6 +5,7 @@ import {
   listWifiCountryCodes,
   listWifiInterfaces
 } from '@main/app/wifiOptions'
+import { appVersion } from '@main/host/paths'
 import { registerIpcHandle } from '@main/ipc/register'
 import { releaseFeedUrl, runNumberFromTitle } from '@main/ipc/update/feed'
 import { pickAssetForPlatform } from '@main/ipc/update/pickAsset'
@@ -13,7 +14,6 @@ import { GhRelease, runtimeStateProps } from '@main/types'
 import { currentKiosk } from '@main/window/utils'
 import { ICON_120_B64, ICON_180_B64, ICON_256_B64 } from '@shared/assets/carIcons'
 import type { Config } from '@shared/types'
-import { app } from 'electron'
 
 export function registerSettingsIpc(runtimeState: runtimeStateProps) {
   registerIpcHandle('settings:get-kiosk', () => currentKiosk(runtimeState.config))
@@ -42,7 +42,7 @@ export function registerSettingsIpc(runtimeState: runtimeStateProps) {
     }
   })
 
-  registerIpcHandle('app:getVersion', () => app.getVersion())
+  registerIpcHandle('app:getVersion', () => appVersion())
 
   registerIpcHandle('app:listDisplayModes', () => listHostOutputModes())
 

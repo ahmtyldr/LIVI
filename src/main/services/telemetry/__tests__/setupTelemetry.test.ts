@@ -1,3 +1,4 @@
+import { unregisterIpc } from '@main/ipc/register'
 import type { Mock } from 'vitest'
 
 const registerIpcOnMock = vi.fn()
@@ -12,6 +13,7 @@ const { configEvents } = vi.hoisted(() => ({
 const getAllRendererWebContentsMock = vi.fn(() => [])
 
 vi.mock('@main/ipc/register', () => ({
+  unregisterIpc: vi.fn(),
   registerIpcOn: (...a: unknown[]) => registerIpcOnMock(...a),
   registerIpcHandle: (...a: unknown[]) => registerIpcHandleMock(...a)
 }))
@@ -136,8 +138,8 @@ describe('setupTelemetry', () => {
     const store = new TelemetryStore()
     const handle = setupTelemetry({ store })
     handle.dispose()
-    expect(removeAllListenersMock).toHaveBeenCalledWith('telemetry:push')
-    expect(removeHandlerMock).toHaveBeenCalledWith('telemetry:snapshot')
+    expect(unregisterIpc).toHaveBeenCalledWith('telemetry:push')
+    expect(unregisterIpc).toHaveBeenCalledWith('telemetry:snapshot')
     expect(configEvents.off).toHaveBeenCalled()
   })
 

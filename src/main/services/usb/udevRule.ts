@@ -1,5 +1,6 @@
+import { showMessageBox } from '@main/host/ui'
 import { execFileSync, spawn } from 'child_process'
-import { BrowserWindow, dialog } from 'electron'
+import type { BrowserWindow } from 'electron'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
@@ -146,7 +147,7 @@ export async function checkAndInstallUdevRule(window: BrowserWindow): Promise<bo
   }
 
   const isUpgrade = exists && !isCurrent
-  const { response } = await dialog.showMessageBox(window, {
+  const { response } = await showMessageBox(window, {
     type: 'question',
     title: isUpgrade ? 'USB Permission Update' : 'USB Permission Required',
     message: isUpgrade
@@ -169,7 +170,7 @@ export async function checkAndInstallUdevRule(window: BrowserWindow): Promise<bo
       installed = true
     } catch (err) {
       console.error('[udevRule] Installation failed:', err)
-      const { response: retry } = await dialog.showMessageBox(window, {
+      const { response: retry } = await showMessageBox(window, {
         type: 'error',
         title: 'Installation Failed',
         message: 'Could not install the udev rule.',
@@ -182,7 +183,7 @@ export async function checkAndInstallUdevRule(window: BrowserWindow): Promise<bo
     }
   }
 
-  await dialog.showMessageBox(window, {
+  await showMessageBox(window, {
     type: 'info',
     title: 'Done',
     message: 'udev rule installed. LIVI will now restart to apply it.',

@@ -2,7 +2,9 @@ import { execFileSync, spawn } from 'node:child_process'
 import { existsSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import { join } from 'node:path'
-import { app, type BrowserWindow, dialog } from 'electron'
+import { userDataDir } from '@main/host/paths'
+import { showMessageBox } from '@main/host/ui'
+import type { BrowserWindow } from 'electron'
 
 const GUARD_DIR = '/usr/local/lib/livi'
 const GUARD_PATH = `${GUARD_DIR}/gvfs-phone-guard.sh`
@@ -34,7 +36,7 @@ function phoneMonitorsPresent(): boolean {
 }
 
 function sentinelPath(): string {
-  return join(app.getPath('userData'), `gvfs-guard-${SENTINEL_VERSION}.installed`)
+  return join(userDataDir(), `gvfs-guard-${SENTINEL_VERSION}.installed`)
 }
 
 function resolveUsername(): string {
@@ -117,7 +119,7 @@ export async function checkAndInstallGvfsGuard(window: BrowserWindow): Promise<v
     return
   }
 
-  const { response } = await dialog.showMessageBox(window, {
+  const { response } = await showMessageBox(window, {
     type: 'question',
     title: 'LIVI',
     message: 'Hide connected phones from the file manager?',
