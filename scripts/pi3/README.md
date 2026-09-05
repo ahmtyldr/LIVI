@@ -147,3 +147,5 @@ Sonra `pi3.conf` için: `printf '[Service]\nEnvironment=UPDATE_REPO=ahmtyldr/LIV
 ve açılış hızlandırma için `boot-tuning/` adımları. Shim dosyaları eski sürümler için burada kalıyor.
 
 Mevcut yayın: `v9.0.0-livilite.3`, SHA-256 `f7e532a1…bd5d66f6`, Pi bu dosyayı çalıştırıyor (kurulum scriptiyle kuruldu).
+
+**Etiket kuralı:** yayın etiketi düz `vX.Y.Z` olmalı (ör. `v9.0.1`). Güncelleme ekranı `^(\d+)\.(\d+)\.(\d+)$` ile okur; `-livilite.N` gibi ekler sürümü okunamaz yapar ve Update düğmesi pasif kalır. Ayrıca cihazda "Nightly" anahtarı kapalı olmalı, bu depoda nightly etiketi yok.
