@@ -38,6 +38,8 @@ linux:
   extraResources:
     - from: out/compositor
       to: compositor
+    - from: out/ui
+      to: ui
     - from: assets/linux/dev.f-io.livi.metainfo.xml
       to: ../share/metainfo/dev.f-io.livi.metainfo.xml
     - from: assets/linux/99-LIVI.rules.template

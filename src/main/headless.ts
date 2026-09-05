@@ -13,6 +13,7 @@ import { applyConfigBehaviours, createCore, finishStart } from '@main/app/bootst
 import { bootstrapCompositor } from '@main/app/compositorBootstrap'
 import { installMainProcessErrorHandlers } from '@main/app/errorHandler'
 import { shutdownServices } from '@main/app/shutdown'
+import { startUiProcess } from '@main/app/uiProcess'
 import { bridgeRenderer } from '@main/host/renderer'
 import { registerIpc } from '@main/ipc'
 import { runPendingPowerAction } from '@main/services/power/hostPower'
@@ -62,6 +63,9 @@ async function main(): Promise<void> {
   // resolution and video-plane bookkeeping all flow through it.
   projectionService.attachRenderer(bridgeRenderer())
 
+  // The LVGL front end (native/livi-ui) draws into the same compositor.
+  const ui = process.env.LIVI_UI === 'lvgl' ? startUiProcess() : undefined
+
   applyConfigBehaviours(core)
   setupTelemetry({ store: telemetryStore, projectionService, initialConfig: runtimeState.config })
 
@@ -72,6 +76,7 @@ async function main(): Promise<void> {
     runtimeState.isQuitting = true
     console.log(`[headless] ${signal}: shutting down`)
     const watchdog = setTimeout(() => process.exit(1), 12000)
+    await ui?.stop()
     await shutdownServices(services)
     stopUiBridge()
     clearTimeout(watchdog)

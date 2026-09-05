@@ -42,7 +42,9 @@ Durum: 5 Eylül 2026. Pi 3 B+ üzerinde LIVI 9.0.0 nightly çalışıyor.
 - [x] Oturum 4 (2/2): `RendererTarget` + köprü renderer'ı, `app/bootstrap.ts` ortak başlangıç, `headless.ts` + `vite.headless.config.mts` + `electron-shim`, `scripts/pi3/livi-headless.sh`. Pi'de Electron'suz doğrulandı: AA oturumu, H.264 donanım çözme, video düzlemi; RAM 371 MB, CPU %4,7 (commit fc6b6fee ve sonrası).
 - [ ] Headless ana süreç RSS 151 MB (hedef <100): gerçek Node ikilisi paketle ya da Electron-as-Node tabanını ölç/azalt.
 - [ ] Kalan Electron-only parçalar (Electron kipinde kalır, headless'ta shim): `FirmwareUpdateService` `net.request`, `appProtocol`, `ipc/utils` `screen`, `cluster:repaint-nudge`.
-- [ ] Oturum 5–6: `native/livi-ui` iskeleti + parite aracı.
+- [x] Oturum 5: `native/livi-ui` iskeleti (LVGL 9.5, Wayland/shm, FreeType Roboto, JSON-RPC istemcisi, nav rail + durum sayfası, dokunma iletimi); headless ana süreç ikiliyi `uiProcess.ts` ile başlatıyor; paket `resources/ui/`.
+- [ ] livi-ui: nav ikonları şimdilik LVGL sembolleri (MUI outlined SVG'ler oturum 7'de görsel olarak eklenecek); ARGB (saydam) yüzey ertelendi — video düzlemi arayüzün üstünde çizildiği için gerekmedi.
+- [ ] Oturum 6: parite aracı (`grim`).
 - [ ] Oturum 7–16: ekranlar (sıra ve kabul ölçütleri `LVGL_PLAN.md` §10).
 - [ ] Oturum 17–18: kiosk paketi `v9.1.0`, Zero 2 W ölçümleri.
 

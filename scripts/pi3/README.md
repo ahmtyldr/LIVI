@@ -186,6 +186,38 @@ Başlatıcı AppImage'ı `--appimage-mount` ile bir kez bağlar ve compositor ya
 Geliştirme: `Environment=LIVI_HEADLESS_JS=/home/livilite/headless.js` ile `pnpm build:headless` çıktısı
 doğrudan çalıştırılır (native eklentiler mount'tan çözülür).
 
+### livi-ui (LVGL arayüzü) geliştirme akışı — Oturum 5
+
+`native/livi-ui` Pi'de yerinde derlenir (LVGL 9.5 + cJSON configure sırasında indirilir; Pi 3'te
+tam derleme ~15 dk, sonrakiler artımlı):
+
+```bash
+# Pi'de bir kez
+sudo apt install -y cmake git build-essential pkg-config libwayland-dev wayland-protocols \
+  libxkbcommon-dev libfreetype-dev
+# Mac'te: kaynak + font/çeviri kaynakları + headless paketi
+rsync -a --exclude build native/livi-ui/ livilite@192.168.3.2:~/livi-ui-src/
+node scripts/ui-resources.mjs && rsync -a out/ui/ livilite@192.168.3.2:~/livi-ui/
+pnpm build:headless && scp out/main/headless.js livilite@192.168.3.2:~/headless.js
+# Pi'de derle ve ikiliyi kaynakların yanına koy
+ssh livilite@192.168.3.2 'cd ~/livi-ui-src && cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
+  && cmake --build build -j4 && install -m 0755 build/livi-ui ~/livi-ui/livi-ui'
+```
+
+Kiosk drop-in'i (`headless.conf`) livi-ui'yi ana sürece tanıtır; ana süreç ikiliyi kendisi başlatır
+ve çökerse yeniden başlatır (`src/main/app/uiProcess.ts`):
+
+```
+[Service]
+ExecStart=
+ExecStart=/usr/bin/cage -s -- /usr/local/lib/livi/livi-headless.sh
+Environment=LIVI_HEADLESS_JS=/home/livilite/headless.js
+Environment=LIVI_UI_BIN=/home/livilite/livi-ui/livi-ui
+```
+
+Günlükler: `~/.config/LIVI/log/headless.log` (`[livi-ui]` önekli satırlar arayüzün stderr'i).
+Paketli sürümde ikili `resources/ui/livi-ui` olarak gelir; drop-in'deki iki `Environment` satırı gerekmez.
+
 Ölçüm (Pi 3 B+, kablosuz Android Auto, harita açık):
 
 | | Electron kipi | Headless kip |

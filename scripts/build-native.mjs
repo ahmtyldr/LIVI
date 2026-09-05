@@ -4,6 +4,7 @@
 //   gst-video-addon   -> native/livi-gst-video/build/Release/gst_video.node
 //   gst-video-host    -> native/livi-gst-video/build/Release/livi-gst-host (linux)
 //   livi-compositor   -> out/compositor/livi-compositor (linux)
+//   livi-ui           -> out/ui/livi-ui + fonts/ + locales/ (linux, LIVI_SKIP_UI=1 skips)
 //
 // Usage: node scripts/build-native.mjs [--arch=x64|arm64] [--only=crypto]
 // Linux runners are arch-native; only macOS cross-compiles (arm64 host -> x64 app).
@@ -11,6 +12,7 @@ import { execFileSync } from 'node:child_process'
 import { copyFileSync, mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { assembleUiResources } from './ui-resources.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const archArg = process.argv.find((a) => a.startsWith('--arch='))?.slice(7)
@@ -70,5 +72,19 @@ if (only !== 'crypto') {
     const compManifest = join(root, 'native', 'livi-compositor', 'rust', 'Cargo.toml')
     const compOut = cargoBuild(compManifest, 'livi-compositor')
     place(join(compOut, 'livi-compositor'), join(root, 'out', 'compositor'), 'livi-compositor')
+
+    if (!process.env.LIVI_SKIP_UI) buildUi()
   }
+}
+
+/** native/livi-ui (LVGL) — CMake; LVGL and cJSON are fetched at configure time. */
+function buildUi() {
+  const src = join(root, 'native', 'livi-ui')
+  const build = join(src, 'build')
+  const run = (args) => execFileSync('cmake', args, { stdio: 'inherit' })
+  run(['-S', src, '-B', build, '-DCMAKE_BUILD_TYPE=Release'])
+  run(['--build', build, '-j', String(Math.max(2, (process.env.CMAKE_BUILD_PARALLEL_LEVEL | 0) || 4))])
+  const outDir = join(root, 'out', 'ui')
+  place(join(build, 'livi-ui'), outDir, 'livi-ui')
+  assembleUiResources(outDir)
 }
