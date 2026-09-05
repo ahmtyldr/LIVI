@@ -8,8 +8,6 @@ ConditionPathExists=/home/livilite/.config/LIVI/driver/livi-helperd
 Type=simple
 Environment=SUDO_USER=livilite
 ExecStart=/home/livilite/.config/LIVI/driver/livi-helperd --wifi-ap
-ExecStop=/home/livilite/.config/LIVI/driver/livi-helperd --wifi-ap-teardown
-TimeoutStopSec=8
 Restart=on-failure
 RestartSec=5
 

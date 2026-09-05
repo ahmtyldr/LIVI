@@ -122,3 +122,9 @@ gh release create v9.0.0-livilite.N /tmp/livi-build/*/LIVI-9.0.0-linux-arm64.App
 GStreamer paketleri depoda (`assets/gstreamer/`), iş akışı yalnızca `GITHUB_TOKEN` kullanır; dış bağımlılık yok.
 İlk kendi sürüm: `v9.0.0-livilite.2`, SHA-256 `0bf4e998…56fee513`, Pi'de `~/LIVI/LIVI.AppImage`.
 Pi'deki yedekler: `LIVI-8.3.0.AppImage`, `LIVI-9.0.0-nightly.AppImage`.
+
+Not: `livi-wifi-ap.service` içeriği uygulamanın beklediğiyle **birebir** aynı olmalı
+(`src/main/services/projection/driver/helper/wifiApUnit.ts` → `unitContent()`), yoksa her açılışta
+"LIVI needs a boot service so the projection Wi-Fi AP starts with the device" penceresi çıkar ve
+"Install" pkexec olmadığı için sessizce başarısız olur. Depodaki kopya bu depodan derlenen sürümle eşleşir;
+f-io nightly (dev dalı) ExecStop/TimeoutStopSec satırları da ekliyor.
