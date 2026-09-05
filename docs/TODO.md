@@ -37,7 +37,7 @@ Durum: 5 Eylül 2026. Pi 3 B+ üzerinde LIVI 9.0.0 nightly çalışıyor.
 - [x] Aşama 0.1: 9.0.0'ı Pi 3'te doğrula (nightly ile yapıldı, Android Auto donanım çözmeyle çalışıyor).
 - [x] Aşama 0.2: derleme ortamı = GitHub Actions (arm64 runner), doğrulandı.
 - [x] Oturum 1: sözleşme çıkarımı (`contracts/`, `pnpm contracts:gen`, CI kontrolü) — 70 çağrı, 11 olay, 116 config anahtarı, 155 ayar alanı, 268 çeviri anahtarı.
-- [ ] Oturum 2: UiBridge (JSON-RPC soket) + `tools/ui-cli`.
+- [x] Oturum 2: UiBridge (JSON-RPC soket) + `tools/ui-cli` — Pi'de Electron çalışırken `settings.get`, `getDevices`, olay akışı doğrulandı (6 Eylül 2026). Not: Pi'deki AppImage köprülü test derlemesi (Actions run 33993733418), yayın etiketi henüz yok; bir sonraki yayın `v9.0.2` köprüyü içerecek.
 - [ ] Oturum 3–4: ana süreci Electron'dan ayır, `LIVI_UI=lvgl` headless paket.
 - [ ] Oturum 5–6: `native/livi-ui` iskeleti + parite aracı.
 - [ ] Oturum 7–16: ekranlar (sıra ve kabul ölçütleri `LVGL_PLAN.md` §10).
