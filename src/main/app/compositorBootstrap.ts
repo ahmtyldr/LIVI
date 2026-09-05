@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process'
-import { existsSync, mkdirSync, openSync } from 'node:fs'
+import { existsSync, mkdirSync, openSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { COMPOSITOR_TITLEBAR_H } from '@main/app/compositorLayout'
@@ -69,6 +69,14 @@ export function bootstrapCompositor(innerCommand?: string): boolean {
     // no log dir: fall back to inherited stdio
   }
 
-  spawn(launcher, ['-s', inner], { detached: true, stdio, env }).unref()
+  const child = spawn(launcher, ['-s', inner], { detached: true, stdio, env })
+  // The outer launcher exits right after this; whoever started it (cage) can
+  // wait on the compositor through this pid file instead.
+  try {
+    if (child.pid) writeFileSync(join(runtimeDir, 'livi-compositor.pid'), `${child.pid}\n`)
+  } catch {
+    // best effort
+  }
+  child.unref()
   return true
 }

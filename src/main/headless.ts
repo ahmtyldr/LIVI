@@ -7,6 +7,8 @@
 //   ELECTRON_RUN_AS_NODE=1 LIVI_UI=lvgl LIVI.AppImage \
 //     -e "require(process.resourcesPath + '/app.asar/out/main/headless.js')"
 import './logTimestamps'
+import { homedir } from 'node:os'
+import { join } from 'node:path'
 import { applyConfigBehaviours, createCore, finishStart } from '@main/app/bootstrap'
 import { bootstrapCompositor } from '@main/app/compositorBootstrap'
 import { installMainProcessErrorHandlers } from '@main/app/errorHandler'
@@ -20,21 +22,30 @@ import { startUiBridge, stopUiBridge, uiBridgeSocketPath } from '@main/ui-bridge
 installMainProcessErrorHandlers()
 process.env.LIVI_UI ??= 'lvgl'
 
-/** The command the nested compositor runs to relaunch this entry inside it. */
+/** The command the nested compositor runs to relaunch this entry inside it.
+ *  LIVI_HEADLESS_JS points at a bundle outside the AppImage (development). */
 function headlessInnerCommand(): string {
   const relaunch = process.env.APPIMAGE ?? process.execPath
-  const script = process.env.APPIMAGE
-    ? `require(process.resourcesPath + '/app.asar/out/main/headless.js')`
-    : `require(${JSON.stringify(__filename)})`
+  const devBundle = process.env.LIVI_HEADLESS_JS
+  const script = devBundle
+    ? `process.env.NODE_PATH=process.resourcesPath+'/app.asar/node_modules';` +
+      `require('module').Module._initPaths();require('${devBundle}')`
+    : process.resourcesPath
+      ? `require(process.resourcesPath + '/app.asar/out/main/headless.js')`
+      : `require(${JSON.stringify(__filename)})`
   const hostLd = process.env.LD_LIBRARY_PATH ?? ''
+  const log = join(homedir(), '.config', 'LIVI', 'log', 'headless.log')
   return (
     `ELECTRON_RUN_AS_NODE=1 LIVI_UI=${process.env.LIVI_UI} LIVI_COMPOSITOR=1 ` +
-    `LD_LIBRARY_PATH='${hostLd}' '${relaunch}' -e "${script}"`
+    (devBundle ? `LIVI_HEADLESS_JS='${devBundle}' ` : '') +
+    `LD_LIBRARY_PATH='${hostLd}' '${relaunch}' -e "${script}" >> '${log}' 2>&1`
   )
 }
 
 async function main(): Promise<void> {
   // Outer launcher hands off to the nested compositor and exits, like index.ts.
+  // The compositor runs from this process's AppImage mount, so the launcher
+  // script (scripts/pi3/livi-headless.sh) keeps that mount alive and waits.
   if (bootstrapCompositor(headlessInnerCommand())) {
     process.exit(0)
   }

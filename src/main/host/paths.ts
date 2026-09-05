@@ -2,6 +2,7 @@
 // Electron. Under Electron the answers come from `app`; under plain Node
 // (LIVI_UI=lvgl, no Electron) `electron` resolves to the npm shim and `app`
 // is undefined, so the environment and conventional paths take over.
+import { existsSync, readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { app } from 'electron'
@@ -27,8 +28,15 @@ export function userDataDir(): string {
   return process.env.LIVI_USER_DATA ?? join(homedir(), '.config', 'LIVI')
 }
 
-/** The bundle's app.asar when this code runs from one (headless in an AppImage). */
+/** The bundle's app.asar when running inside a package without Electron's app:
+ *  Electron's Node still knows resourcesPath, and a development bundle run from
+ *  outside the package can be told with LIVI_RESOURCES. */
 function asarRoot(): string | undefined {
+  const resources = process.env.LIVI_RESOURCES ?? process.resourcesPath
+  if (resources) {
+    const asar = join(resources, 'app.asar')
+    if (existsSync(asar)) return asar
+  }
   const here = typeof __dirname === 'string' ? __dirname : ''
   const m = /^(.*[\\/]app\.asar)(?:[\\/]|$)/.exec(here)
   return m ? m[1] : undefined
@@ -51,7 +59,16 @@ export function isPackaged(): boolean {
 export function appVersion(): string {
   const a = electronApp()
   if (typeof a?.getVersion === 'function') return a.getVersion()
-  return process.env.LIVI_VERSION ?? '0.0.0'
+  if (process.env.LIVI_VERSION) return process.env.LIVI_VERSION
+  try {
+    const pkg = JSON.parse(readFileSync(join(appRoot(), 'package.json'), 'utf8')) as {
+      version?: string
+    }
+    if (pkg.version) return pkg.version
+  } catch {
+    // not running from a package
+  }
+  return '0.0.0'
 }
 
 /** Bundled assets: `resources/` in a package, `assets/` in a checkout. */
