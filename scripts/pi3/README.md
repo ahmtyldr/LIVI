@@ -92,3 +92,17 @@ Bilinen farklar:
   telefona tıklayınca el sıkışma başlar ve kayıt oluşur.
 - **Colorimetry shim** 9.0'ın gst-host'una da aynı `LIVI_GST_PRELOAD` ile yüklenir, `pi3.conf` korunur.
 - Açılış: arayüz ~67 sn (8.3.0'da 55). Ana süreç 9.0'da daha fazla iş yapıyor (helperd, cihaz tarama).
+
+## Kendi güncelleme kanalı
+
+Cihaz, `pi3.conf` içindeki `UPDATE_REPO=ahmtyldr/LIVI` sayesinde Software Update'i bu deponun
+"latest" yayınından alır (`nightly` etiketi `updateNightly` açıkken). f-io'nun yayınları cihaza
+kendiliğinden gelmez.
+
+Kurallar:
+- "latest" her zaman Pi'de doğrulanmış sürüm olmalı. Yedek yayınlar (`pi3-8.3.0`) ön sürüm işaretli.
+- Yayın adı `LIVI-<sürüm>-linux-arm64.AppImage` kalıbında olmalı; güncelleyici arm64 AppImage'ı bu ada göre seçer.
+- Yeni sürüm akışı: f-io'dan değişiklik al → kendi düzeltmeleri → Actions `build` (linux_arm64) → Pi'de test → `release`.
+
+Mevcut yayın: `v9.0.0-livilite.1` = f-io nightly (4 Eylül 2026), Pi'de çalışan sürümle aynı,
+SHA-256 `c045c4ec…9c71acec`.
