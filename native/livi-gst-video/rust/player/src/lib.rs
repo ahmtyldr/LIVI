@@ -65,12 +65,14 @@ pub fn force_sinks_realtime(pipeline: &gst::Pipeline) {
     }
 }
 
-/// Colorimetry the Pi 4 stateful v4l2 decoders reject, and what they accept.
-const BAD_COLORIMETRY: &str = "1:4:5:1";
-const GOOD_COLORIMETRY: &str = "1:4:7:1";
-
-/// Decoders that need the colorimetry rewritten.
+/// Decoders whose sink caps enumerate the colorimetries the kernel driver takes.
+/// Phones announce values outside that list (Pi 4 rejects "1:4:5:1", the Pi 3's
+/// bcm2835 rejects "2:4:16:3"), and without a rewrite the pipeline fails with
+/// not-negotiated before the first frame.
 const NEEDS_COLORIMETRY_FIXUP: [&str; 2] = ["v4l2h264dec", "v4l2h265dec"];
+
+/// Replacements tried in order when the announced colorimetry is not accepted.
+const PREFERRED_COLORIMETRY: [&str; 3] = ["bt709", "1:4:7:1", "bt601"];
 
 const CAL_FRAGMENT: &str = "#version 100
 precision highp float;
@@ -93,6 +95,50 @@ void main() {
 fn colorimetry(caps: &gst::CapsRef) -> Option<String> {
     let s = caps.structure(0)?;
     s.get::<String>("colorimetry").ok()
+}
+
+/// Every colorimetry the caps allow, across all structures. A single string and
+/// a list of strings both count; a structure without the field adds nothing.
+fn accepted_colorimetries(caps: &gst::CapsRef) -> Vec<String> {
+    let mut out = Vec::new();
+    for s in caps.iter() {
+        let Ok(v) = s.value("colorimetry") else { continue };
+        if let Ok(list) = v.get::<gst::List>() {
+            out.extend(list.iter().filter_map(|x| x.get::<String>().ok()));
+        } else if let Ok(one) = v.get::<String>() {
+            out.push(one);
+        }
+    }
+    out
+}
+
+/// Caps without any colorimetry constraint, for intersecting against.
+fn without_colorimetry(caps: &gst::CapsRef) -> gst::Caps {
+    let mut relaxed = caps.to_owned();
+    for s in relaxed.make_mut().iter_mut() {
+        s.remove_field("colorimetry");
+    }
+    relaxed
+}
+
+/// The colorimetry `announced` by upstream when the decoder's `accepted` list
+/// does not carry it, so a rewrite is needed. An empty list constrains nothing.
+fn unaccepted_colorimetry(announced: Option<&str>, accepted: &[String]) -> Option<String> {
+    let value = announced?;
+    if accepted.is_empty() || accepted.iter().any(|a| a == value) {
+        return None;
+    }
+    Some(value.to_owned())
+}
+
+/// What to announce instead: the first preferred value the decoder lists,
+/// otherwise whatever it lists first.
+fn replacement_colorimetry(accepted: &[String]) -> Option<String> {
+    PREFERRED_COLORIMETRY
+        .iter()
+        .find(|p| accepted.iter().any(|a| a == *p))
+        .map(|s| (*s).to_owned())
+        .or_else(|| accepted.first().cloned())
 }
 
 /// Logs the decoder's negotiated output caps once per caps change.
@@ -129,7 +175,12 @@ fn install_decoder_probes(dec: &gst::Element, decoder_name: &str) {
     }
     let Some(sink) = dec.static_pad("sink") else { return };
 
-    sink.add_probe(gst::PadProbeType::QUERY_DOWNSTREAM, |pad, info| {
+    // The decoder answers an unfiltered caps query with the colorimetries the
+    // driver takes. Asking from inside the probe is safe: the unfiltered query
+    // passes straight through below.
+    let decoder_caps = |pad: &gst::Pad| pad.query_caps(None);
+
+    sink.add_probe(gst::PadProbeType::QUERY_DOWNSTREAM, move |pad, info| {
         let Some(gst::PadProbeData::Query(query)) = &mut info.data else {
             return gst::PadProbeReturn::Ok;
         };
@@ -138,47 +189,105 @@ fn install_decoder_probes(dec: &gst::Element, decoder_name: &str) {
                 let Some(filter) = q.filter().map(|c| c.to_owned()) else {
                     return gst::PadProbeReturn::Ok;
                 };
-                if colorimetry(&filter).as_deref() != Some(BAD_COLORIMETRY) {
+                let accepted = decoder_caps(pad);
+                if unaccepted_colorimetry(
+                    colorimetry(&filter).as_deref(),
+                    &accepted_colorimetries(&accepted),
+                )
+                .is_none()
+                {
                     return gst::PadProbeReturn::Ok;
                 }
-                let Some(tmpl) = pad.pad_template_caps().into() else {
-                    return gst::PadProbeReturn::Ok;
-                };
-                q.set_result(&filter.intersect(&tmpl));
+                // Keep every other constraint the decoder has, drop only the
+                // colorimetry, so upstream sees its announcement accepted.
+                q.set_result(&filter.intersect(&without_colorimetry(&accepted)));
                 gst::PadProbeReturn::Handled
             }
             gst::QueryViewMut::AcceptCaps(q) => {
                 let Some(caps) = q.caps_owned().into() else {
                     return gst::PadProbeReturn::Ok;
                 };
-                if colorimetry(&caps).as_deref() != Some(BAD_COLORIMETRY) {
+                let accepted = decoder_caps(pad);
+                if unaccepted_colorimetry(
+                    colorimetry(&caps).as_deref(),
+                    &accepted_colorimetries(&accepted),
+                )
+                .is_none()
+                {
                     return gst::PadProbeReturn::Ok;
                 }
-                q.set_result(true);
+                let ok = without_colorimetry(&accepted).can_intersect(&without_colorimetry(&caps));
+                q.set_result(ok);
                 gst::PadProbeReturn::Handled
             }
             _ => gst::PadProbeReturn::Ok,
         }
     });
 
-    sink.add_probe(gst::PadProbeType::EVENT_DOWNSTREAM, |_, info| {
+    sink.add_probe(gst::PadProbeType::EVENT_DOWNSTREAM, move |pad, info| {
         let Some(gst::PadProbeData::Event(ev)) = &info.data else {
             return gst::PadProbeReturn::Ok;
         };
         let gst::EventView::Caps(c) = ev.view() else {
             return gst::PadProbeReturn::Ok;
         };
-        if colorimetry(c.caps()).as_deref() != Some(BAD_COLORIMETRY) {
+        let accepted = accepted_colorimetries(&decoder_caps(pad));
+        let Some(bad) = unaccepted_colorimetry(colorimetry(c.caps()).as_deref(), &accepted) else {
             return gst::PadProbeReturn::Ok;
-        }
+        };
+        let Some(good) = replacement_colorimetry(&accepted) else {
+            return gst::PadProbeReturn::Ok;
+        };
         let mut fixed = c.caps().to_owned();
-        fixed.get_mut().unwrap().set("colorimetry", GOOD_COLORIMETRY);
-        eprintln!(
-            "[gst_video] colorimetry {BAD_COLORIMETRY} -> {GOOD_COLORIMETRY} (pi4 v4l2 decoder)"
-        );
+        fixed.make_mut().set("colorimetry", good.as_str());
+        eprintln!("[gst_video] colorimetry {bad} -> {good} (v4l2 decoder does not list it)");
         info.data = Some(gst::PadProbeData::Event(gst::event::Caps::new(&fixed)));
         gst::PadProbeReturn::Ok
     });
+}
+
+#[cfg(test)]
+mod colorimetry_tests {
+    use super::*;
+    use std::str::FromStr;
+
+    fn caps(s: &str) -> gst::Caps {
+        gst::init().unwrap();
+        gst::Caps::from_str(s).unwrap()
+    }
+
+    #[test]
+    fn lists_every_accepted_value() {
+        let c = caps("video/x-h264, colorimetry=(string){ bt709, 1:4:7:1 }; video/x-h264, colorimetry=(string)bt601");
+        assert_eq!(accepted_colorimetries(&c), ["bt709", "1:4:7:1", "bt601"]);
+        assert!(accepted_colorimetries(&caps("video/x-h264, width=(int)1280")).is_empty());
+    }
+
+    #[test]
+    fn flags_only_values_the_decoder_lacks() {
+        let accepted: Vec<String> = ["bt709", "1:4:7:1"].map(String::from).into();
+        assert_eq!(unaccepted_colorimetry(Some("2:4:16:3"), &accepted).as_deref(), Some("2:4:16:3"));
+        assert_eq!(unaccepted_colorimetry(Some("bt709"), &accepted), None);
+        assert_eq!(unaccepted_colorimetry(None, &accepted), None);
+        assert_eq!(unaccepted_colorimetry(Some("2:4:16:3"), &[]), None);
+    }
+
+    #[test]
+    fn prefers_bt709_then_falls_back_to_first() {
+        let a: Vec<String> = ["smpte240m", "1:4:7:1", "bt709"].map(String::from).into();
+        assert_eq!(replacement_colorimetry(&a).as_deref(), Some("bt709"));
+        let b: Vec<String> = ["smpte240m", "2:4:5:2"].map(String::from).into();
+        assert_eq!(replacement_colorimetry(&b).as_deref(), Some("smpte240m"));
+        assert_eq!(replacement_colorimetry(&[]), None);
+    }
+
+    #[test]
+    fn strips_colorimetry_but_keeps_the_rest() {
+        let c = without_colorimetry(&caps("video/x-h264, profile=(string)high, colorimetry=(string)bt709"));
+        let s = c.structure(0).unwrap();
+        assert!(!s.has_field("colorimetry"));
+        assert_eq!(s.get::<String>("profile").unwrap(), "high");
+    }
 }
 
 // The window view entry points in gst_video_mac.mm.
