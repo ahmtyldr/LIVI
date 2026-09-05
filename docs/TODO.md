@@ -8,8 +8,8 @@ Durum: 5 Eylül 2026. Pi 3 B+ üzerinde LIVI 9.0.0 nightly çalışıyor.
 - [x] `pi3-8.3.0` yayınını "ön sürüm" olarak işaretle, "latest" olarak sunulmasın.
 - [x] Cihazdaki nightly AppImage'ı `v9.0.0-livilite.1` gibi bir yayın olarak koy; cihaz kendini güncel görsün.
 - [x] GitHub Actions `build` iş akışını fork'ta bir kez çalıştırıp (linux_arm64) kendi AppImage'ımızı üret, Pi'de dene. (run 33965991047, 9 dk; Pi'de doğrulandı)
-- [x] İlk kendi sürümümüzü yayınla (`v9.0.0-livilite.2`, latest).
-- [ ] Pi'de Settings → System → Software Update ile bir sürümün cihaza indiğini uçtan uca doğrula (bir sonraki yayında).
+- [x] İlk kendi sürümümüzü yayınla (`v9.0.0-livilite.2`; bugün latest `v9.0.1`).
+- [x] Pi'de Settings → System → Software Update ile uçtan uca doğrulandı: 9.0.0 → `v9.0.1` (5 Eylül 2026). Kurallar: etiket düz `vX.Y.Z`, cihazda Nightly anahtarı kapalı.
 - [ ] Süreç notu: f-io'dan değişiklik alma → kendi düzeltmeleri → derle → Pi'de test → yayınla.
 
 ## Kaynağa taşınacak düzeltmeler (shim ve elle kurulumların yerine)
