@@ -199,3 +199,47 @@ ayrıştırma) LVGL bilgisi gerektirmez, TypeScript işidir; Aşama 2–4 C/LVGL
 
 Bu dördü bittiğinde plan somutlaşmış olur; süre tahmini o noktada
 güncellenir.
+
+---
+
+## 10. Uygulama sırası (6 Eylül 2026'dan itibaren)
+
+Hedef donanım **Raspberry Pi Zero 2 W** (512 MB RAM, 2,4 GHz Wi-Fi). Kabul ölçütü her adımda
+aynı: Pi 3 B+ üzerinde Electron arayüzü çalışmaya devam eder; Zero 2 W bütçesi toplam
+**< 350 MB RAM** ve boşta **< %10 CPU**.
+
+Bugün hazır olanlar: fork'un kendi derleme ve yayın hattı (Actions, `vX.Y.Z`), 9.0.1 Pi 3'te
+doğrulanmış, Pi 3 düzeltmeleri kaynakta, 2,4 GHz + Bluetooth testi geçti.
+
+| # | Oturum | Yapılacak | Kabul ölçütü | Sizden |
+|---|---|---|---|---|
+| 1 | Sözleşme çıkarımı | `contracts/` altına üretilen dosyalar: preload'daki 44 çağrı + 6 olay (JSON şeması), `Config.ts` (199 anahtar), ayar şemaları (190 alan), çeviriler. `pnpm contracts:gen` + CI'da güncellik kontrolü. | Üretilen dosyalar depoda, CI yeşil. | Yok |
+| 2 | UiBridge | Ana süreçte Unix soket JSON-RPC 2.0 sunucusu; 44 çağrı bire bir, 6 olay yayın, PCM ikili çerçeve. Küçük bir komut satırı istemcisi (`tools/ui-cli`). Electron modunda da açık. | Pi'de Electron çalışırken `ui-cli settings.get` ve `ui-cli ipc.getDevices` doğru cevap verir. | Yok |
+| 3 | Ana süreci ayır (1/2) | `UiHost` arayüzü; `app.getPath`, `dialog`, `shell`, `screen` sarmalayıcıları; 42 dosyanın Electron importları arayüz üzerinden. Electron modu değişmez. | Tüm mevcut testler yeşil, Pi'de Electron arayüzü aynen çalışır. | Pi'de kısa bir kullanım kontrolü |
+| 4 | Ana süreci ayır (2/2) | `LIVI_UI=lvgl`: BrowserWindow yok, düz Node 24. Headless paket: node binary + `out/main` + N-API eklentiler + helperd/compositor/gst-host; Actions'a ikinci artifact. | Pi 3'te headless ana süreç: USB tarar, AP kaldırır, telefon bağlanır, video düzlemi ekrana gelir; ana süreç RSS < 100 MB. | Telefonu bağlayıp ekrana bakmak |
+| 5 | livi-ui iskeleti | `native/livi-ui`: CMake, LVGL 9, Wayland sürücüsü, köprü istemcisi, tema, Roboto, nav rail, düzen, çeviri yükleyici. Actions'ta derleme. | "Merhaba" sürümü compositor altında açılır, `settings.get` sonucunu gösterir, RSS < 40 MB. | Yok |
+| 6 | Parite aracı | Aynı ana sürece bağlı iki arayüzün ekran görüntüsünü alıp farkı raporlayan script (`grim`). | Nav rail ve boş sayfa için fark < %1. | Yok |
+| 7 | Projection + Devices | Şeffaf projeksiyon alanı, dokunma/çoklu dokunma iletimi, oturum kaplaması, cihaz listesi. | Zero 2 W bütçesi içinde telefon uçtan uca kullanılabilir. | Telefonla kullanım testi |
+| 8–9 | Settings | Şema yorumlayıcı + 12 satır bileşeni (anahtar, sayı, seçim, kaydırıcı, renk, metin, tuş bağlama, cihaz satırı, liste…). | 5 grup, 190 alan parite < %1; ayar değişiklikleri çift yönlü. | Ayar sayfalarını gezip fark bildirmek |
+| 10–11 | Media | Metadata, kapak, kontroller, FFT görselleştirici (C'ye taşınan `fft.ts`). | Parite < %1, PCM görselleştirici 30 fps'te < %5 CPU. | Müzik çalıp bakmak |
+| 12–14 | Telemetry | 21 widget, 4 dashboard; `telemetry-sim` ile beslenir. | Parite < %1, dashboard geçişleri akıcı. | Dashboard'ları karşılaştırmak |
+| 15 | Camera | `v4l2src` → compositor düzlemi, video hattının kopyası. | USB kamera görüntüsü, tam ekran ve pencere içinde. | USB kamera takmak |
+| 16 | Dash / Aux | Rol ve atama mantığı köprüde, her rol ayrı LVGL ekranı. | İkinci HDMI ekranda dashboard. | İkinci ekran (varsa) |
+| 17 | Kiosk ve paket | `livi-kiosk.service`: cage → compositor → headless main + livi-ui. Yayın: `v9.1.0`. | Pi 3'te güçten arayüze < 30 sn. | Pi'de kullanım |
+| 18 | Zero 2 W | Aynı paketi Zero 2 W'ye kur; bellek, sıcaklık, açılış ölçümleri. | Toplam RAM < 350 MB, AA görüşme + harita testi geçer. | Zero 2 W ve micro-HDMI/OTG kabloları |
+| — | Geçiş | Electron arayüzü iki ay yedek olarak kalır, sonra kaldırılır. | Kullanıcı raporu yok, parite temiz. | Karar |
+
+Süre: 18 oturum, günde bir oturumla yaklaşık 4 hafta; parite cilası ve bilinmeyenler için +1–2 hafta.
+
+### Şimdi verilmesi gereken kararlar (varsayılanlar parantezde)
+1. **Custom sayfası:** LVGL modunda yok (varsayılan). İstenirse WebKitGTK ile ayrı yüzey, +150 MB; Zero 2 W'de yer yok.
+2. **Parite eşiği:** ekran başına piksel farkı %1 (varsayılan). Yazı tipi kenar yumuşatması ve animasyon eğrileri bu payın içinde.
+3. **Dil:** C ve LVGL 9.x (varsayılan). Rust bağlamaları geride, riske girilmez.
+4. **Geliştirme erişimi Zero 2 W'de:** OTG portundan USB ağ (`g_ether`, varsayılan) ya da Mac'i LIVI'nin erişim noktasına bağlamak.
+
+### İlk oturumun (1) somut çıktıları
+- `contracts/ui-api.json`: 44 çağrı ve 6 olayın adları, parametre ve dönüş tipleri (preload + `env.d.ts`'ten).
+- `contracts/config.schema.json`: `Config.ts`'ten JSON Schema.
+- `contracts/settings-schema.json`: `routes/schemas/*.ts`'ten düz veri.
+- `contracts/locales/*.json`: mevcut dosyaların kopyası değil, sembolik bağ ya da üretim adımı.
+- `scripts/contracts-gen.ts` ve `pnpm contracts:gen`, typecheck iş akışında "üretilen dosyalar güncel mi" adımı.

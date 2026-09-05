@@ -35,10 +35,13 @@ Durum: 5 Eylül 2026. Pi 3 B+ üzerinde LIVI 9.0.0 nightly çalışıyor.
 ## LVGL (bkz. `LVGL_PLAN.md`)
 
 - [x] Aşama 0.1: 9.0.0'ı Pi 3'te doğrula (nightly ile yapıldı, Android Auto donanım çözmeyle çalışıyor).
-- [ ] Aşama 0.2: derleme ortamı (GitHub Actions yeterli olabilir; Lima yedek).
-- [ ] Aşama 0.3: sözleşme çıkarımı (`contracts/`).
-- [ ] Aşama 1: ana süreci Electron'dan ayır, JSON-RPC köprüsü.
-- [ ] Aşama 2: `native/livi-ui` iskeleti.
+- [x] Aşama 0.2: derleme ortamı = GitHub Actions (arm64 runner), doğrulandı.
+- [ ] Oturum 1: sözleşme çıkarımı (`contracts/`, `pnpm contracts:gen`, CI kontrolü).
+- [ ] Oturum 2: UiBridge (JSON-RPC soket) + `tools/ui-cli`.
+- [ ] Oturum 3–4: ana süreci Electron'dan ayır, `LIVI_UI=lvgl` headless paket.
+- [ ] Oturum 5–6: `native/livi-ui` iskeleti + parite aracı.
+- [ ] Oturum 7–16: ekranlar (sıra ve kabul ölçütleri `LVGL_PLAN.md` §10).
+- [ ] Oturum 17–18: kiosk paketi `v9.1.0`, Zero 2 W ölçümleri.
 
 ## Yedekler
 
