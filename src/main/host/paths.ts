@@ -27,17 +27,25 @@ export function userDataDir(): string {
   return process.env.LIVI_USER_DATA ?? join(homedir(), '.config', 'LIVI')
 }
 
+/** The bundle's app.asar when this code runs from one (headless in an AppImage). */
+function asarRoot(): string | undefined {
+  const here = typeof __dirname === 'string' ? __dirname : ''
+  const m = /^(.*[\\/]app\.asar)(?:[\\/]|$)/.exec(here)
+  return m ? m[1] : undefined
+}
+
 /** The application root (app.asar or the source checkout). */
 export function appRoot(): string {
   const a = electronApp()
   if (typeof a?.getAppPath === 'function') return a.getAppPath()
-  return process.env.LIVI_APP_ROOT ?? process.cwd()
+  return process.env.LIVI_APP_ROOT ?? asarRoot() ?? process.cwd()
 }
 
 export function isPackaged(): boolean {
   const a = electronApp()
   if (a && 'isPackaged' in a) return Boolean(a.isPackaged)
-  return process.env.LIVI_PACKAGED === '1'
+  if (process.env.LIVI_PACKAGED === '1') return true
+  return asarRoot() !== undefined
 }
 
 export function appVersion(): string {

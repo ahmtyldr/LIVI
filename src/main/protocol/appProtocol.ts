@@ -1,5 +1,6 @@
+import { userDataDir } from '@main/host/paths'
 import type { Config } from '@shared/types'
-import { app, net, protocol } from 'electron'
+import { net, protocol } from 'electron'
 import { existsSync, mkdirSync, writeFileSync } from 'fs'
 import { homedir } from 'os'
 import { join, normalize, sep } from 'path'
@@ -19,7 +20,7 @@ export function setCustomPageConfig(getConfig: () => Partial<Config> | undefined
 }
 
 function customRoot(): string {
-  return join(app.getPath('userData'), 'custom')
+  return join(userDataDir(), 'custom')
 }
 
 /** Written once */
