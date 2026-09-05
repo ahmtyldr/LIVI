@@ -167,3 +167,33 @@ birlikte denendi (`wifi-monitor.sh`, 10 sn örnekler):
 Sonuç: Bluetooth ile aynı bantta çalışmak bu senaryoda sorun çıkarmadı; Zero 2 W'nin dahili çipi
 kablosuz Android Auto için yeterli görünüyor. Şehir içi parazit ayrı bir değişken, araçta gözlenmeli.
 5 GHz'e dönüş: `~/pi3-backup/config-5ghz.json` → `~/.config/LIVI/config.json`, reboot.
+
+## Headless kip (LIVI_UI=lvgl, Electron yok) — 6 Eylül 2026
+
+Ana süreç, `out/main/headless.js` paketiyle Electron penceresi olmadan çalışır; arayüz JSON-RPC
+köprüsünün öbür ucundadır (livi-ui). Pi'de AppImage'ın kendi Node'u kullanılır:
+
+```bash
+sudo install -m 0755 scripts/pi3/livi-headless.sh /usr/local/lib/livi/livi-headless.sh
+printf '[Service]\nExecStart=\nExecStart=/usr/bin/cage -s -- /usr/local/lib/livi/livi-headless.sh\n' \
+  | sudo tee /etc/systemd/system/livi-kiosk.service.d/headless.conf
+sudo systemctl daemon-reload && sudo reboot
+# Electron'a dönüş: sudo rm /etc/systemd/system/livi-kiosk.service.d/headless.conf && sudo reboot
+```
+
+Başlatıcı AppImage'ı `--appimage-mount` ile bir kez bağlar ve compositor yaşadığı sürece bağlı tutar
+(compositor kütüphaneleri bağlantıdan tembel yükler; bağlantı kalkınca EGL başlatırken sessizce ölüyordu).
+Geliştirme: `Environment=LIVI_HEADLESS_JS=/home/livilite/headless.js` ile `pnpm build:headless` çıktısı
+doğrudan çalıştırılır (native eklentiler mount'tan çözülür).
+
+Ölçüm (Pi 3 B+, kablosuz Android Auto, harita açık):
+
+| | Electron kipi | Headless kip |
+|---|---|---|
+| Toplam RAM kullanımı | ~570 MB | 371 MB |
+| Ana süreç RSS | 217 MB (+ renderer 216 MB) | 151 MB |
+| Toplam CPU | ~%11 | %4,7 |
+| Ana süreç ayağa kalkış | ~34 sn | 6,6 sn |
+
+Ana süreç RSS'i hedefin (<100 MB) üstünde: Electron ikilisi Node olarak çalışsa da ~120 MB taban taşıyor.
+Gerçek bir Node ikilisi paketlenirse ~60 MB'a iner (TODO).

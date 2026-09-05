@@ -16,6 +16,7 @@
 
 import { existsSync } from 'node:fs'
 import * as path from 'node:path'
+import { appRoot } from '@main/host/paths'
 import protobuf from 'protobufjs'
 
 const _dir = __dirname
@@ -26,6 +27,9 @@ function resolveProtoRoot(): string {
     candidates.push(path.join(process.resourcesPath, 'aa', 'protos'))
   }
   candidates.push(path.join(_dir, 'protos'))
+  // The packaged bundle: app.asar/out/main/protos, also when this code runs from
+  // a bundle outside the package (LIVI_HEADLESS_JS) that only knows resourcesPath.
+  candidates.push(path.join(appRoot(), 'out', 'main', 'protos'))
   candidates.push(path.resolve(_dir, '..', '..', 'src/main/services/projection/driver/aa/protos'))
 
   for (const c of candidates) {
