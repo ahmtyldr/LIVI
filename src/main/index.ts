@@ -31,6 +31,7 @@ import { TelemetrySocket } from '@main/services/Socket'
 import { setupTelemetry } from '@main/services/telemetry/setupTelemetry'
 import { TelemetryStore } from '@main/services/telemetry/TelemetryStore'
 import { runtimeStateProps } from '@main/types'
+import { installRendererSendTap, startUiBridge, stopUiBridge } from '@main/ui-bridge'
 import type { Config } from '@shared/types'
 import { app, BrowserWindow } from 'electron'
 import { loadConfig } from './config/loadConfig'
@@ -124,6 +125,12 @@ app.whenReady().then(async () => {
   registerIpc(runtimeState, services)
   createMainWindow(runtimeState, services)
   setupSecondaryWindows(runtimeState)
+
+  // JSON-RPC bridge for a second UI (native/livi-ui); mirrors renderer events.
+  startUiBridge()
+    .then(() => installRendererSendTap(getMainWindow()?.webContents))
+    .catch((e) => console.warn('[ui-bridge] not started:', (e as Error).message))
+  app.on('will-quit', () => stopUiBridge())
 
   // Bottom plane = theme background colour. Linux: the compositor draws the backdrop. macOS: paint
   // the window content view itself. Apply now and on every config change.
