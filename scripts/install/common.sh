@@ -23,6 +23,7 @@ LIVI_MODULES_LOAD="${LIVI_MODULES_LOAD:-/etc/modules-load.d/livi-i2c.conf}"
 LIVI_NM_POWERSAVE_FILE="/etc/NetworkManager/conf.d/99-LIVI-wifi-powersave.conf"
 LIVI_NM_PMF_FILE="/etc/NetworkManager/conf.d/99-LIVI-wifi-pmf.conf"
 LIVI_RTPRIO_FILE="/etc/security/limits.d/99-livi-rtprio.conf"
+LIVI_WIFI_AP_UNIT="/etc/systemd/system/livi-wifi-ap.service"
 
 # Pixel repetition for RGB/VGA panels below HDMI's clock floor
 LIVI_HDMI_PR_SCRIPT="setup-hdmi-pr-display.sh"
@@ -403,6 +404,39 @@ livi_apply_hdmi_pr() {
 # host off the network. Applies from the next boot, so no running session is cut.
 # Grants real-time scheduling to the CarPlay audio receive thread. Kiosk and
 # desktop sessions run through PAM, so pam_limits applies this on login.
+# Early-boot Wi-Fi AP unit: the staged helper runs hostapd/dnsmasq before LIVI
+# starts. The app offers to install this itself through pkexec, which a headless
+# host has no authentication agent for, so the installer writes it. The content
+# must match unitContent() in src/main/services/projection/driver/helper/
+# wifiApUnit.ts byte for byte, or the app keeps asking to install it.
+livi_install_wifi_ap_unit() {
+  local helper="$HOME/.config/LIVI/driver/livi-helperd" staged
+  echo "→ Writing $LIVI_WIFI_AP_UNIT"
+  staged="$(mktemp)"
+  cat > "$staged" <<EOF
+[Unit]
+Description=LIVI wireless projection AP (early boot)
+After=network-pre.target
+Wants=network-pre.target
+ConditionPathExists=$helper
+
+[Service]
+Type=simple
+Environment=SUDO_USER=$USER
+ExecStart=$helper --wifi-ap
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+  sudo install -m 0644 -o root -g root "$staged" "$LIVI_WIFI_AP_UNIT"
+  rm -f "$staged"
+  sudo systemctl daemon-reload
+  # ConditionPathExists keeps it idle until the first LIVI launch stages the helper.
+  sudo systemctl enable livi-wifi-ap.service >/dev/null 2>&1 || true
+}
+
 livi_grant_rtprio() {
   echo "→ Writing $LIVI_RTPRIO_FILE"
   sudo mkdir -p "$(dirname "$LIVI_RTPRIO_FILE")"

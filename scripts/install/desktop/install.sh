@@ -101,6 +101,7 @@ livi_install_time_helper
 livi_disable_wifi_powersave
 livi_set_wifi_pmf_optional
 livi_grant_rtprio
+livi_install_wifi_ap_unit
 livi_apply_mfi
 livi_apply_splash
 livi_apply_hdmi_pr "$APPIMAGE_PATH"
