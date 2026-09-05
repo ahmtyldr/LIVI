@@ -76,3 +76,9 @@ Thumbs.db
 # Logs
 *.log
 *.log*
+
+# SD card images and other local artefacts, never committed
+*.img
+*.img.gz
+*.img.gz.sha256
+*.AppImage
