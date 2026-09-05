@@ -106,3 +106,19 @@ Kurallar:
 
 Mevcut yayın: `v9.0.0-livilite.1` = f-io nightly (4 Eylül 2026), Pi'de çalışan sürümle aynı,
 SHA-256 `c045c4ec…9c71acec`.
+
+### Kendi derleme akışı (doğrulandı, 5 Eylül 2026)
+
+```bash
+gh workflow run build.yml --repo ahmtyldr/LIVI --ref main \
+  -f linux_x64=false -f linux_arm64=true -f macos_arm64=false -f macos_x64=false -f publish_nightly=false
+gh run watch --repo ahmtyldr/LIVI            # ~9 dk, ubuntu-24.04-arm
+gh run download <RUN_ID> --repo ahmtyldr/LIVI --dir /tmp/livi-build
+# Pi'de dene: ~/LIVI/LIVI.AppImage yerine koy, sudo reboot, Android Auto'yu bağla
+gh release create v9.0.0-livilite.N /tmp/livi-build/*/LIVI-9.0.0-linux-arm64.AppImage \
+  --repo ahmtyldr/LIVI --target main --latest --title "..." --notes "... SHA-256: ..."
+```
+
+GStreamer paketleri depoda (`assets/gstreamer/`), iş akışı yalnızca `GITHUB_TOKEN` kullanır; dış bağımlılık yok.
+İlk kendi sürüm: `v9.0.0-livilite.2`, SHA-256 `0bf4e998…56fee513`, Pi'de `~/LIVI/LIVI.AppImage`.
+Pi'deki yedekler: `LIVI-8.3.0.AppImage`, `LIVI-9.0.0-nightly.AppImage`.
