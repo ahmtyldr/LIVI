@@ -145,3 +145,5 @@ chmod +x install.sh && LIVI_REPO=ahmtyldr/LIVI ./install.sh && sudo reboot
 
 Sonra `pi3.conf` için: `printf '[Service]\nEnvironment=UPDATE_REPO=ahmtyldr/LIVI\n' | sudo tee /etc/systemd/system/livi-kiosk.service.d/pi3.conf`
 ve açılış hızlandırma için `boot-tuning/` adımları. Shim dosyaları eski sürümler için burada kalıyor.
+
+Mevcut yayın: `v9.0.0-livilite.3`, SHA-256 `f7e532a1…bd5d66f6`, Pi bu dosyayı çalıştırıyor (kurulum scriptiyle kuruldu).
