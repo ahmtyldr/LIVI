@@ -1,5 +1,6 @@
 import './logTimestamps'
 import './app/gpu'
+import { applyConfigBehaviours, createCore, finishStart } from '@main/app/bootstrap'
 import { bootstrapCompositor } from '@main/app/compositorBootstrap'
 import { installMainProcessErrorHandlers } from '@main/app/errorHandler'
 import { setupAppIdentity } from '@main/app/init'
@@ -7,44 +8,20 @@ import { setupLifecycle } from '@main/app/lifecycle'
 
 installMainProcessErrorHandlers()
 
-import { setDebugLogging } from '@main/constants'
 import { registerIpc } from '@main/ipc'
-import { configEvents, saveSettings } from '@main/ipc/utils'
-import {
-  registerAppProtocol,
-  seedCustomPage,
-  setCustomPageConfig
-} from '@main/protocol/appProtocol'
-import {
-  setSystemVolume,
-  startSystemVolumeMonitor,
-  stopSystemVolumeMonitor
-} from '@main/services/audio/SystemVolume'
+import { saveSettings } from '@main/ipc/utils'
+import { registerAppProtocol } from '@main/protocol/appProtocol'
 import { ensureWireplumberBtRoles } from '@main/services/audio/wireplumberBtRoles'
-import { customProxy } from '@main/services/custom/CustomProxy'
 import { checkAndInstallGvfsGuard, startPhoneSuppression } from '@main/services/gvfsPhoneGuard'
 import { checkMissingPackages } from '@main/services/packageCheck'
 import { checkAndInstallHelperSudoers } from '@main/services/projection/driver/helper/helperSudoers'
 import { checkAndInstallWifiApUnit } from '@main/services/projection/driver/helper/wifiApUnit'
-import { ProjectionService } from '@main/services/projection/services/ProjectionService'
-import { TelemetrySocket } from '@main/services/Socket'
 import { setupTelemetry } from '@main/services/telemetry/setupTelemetry'
-import { TelemetryStore } from '@main/services/telemetry/TelemetryStore'
-import { runtimeStateProps } from '@main/types'
 import { installRendererSendTap, startUiBridge, stopUiBridge } from '@main/ui-bridge'
-import type { Config } from '@shared/types'
 import { app, BrowserWindow } from 'electron'
-import { loadConfig } from './config/loadConfig'
 import { restartApp } from './ipc/app'
-import { CarBridgeService } from './services/carBridge/CarBridgeService'
-import { USBService } from './services/usb/USBService'
 import { checkAndInstallUdevRule } from './services/usb/udevRule'
-import {
-  backdropHex,
-  setCompositorBackdrop,
-  setMacBackdrop,
-  setStreamGamma
-} from './services/video/GstVideo'
+import { setMacBackdrop } from './services/video/GstVideo'
 import { createMainWindow, getMainWindow } from './window/createWindow'
 import { setupSecondaryWindows } from './window/secondaryWindows'
 
@@ -69,56 +46,8 @@ if (bootstrapCompositor()) {
 
 app.whenReady().then(async () => {
   if (!bootAllowed) return
-  const projectionService = new ProjectionService()
-  const usbService = new USBService(projectionService)
-  const telemetryStore = new TelemetryStore()
-  const telemetrySocket = new TelemetrySocket(telemetryStore, 4000)
-
-  const runtimeState: runtimeStateProps = {
-    config: loadConfig(),
-    telemetrySocket: null,
-    isQuitting: false,
-    suppressNextFsSync: false,
-    wmExitedKiosk: false
-  }
-  setDebugLogging(runtimeState.config.debugLogging === true)
-
-  setCustomPageConfig(() => runtimeState.config)
-  seedCustomPage()
-  await customProxy.start(runtimeState.config.customUrl)
-  configEvents.on('changed', (next: Config) => {
-    void customProxy.start(next.customUrl)
-  })
-
-  const carBridge = new CarBridgeService(runtimeState.config.language)
-  carBridge.start()
-  projectionService.onProjectionEvent((payload) => carBridge.handleEvent(payload))
-  carBridge.onKey = (command) => projectionService.dispatchRemoteInput(command)
-  carBridge.onTelemetry = (payload) => telemetryStore.merge(payload)
-  carBridge.setBrightness(runtimeState.config.displayBrightness * 100)
-  configEvents.on('changed', (next: Config) =>
-    carBridge.setBrightness(next.displayBrightness * 100)
-  )
-  //auto: the vehicle's panel dimmer writes displayBrightness itself, so the
-  //slider stays truthful; manual: vehicle values run into the void
-  let brightnessAuto = runtimeState.config.displayBrightnessAuto
-  configEvents.on('changed', (next: Config) => {
-    brightnessAuto = next.displayBrightnessAuto
-  })
-  telemetryStore.on('change', (patch: { dimmerPct?: unknown }) => {
-    if (!brightnessAuto || typeof patch.dimmerPct !== 'number') return
-    const next = Math.min(1, Math.max(0, patch.dimmerPct / 100))
-    if (Math.abs(next - runtimeState.config.displayBrightness) < 0.005) return
-    saveSettings(runtimeState, { displayBrightness: next })
-  })
-
-  runtimeState.telemetrySocket = telemetrySocket
-
-  const services = {
-    projectionService,
-    usbService,
-    telemetrySocket
-  }
+  const core = await createCore()
+  const { runtimeState, services, projectionService, telemetryStore } = core
 
   setupAppIdentity()
   registerAppProtocol()
@@ -132,53 +61,12 @@ app.whenReady().then(async () => {
     .catch((e) => console.warn('[ui-bridge] not started:', (e as Error).message))
   app.on('will-quit', () => stopUiBridge())
 
-  // Bottom plane = theme background colour. Linux: the compositor draws the backdrop. macOS: paint
-  // the window content view itself. Apply now and on every config change.
-  const applyBackdrop = (cfg: Config): void => {
-    const color = backdropHex(cfg.darkMode, cfg.backgroundColorDark, cfg.backgroundColorLight)
-    setCompositorBackdrop(color)
-    for (const w of BrowserWindow.getAllWindows()) setMacBackdrop(w, color)
-  }
-  applyBackdrop(runtimeState.config)
-  configEvents.on('changed', (next: Config) => applyBackdrop(next))
-
-  // video stream calibration, applied now and on every config change
-  const applyGamma = (cfg: Config): void => {
-    setStreamGamma(
-      cfg.displayGamma,
-      cfg.displayContrast,
-      cfg.displayColorR,
-      cfg.displayColorG,
-      cfg.displayColorB
-    )
-  }
-  applyGamma(runtimeState.config)
-  configEvents.on('changed', (next: Config) => applyGamma(next))
-
-  // Head-unit level, optionally coupled to the system mixer.
-  let appliedHuVolume: number | null = null
-  const applyHuVolume = (cfg: Config): void => {
-    if (cfg.huVolumeLinkSystem !== true) {
-      appliedHuVolume = null
-      stopSystemVolumeMonitor()
-      return
+  // Linux: the compositor draws the backdrop. macOS: paint the window content view itself.
+  applyConfigBehaviours(core, {
+    onBackdrop: (color) => {
+      for (const w of BrowserWindow.getAllWindows()) setMacBackdrop(w, color)
     }
-    startSystemVolumeMonitor(
-      () => runtimeState.config.audioOutputDevice,
-      (level) => {
-        if (runtimeState.config.huVolumeLinkSystem !== true) return
-        if (Math.abs(level - runtimeState.config.huVolume) < 0.005) return
-        appliedHuVolume = level
-        console.log(`[SystemVolume] head unit follows system → ${Math.round(level * 100)} %`)
-        saveSettings(runtimeState, { huVolume: level })
-      }
-    )
-    if (appliedHuVolume !== null && Math.abs(cfg.huVolume - appliedHuVolume) < 0.005) return
-    appliedHuVolume = cfg.huVolume
-    void setSystemVolume(cfg.huVolume, cfg.audioOutputDevice)
-  }
-  applyHuVolume(runtimeState.config)
-  configEvents.on('changed', (next: Config) => applyHuVolume(next))
+  })
   setupTelemetry({
     store: telemetryStore,
     projectionService,
@@ -213,7 +101,5 @@ app.whenReady().then(async () => {
     if (dismissed) saveSettings(runtimeState, { dismissedPackages: dismissed })
   }
 
-  projectionService.applyConfigPatch(runtimeState.config)
-
-  await projectionService.autoStartIfNeeded()
+  await finishStart(core)
 })

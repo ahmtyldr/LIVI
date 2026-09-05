@@ -1,8 +1,8 @@
-import { getSecondaryWindow } from '@main/window/secondaryWindows'
+import type { RendererTarget } from '@main/host/renderer'
+import { getUiHost } from '@main/host/ui'
 import type { Config } from '@shared/types'
 import type { ClusterScreen } from '@shared/utils'
 import { aaContentArea, clusterTargetScreens } from '@shared/utils'
-import { WebContents } from 'electron'
 import { GstVideo, type GstVideoCodec } from '../../video/GstVideo'
 import { clusterPlaneId, VIDEO_PLANE_MAIN } from '../../video/gstHost'
 import { classifyNal } from '../../video/keyframe'
@@ -18,7 +18,7 @@ type Region = {
 }
 
 export type VideoPlaneManagerDeps = {
-  getWebContents: () => WebContents | null
+  getWebContents: () => RendererTarget | null
   getConfig: () => Config
   emit: (payload: ProjectionEvent) => void
   // Seam A stays in ProjectionService. The manager reads the negotiated sizes for crop math.
@@ -155,7 +155,7 @@ export class VideoPlaneManager {
   }
 
   // The tagged main plane. Fed frames and primed feed share it, only the stream format differs.
-  private ensureMainPlane(wc: WebContents): GstVideo {
+  private ensureMainPlane(wc: RendererTarget): GstVideo {
     if (!this.gstVideo) {
       this.gstVideo = new GstVideo(wc, 'main', 'main', VIDEO_PLANE_MAIN)
       this.gstVideo.setVisible(this.gstVideoVisible)
@@ -336,9 +336,9 @@ export class VideoPlaneManager {
 
   // main → main window, dash/aux → their secondary window. mac embeds the plane into that
   // window's native view. Linux ignores the handle and places it on the target screen.
-  private clusterScreenWebContents(screen: ClusterScreen): WebContents | null {
+  private clusterScreenWebContents(screen: ClusterScreen): RendererTarget | null {
     if (screen === 'main') return this.deps.getWebContents() ?? null
-    const w = getSecondaryWindow(screen)
-    return w && !w.isDestroyed() ? w.webContents : null
+    const r = getUiHost().secondaryRenderer(screen)
+    return r && !(typeof r.isDestroyed === 'function' && r.isDestroyed()) ? r : null
   }
 }

@@ -1,5 +1,6 @@
 export { describe as describeUiBridge } from './methods'
 export {
+  bridgeClientAlive,
   bridgeClientCount,
   bridgeEmit,
   defaultSocketPath,

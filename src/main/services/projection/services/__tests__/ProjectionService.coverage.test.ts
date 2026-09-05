@@ -1,3 +1,4 @@
+import { setSecondaryRendererProvider } from '@main/host/ui'
 import type { Mock } from 'vitest'
 import {
   AudioData,
@@ -205,6 +206,18 @@ vi.mock('@main/window/secondaryWindows', () => ({
   getSecondaryWindow: vi.fn(() => null),
   secondaryWindowEvents: new (require('node:events').EventEmitter)()
 }))
+
+// The code under test resolves secondary renderers through the UI host; wire the
+// mocked window module in, as window/secondaryWindows does at load.
+setSecondaryRendererProvider((role) => {
+  const w = getSecondaryWindow(role) as {
+    isDestroyed?: () => boolean
+    webContents?: unknown
+  } | null
+  return w && !(typeof w.isDestroyed === 'function' && w.isDestroyed())
+    ? (w.webContents as never)
+    : null
+})
 
 import { getSecondaryWindow, secondaryWindowEvents } from '@main/window/secondaryWindows'
 

@@ -1,16 +1,17 @@
 import { execFile } from 'node:child_process'
 import { userDataDir } from '@main/host/paths'
+import type { RendererTarget } from '@main/host/renderer'
+import { getUiHost } from '@main/host/ui'
 import { configEvents } from '@main/ipc/utils'
 import { SystemSound } from '@main/services/audio'
 import { broadcastToSecondaryRenderers } from '@main/window/broadcast'
-import { getSecondaryWindow, secondaryWindowEvents } from '@main/window/secondaryWindows'
+import { secondaryWindowEvents } from '@main/window/secondaryWindows'
 import { ICON_120_B64, ICON_180_B64, ICON_256_B64 } from '@shared/assets/carIcons'
 import type { Config, DevListEntry } from '@shared/types'
 import { PhoneWorkMode } from '@shared/types'
 import { isInputCommand } from '@shared/types/InputCommand'
 import type { NavLocale } from '@shared/utils'
 import { clusterTargetScreens, isClusterDisplayed } from '@shared/utils'
-import { WebContents, webContents } from 'electron'
 import fs from 'fs'
 import path from 'path'
 import {
@@ -149,7 +150,7 @@ export class ProjectionService {
     emit: (p) => this.emitProjectionEvent(p),
     getLanguage: () => this.config.language
   })
-  private webContents: WebContents | null = null
+  private webContents: RendererTarget | null = null
   private config: Config = DEFAULT_CONFIG as Config
   private startRetryTimer: NodeJS.Timeout | null = null
   private startRetryAttempt = 0
@@ -1028,8 +1029,7 @@ export class ProjectionService {
 
   private anyClusterRequested(): boolean {
     for (const id of this.clusterRequestedBy) {
-      const wc = webContents.fromId(id)
-      if (!wc || wc.isDestroyed()) this.clusterRequestedBy.delete(id)
+      if (!getUiHost().isRendererAlive(id)) this.clusterRequestedBy.delete(id)
     }
     return this.clusterRequestedBy.size > 0
   }
@@ -1377,7 +1377,7 @@ export class ProjectionService {
     }
   }
 
-  public attachRenderer(webContents: WebContents) {
+  public attachRenderer(webContents: RendererTarget) {
     this.webContents = webContents
 
     // Drain any video chunks that arrived from the phone before the renderer
@@ -2359,7 +2359,7 @@ export class ProjectionService {
     data?: ArrayBuffer,
     chunkSize = 512 * 1024,
     extra?: Record<string, unknown>,
-    targets?: WebContents[]
+    targets?: RendererTarget[]
   ) {
     if (!data) return
     const wcs = targets ?? (this.webContents ? [this.webContents] : [])
@@ -2420,9 +2420,9 @@ export class ProjectionService {
   // video chunks + resolution events, derived from the cluster dashboards
   // (dash3/dash4) per screen. Falls back to the bound main webContents when
   // settings are missing so the path stays compatible with tests / startup.
-  private getClusterTargetWebContents(): WebContents[] {
+  private getClusterTargetWebContents(): RendererTarget[] {
     const screens = clusterTargetScreens(this.config)
-    const isAlive = (wc: WebContents | null | undefined): wc is WebContents => {
+    const isAlive = (wc: RendererTarget | null | undefined): wc is RendererTarget => {
       if (!wc) return false
       try {
         return typeof wc.isDestroyed !== 'function' || !wc.isDestroyed()
@@ -2430,39 +2430,37 @@ export class ProjectionService {
         return true
       }
     }
-    const out: WebContents[] = []
+    const out: RendererTarget[] = []
     if (screens.includes('main') && isAlive(this.webContents)) {
-      out.push(this.webContents as WebContents)
+      out.push(this.webContents as RendererTarget)
     }
-    if (screens.includes('dash')) {
-      const w = getSecondaryWindow('dash')
-      if (w && !w.isDestroyed() && isAlive(w.webContents)) out.push(w.webContents)
-    }
-    if (screens.includes('aux')) {
-      const w = getSecondaryWindow('aux')
-      if (w && !w.isDestroyed() && isAlive(w.webContents)) out.push(w.webContents)
+    for (const role of ['dash', 'aux'] as const) {
+      if (!screens.includes(role)) continue
+      const r = getUiHost().secondaryRenderer(role)
+      if (isAlive(r) && !out.includes(r)) out.push(r)
     }
     if (out.length === 0 && isAlive(this.webContents)) {
-      out.push(this.webContents as WebContents)
+      out.push(this.webContents as RendererTarget)
     }
     return out
   }
 
   // Every live UI window (main + secondary). Used for data every window may render,
   // e.g. the FFT audio chunks, which otherwise only reach the main window.
-  private getAllUiWebContents(): WebContents[] {
-    const alive = (wc: WebContents | null | undefined): wc is WebContents => {
+  private getAllUiWebContents(): RendererTarget[] {
+    const alive = (wc: RendererTarget | null | undefined): wc is RendererTarget => {
       try {
         return !!wc && (typeof wc.isDestroyed !== 'function' || !wc.isDestroyed())
       } catch {
         return !!wc
       }
     }
-    const out: WebContents[] = []
-    if (alive(this.webContents)) out.push(this.webContents as WebContents)
+    const out: RendererTarget[] = []
+    if (alive(this.webContents)) out.push(this.webContents as RendererTarget)
     for (const role of ['dash', 'aux'] as const) {
-      const w = getSecondaryWindow(role)
-      if (w && !w.isDestroyed() && alive(w.webContents)) out.push(w.webContents)
+      const r = getUiHost().secondaryRenderer(role)
+      if (r && !(typeof r.isDestroyed === 'function' && r.isDestroyed()) && !out.includes(r))
+        out.push(r)
     }
     return out
   }

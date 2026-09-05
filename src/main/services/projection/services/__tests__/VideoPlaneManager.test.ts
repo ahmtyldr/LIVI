@@ -1,3 +1,4 @@
+import { setSecondaryRendererProvider } from '@main/host/ui'
 import { getSecondaryWindow } from '@main/window/secondaryWindows'
 import type { Config } from '@shared/types'
 import type { WebContents } from 'electron'
@@ -30,6 +31,18 @@ vi.mock('../../../video/keyframe', () => ({
 vi.mock('@main/window/secondaryWindows', () => ({
   getSecondaryWindow: vi.fn()
 }))
+
+// The code under test resolves secondary renderers through the UI host; wire the
+// mocked window module in, as window/secondaryWindows does at load.
+setSecondaryRendererProvider((role) => {
+  const w = getSecondaryWindow(role) as {
+    isDestroyed?: () => boolean
+    webContents?: unknown
+  } | null
+  return w && !(typeof w.isDestroyed === 'function' && w.isDestroyed())
+    ? (w.webContents as never)
+    : null
+})
 
 const gstMock = vi.mocked(GstVideo)
 const classifyMock = vi.mocked(classifyNal)

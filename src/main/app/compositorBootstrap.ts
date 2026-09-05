@@ -8,7 +8,7 @@ import { loadConfig } from '@main/config/loadConfig'
 
 // Linux windowed (GNOME/labwc): host the UI plus the GStreamer video plane in
 // the nested wlroots compositor so they composite into one window, zero-copy :)
-export function bootstrapCompositor(): boolean {
+export function bootstrapCompositor(innerCommand?: string): boolean {
   if (process.platform !== 'linux') return false
   if (process.env.LIVI_COMPOSITOR === '1') return false
   if (process.env.LIVI_NO_COMPOSITOR === '1') return false
@@ -24,6 +24,7 @@ export function bootstrapCompositor(): boolean {
 
   const hostLd = process.env.LD_LIBRARY_PATH ?? ''
   const inner =
+    innerCommand ??
     `LIVI_COMPOSITOR=1 LD_LIBRARY_PATH='${hostLd}' ` + `'${relaunch}' --ozone-platform=wayland`
 
   // Control socket: the host drives screen outputs + video placement/crop/visibility over this

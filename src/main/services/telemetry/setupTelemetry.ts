@@ -15,10 +15,10 @@
  *
  */
 
+import { getUiHost } from '@main/host/ui'
 import { registerIpcHandle, registerIpcOn, unregisterIpc } from '@main/ipc/register'
 import { configEvents } from '@main/ipc/utils'
 import type { ProjectionService } from '@main/services/projection/services/ProjectionService'
-import { getAllRendererWebContents } from '@main/window/broadcast'
 import type { Config } from '@shared/types'
 import type { TelemetryPayload } from '@shared/types/Telemetry'
 import { attachAaAdapter } from './adapters/aaAdapter'
@@ -85,7 +85,7 @@ export function setupTelemetry({
 
   const offDash = attachLiviDashAdapter({
     store,
-    getWebContents: () => getAllRendererWebContents()
+    getWebContents: () => getUiHost().renderers()
   })
 
   let offAa: (() => void) | null = null

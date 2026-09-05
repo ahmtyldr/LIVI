@@ -2,12 +2,12 @@
  * LIVI Dash adapter — forwards telemetry to the renderer over IPC.
  */
 
+import type { RendererTarget } from '@main/host/renderer'
 import type { TelemetryPayload } from '@shared/types/Telemetry'
-import type { WebContents } from 'electron'
 import type { TelemetryStore } from '../TelemetryStore'
 
 export type LiviDashAdapterDeps = {
-  getWebContents: () => WebContents | WebContents[] | null
+  getWebContents: () => RendererTarget | RendererTarget[] | null
   store: TelemetryStore
 }
 

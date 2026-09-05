@@ -1,5 +1,5 @@
+import type { RendererTarget } from '@main/host/renderer'
 import type { Config, DongleFirmwareAction, DongleFwApiRaw } from '@shared/types'
-import type { WebContents } from 'electron'
 import type { FirmwareUpdateService } from '../driver/dongle/FirmwareUpdateService'
 import type { SendableMessage } from '../messages/sendable'
 import type { DeviceView } from '../services/DeviceRegistry'
@@ -75,7 +75,7 @@ export interface ProjectionIpcHost {
   setClusterVisible(v: boolean): void
   resetLastClusterVideoSize(): void
   getLastClusterVideoSize(): { width: number; height: number } | null
-  getClusterTargetWebContents(): WebContents[]
+  getClusterTargetWebContents(): RendererTarget[]
 
   // Dongle ops
   uploadIcons(): void

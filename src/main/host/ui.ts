@@ -4,7 +4,8 @@
 // quit, and never import BrowserWindow, dialog, shell or app themselves.
 
 import { bridgeEmit } from '@main/ui-bridge/server'
-import { app, BrowserWindow, dialog, shell } from 'electron'
+import { app, BrowserWindow, dialog, shell, webContents } from 'electron'
+import { bridgeRenderer, isBridgeRendererAlive, type RendererTarget } from './renderer'
 
 export type MessageBoxOptions = {
   type?: 'none' | 'info' | 'error' | 'question' | 'warning'
@@ -21,6 +22,15 @@ export type MessageBoxOptions = {
 
 export type MessageBoxResult = { response: number; checkboxChecked?: boolean }
 
+export type SecondaryRendererProvider = (role: 'dash' | 'aux') => RendererTarget | null
+let secondaryProvider: SecondaryRendererProvider = () => null
+
+/** window/secondaryWindows registers its windows here at load, so host/ never
+ *  imports window code (tests mock the window module freely). */
+export function setSecondaryRendererProvider(provider: SecondaryRendererProvider): void {
+  secondaryProvider = provider
+}
+
 export interface UiHost {
   readonly kind: 'electron' | 'socket'
   /** Modal question or notice. `parent` is the Electron window when there is one. */
@@ -30,6 +40,12 @@ export interface UiHost {
   broadcast(channel: string, ...args: unknown[]): void
   quit(): void
   relaunch(): void
+  /** Every live UI surface events can be sent to. */
+  renderers(): RendererTarget[]
+  /** The UI surface for a secondary screen role, if that screen is up. */
+  secondaryRenderer(role: 'dash' | 'aux'): RendererTarget | null
+  /** Whether the renderer that made an IPC request is still around. */
+  isRendererAlive(id: number): boolean
 }
 
 /** Every live BrowserWindow, or none when Electron is not around. */
@@ -67,6 +83,22 @@ export const electronUiHost: UiHost = {
   },
   relaunch() {
     app.relaunch()
+  },
+  renderers() {
+    return allWindows()
+      .filter((w) => !(typeof w.isDestroyed === 'function' && w.isDestroyed()))
+      .map((w) => w.webContents as RendererTarget)
+  },
+  secondaryRenderer(role) {
+    return secondaryProvider(role)
+  },
+  isRendererAlive(id) {
+    try {
+      const wc = webContents.fromId(id)
+      return Boolean(wc && !wc.isDestroyed())
+    } catch {
+      return false
+    }
   }
 }
 
@@ -91,6 +123,16 @@ export const socketUiHost: UiHost = {
   relaunch() {
     // The service manager restarts the process; 75 = EX_TEMPFAIL.
     process.exit(75)
+  },
+  renderers() {
+    return [bridgeRenderer()]
+  },
+  secondaryRenderer() {
+    // livi-ui draws every screen; the bridge carries dash/aux events as well.
+    return bridgeRenderer()
+  },
+  isRendererAlive(id) {
+    return isBridgeRendererAlive(id)
   }
 }
 

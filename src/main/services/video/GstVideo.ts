@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process'
 import net from 'node:net'
 import { isPackaged } from '@main/host/paths'
+import type { RendererTarget } from '@main/host/renderer'
 import { BrowserWindow, type WebContents } from 'electron'
 import path from 'path'
 import { gstEnv, resolveBinary, resolveGStreamerRoot } from '../audio/gstreamer'
@@ -429,7 +430,7 @@ export class GstVideo {
 
   // role = compositor tag for this plane; targetScreen = which screen it's placed on
   constructor(
-    private readonly wc: WebContents,
+    private readonly wc: RendererTarget,
     private readonly role: string = 'main',
     private readonly targetScreen: string = 'main',
     explicitId?: number
@@ -454,7 +455,7 @@ export class GstVideo {
   }
 
   private windowHandle(): Buffer | null {
-    const win = BrowserWindow.fromWebContents(this.wc)
+    const win = BrowserWindow.fromWebContents(this.wc as WebContents)
     if (!win || win.isDestroyed()) return null
     return win.getNativeWindowHandle()
   }

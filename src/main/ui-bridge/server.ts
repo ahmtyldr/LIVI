@@ -94,6 +94,13 @@ export function bridgeClientCount(): number {
   return clients.size
 }
 
+/** Whether the client with this bridge id (the positive counterpart of a
+ *  synthetic sender id) is still connected. */
+export function bridgeClientAlive(clientId: number): boolean {
+  for (const c of clients) if (c.id === clientId && !c.socket.destroyed) return true
+  return false
+}
+
 function error(id: RpcId, code: number, message: string, data?: unknown): RpcResponse {
   return {
     jsonrpc: '2.0',

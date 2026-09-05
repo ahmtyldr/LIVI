@@ -8,6 +8,7 @@ import {
   MIN_HEIGHT,
   MIN_WIDTH
 } from '@main/constants'
+import { setSecondaryRendererProvider } from '@main/host/ui'
 import { configEvents, saveSettings } from '@main/ipc/utils'
 import { backdropHex, setCompositorScreen, setMacBackdrop } from '@main/services/video/GstVideo'
 import { runtimeStateProps } from '@main/types'
@@ -299,3 +300,9 @@ export function closeAllSecondaryWindows() {
 export function getSecondaryWindow(role: SecondaryWindowRole) {
   return windows.get(role) ?? null
 }
+
+// The Electron UI host resolves dash/aux renderers through this module.
+setSecondaryRendererProvider((role) => {
+  const w = getSecondaryWindow(role)
+  return w && !w.isDestroyed() ? w.webContents : null
+})

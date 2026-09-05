@@ -170,7 +170,11 @@ class GstHost {
 
     if (!this.quitHooked) {
       this.quitHooked = true
-      app.on('before-quit', () => this.child?.kill())
+      const kill = () => this.child?.kill()
+      // Electron: before-quit; plain Node (headless): the process exit itself.
+      if (typeof (app as { on?: unknown } | undefined)?.on === 'function')
+        app.on('before-quit', kill)
+      process.on('exit', kill)
     }
   }
 
