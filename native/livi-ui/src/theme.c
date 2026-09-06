@@ -5,9 +5,10 @@
 
 theme_t theme;
 
-#define FONT_SLOTS 12
+#define FONT_SLOTS 16
 static struct {
   int px;
+  int weight;
   lv_font_t *font;
 } g_fonts[FONT_SLOTS];
 
@@ -44,6 +45,9 @@ void theme_apply(cJSON *config) {
     theme.primary = hex(str(config, "primaryColorDark"), lv_color_hex(0x00adad));
     theme.highlight = hex(str(config, "highlightColorDark"), lv_color_hex(0x009494));
     theme.divider = lv_color_hex(0x444444);
+    theme.paper = lv_color_hex(0x0d0d0d);
+    theme.secondary = lv_color_hex(0x30fb37);
+    theme.disabled = lv_color_hex(0x666666);
   } else {
     theme.bg = hex(str(config, "backgroundColorLight"), lv_color_hex(0xd4d4d4));
     theme.text = lv_color_hex(0x000000);
@@ -51,6 +55,9 @@ void theme_apply(cJSON *config) {
     theme.primary = hex(str(config, "primaryColorLight"), lv_color_hex(0x008585));
     theme.highlight = hex(str(config, "highlightColorLight"), lv_color_hex(0x007575));
     theme.divider = lv_color_hex(0xcccccc);
+    theme.paper = lv_color_hex(0xf2f2f2);
+    theme.secondary = lv_color_hex(0x30fb37);
+    theme.disabled = lv_color_hex(0x999999);
   }
 }
 
@@ -64,11 +71,11 @@ const lv_font_t *theme_symbol_font(int px) {
   return &lv_font_montserrat_32;
 }
 
-const lv_font_t *theme_font(int px) {
+static const lv_font_t *font_get(int px, int weight) {
   if (px < 8) px = 8;
   if (px > 96) px = 96;
   for (int i = 0; i < FONT_SLOTS; i++)
-    if (g_fonts[i].font && g_fonts[i].px == px) return g_fonts[i].font;
+    if (g_fonts[i].font && g_fonts[i].px == px && g_fonts[i].weight == weight) return g_fonts[i].font;
   int slot = -1;
   for (int i = 0; i < FONT_SLOTS; i++)
     if (!g_fonts[i].font) {
@@ -76,9 +83,11 @@ const lv_font_t *theme_font(int px) {
       break;
     }
   if (slot < 0) return theme_symbol_font(px);
-  lv_font_t *f = lv_freetype_font_create(app_resource("fonts/roboto-latin-400-normal.woff"),
-                                         LV_FREETYPE_FONT_RENDER_MODE_BITMAP, (uint32_t)px,
-                                         LV_FREETYPE_FONT_STYLE_NORMAL);
+  const char *file = weight >= 700 ? "fonts/roboto-latin-700-normal.woff"
+                     : weight >= 500 ? "fonts/roboto-latin-500-normal.woff"
+                                     : "fonts/roboto-latin-400-normal.woff";
+  lv_font_t *f = lv_freetype_font_create(app_resource(file), LV_FREETYPE_FONT_RENDER_MODE_BITMAP,
+                                         (uint32_t)px, LV_FREETYPE_FONT_STYLE_NORMAL);
   if (!f) {
     static bool warned;
     if (!warned) LOG("Roboto not found under %s, using Montserrat", app_resource_dir());
@@ -86,6 +95,11 @@ const lv_font_t *theme_font(int px) {
     return theme_symbol_font(px);
   }
   g_fonts[slot].px = px;
+  g_fonts[slot].weight = weight;
   g_fonts[slot].font = f;
   return f;
 }
+
+const lv_font_t *theme_font(int px) { return font_get(px, 400); }
+const lv_font_t *theme_font_bold(int px) { return font_get(px, 700); }
+const lv_font_t *theme_font_medium(int px) { return font_get(px, 500); }

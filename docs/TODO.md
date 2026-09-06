@@ -47,7 +47,10 @@ Durum: 5 Eylül 2026. Pi 3 B+ üzerinde LIVI 9.0.0 nightly çalışıyor.
 - [ ] Compositor `main UI toplevel gone -> shutting down` kuralı: livi-ui çökünce/yeniden başlayınca compositor da kapanıyor (Electron kiosk semantiği). LVGL kipinde UI toplevel'ın gidip gelmesine tolerans ver (uiProcess yeniden başlatması işe yarasın).
 - [x] Oturum 6: parite aracı `tools/parity/` (Electron referansları `reference/electron-*.png`, `capture.sh`, `compare.mjs`, `run.sh`; `grim` cage'in `wayland-0` soketinde). Nav rail MUI ikonlarıyla (PNG, lodepng) ve Electron geometrisiyle; Camera boş sayfası kare farkı < %1.
 - [ ] Parite notu: FreeType tam sayı ilerleme (advance) yuvarlaması yüzünden metinler Chrome'a göre birkaç px dar; saat için +1 px harf aralığıyla telafi edildi, genel çözüm (kesirli konumlama) bekliyor.
-- [ ] Oturum 7–16: ekranlar (sıra ve kabul ölçütleri `LVGL_PLAN.md` §10).
+- [ ] livi-ui çoklu dokunma: LVGL Wayland sürücüsü tek parmak (`lv_wl_touch.c` ilk temas); pinch/zoom için wl_touch olaylarını ayrıca dinleyip `projection.ipc.sendMultiTouch` ile ilet (dokunmatik ekranlı Zero 2 W kurulumunda gerekli).
+- [ ] Parite: Electron `startPage` yalnızca üst düzey rotaları kabul ediyor (`/settings/devices` → ana sayfa); Cihazlar sayfası referansı için Electron'da fare ile gezinip yakalamak gerekiyor (henüz yok).
+- [x] Oturum 7: Projection (StatusOverlay nefes animasyonu, letterbox dokunma haritalama, ViewAreaMask) + Ayarlar çerçevesi (başlık/geri/kart) + Cihazlar listesi (pil, sinyal, durum, unut) + oturum değiştirme rozeti. Ayarlar kök sayfası parite: kare %1,8.
+- [ ] Oturum 8–16: ekranlar (sıra ve kabul ölçütleri `LVGL_PLAN.md` §10).
 - [ ] Oturum 17–18: kiosk paketi `v9.1.0`, Zero 2 W ölçümleri.
 
 ## Yedekler

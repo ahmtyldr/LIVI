@@ -9,6 +9,7 @@
 #include "i18n.h"
 #include "theme.h"
 #include "ui/pages.h"
+#include "ui/settings.h"
 
 /* AppLayout.tsx nav column: content 74 px + 1 px #444 right border; top block
  * paddingTop 1rem + clock Typography 1.5rem (line-height 1.5 → 36 px);
@@ -26,6 +27,9 @@ static page_id_t g_current = PAGE_HOME;
 static lv_timer_t *g_clock_timer;
 static bool g_streaming;
 static bool g_tab_visible[PAGE_COUNT] = {true, true, true, false, true};
+static lv_obj_t *g_session;      /* SessionSwitchOverlay chip */
+static lv_timer_t *g_session_timer;
+static uint32_t g_session_t0;
 static cJSON *g_config;
 
 /* useTabsConfig.tsx: MUI outlined icons, rasterised into assets/icons. */
@@ -33,9 +37,19 @@ static const char *const tab_icons[PAGE_COUNT] = {"home", "telemetry", "media", 
 static const char *const routes[PAGE_COUNT] = {"/", "/telemetry", "/media", "/camera", "/settings"};
 
 page_id_t shell_page_from_route(const char *route) {
+  if (route && strncmp(route, "/settings", 9) == 0) return PAGE_SETTINGS;
   for (int i = 0; i < PAGE_COUNT; i++)
     if (route && strcmp(route, routes[i]) == 0) return (page_id_t)i;
   return PAGE_HOME;
+}
+
+void shell_show_route(const char *route) {
+  page_id_t id = shell_page_from_route(route);
+  if (id == PAGE_SETTINGS) {
+    const char *tail = route && strlen(route) > 10 ? route + 10 : "";
+    settings_show_view(settings_view_from_route(tail));
+  }
+  shell_show_page(id);
 }
 
 page_id_t shell_current_page(void) { return g_current; }
@@ -235,6 +249,59 @@ static void build(void) {
 
   if (!g_clock_timer) g_clock_timer = lv_timer_create(update_clock, 1000, NULL);
   shell_show_page(g_current);
+}
+
+/* @keyframes liviSessionSwitch: 0 → 12 % fade in, hold to 78 %, fade out at 100 %, 1500 ms */
+static void session_tick(lv_timer_t *t) {
+  (void)t;
+  if (!g_session) return;
+  uint32_t el = lv_tick_elaps(g_session_t0);
+  double p = el / 1500.0, o;
+  if (p >= 1) {
+    lv_obj_add_flag(g_session, LV_OBJ_FLAG_HIDDEN);
+    lv_timer_pause(g_session_timer);
+    return;
+  }
+  if (p < 0.12) o = p / 0.12;
+  else if (p < 0.78) o = 1;
+  else o = 1 - (p - 0.78) / 0.22;
+  lv_obj_set_style_opa(g_session, (lv_opa_t)(o * 255), 0);
+}
+
+void shell_session_flash(int position, int total) {
+  if (position < 1) return;
+  if (!g_session) {
+    g_session = lv_obj_create(lv_layer_top());
+    lv_obj_remove_style_all(g_session);
+    lv_obj_set_style_bg_color(g_session, lv_color_make(18, 18, 20), 0);
+    lv_obj_set_style_bg_opa(g_session, (lv_opa_t)(0.72 * 255), 0);
+    lv_obj_set_style_radius(g_session, theme_px(14), 0);
+    lv_obj_set_style_pad_hor(g_session, theme_px(20), 0);
+    lv_obj_set_style_pad_ver(g_session, theme_px(10), 0);
+    lv_obj_set_style_shadow_width(g_session, theme_px(22), 0);
+    lv_obj_set_style_shadow_offset_y(g_session, theme_px(6), 0);
+    lv_obj_set_style_shadow_color(g_session, lv_color_black(), 0);
+    lv_obj_set_style_shadow_opa(g_session, LV_OPA_40, 0);
+    lv_obj_set_size(g_session, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+    lv_obj_set_flex_flow(g_session, LV_FLEX_FLOW_ROW);
+    lv_obj_align(g_session, LV_ALIGN_TOP_RIGHT, -theme_px(16), theme_px(16));
+    for (int i = 0; i < 2; i++) {
+      lv_obj_t *l = lv_label_create(g_session);
+      lv_obj_set_style_text_font(l, theme_font_medium(theme_px(28)), 0);
+      lv_obj_set_style_text_letter_space(l, 1, 0);
+    }
+    g_session_timer = lv_timer_create(session_tick, 33, NULL);
+  }
+  lv_obj_t *pos = lv_obj_get_child(g_session, 0), *tot = lv_obj_get_child(g_session, 1);
+  lv_label_set_text_fmt(pos, "%d", position);
+  lv_obj_set_style_text_color(pos, theme.primary, 0);
+  lv_label_set_text_fmt(tot, "/%d", total);
+  lv_obj_set_style_text_color(tot, lv_color_white(), 0);
+  lv_obj_set_style_text_opa(tot, (lv_opa_t)(0.92 * 255), 0);
+  lv_obj_remove_flag(g_session, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_set_style_opa(g_session, LV_OPA_TRANSP, 0);
+  g_session_t0 = lv_tick_get();
+  lv_timer_resume(g_session_timer);
 }
 
 void shell_create(void) { build(); }

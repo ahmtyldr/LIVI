@@ -57,7 +57,7 @@ static void ctl_read(void) {
   char *save = NULL;
   for (char *line = strtok_r(buf, "\n", &save); line; line = strtok_r(NULL, "\n", &save)) {
     if (strncmp(line, "page ", 5) == 0) {
-      shell_show_page(shell_page_from_route(line + 5));
+      shell_show_route(line + 5);
       LOG("ctl: page %s", line + 5);
     } else if (strcmp(line, "quit") == 0) {
       g_running = false;
@@ -134,7 +134,7 @@ static void on_settings(cJSON *result, cJSON *error, void *user) {
   if (first) {
     first = false;
     cJSON *start = cJSON_GetObjectItemCaseSensitive(result, "startPage");
-    shell_show_page(shell_page_from_route(cJSON_IsString(start) ? start->valuestring : "/"));
+    shell_show_route(cJSON_IsString(start) ? start->valuestring : "/");
   }
 }
 

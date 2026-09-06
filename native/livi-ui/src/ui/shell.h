@@ -24,8 +24,12 @@ void shell_show_page(page_id_t id);
 page_id_t shell_current_page(void);
 /** Route string as the React app names it, for `startPage` matching. */
 page_id_t shell_page_from_route(const char *route);
+/** Navigates by route, including /settings/<view>. */
+void shell_show_route(const char *route);
 /** Nav.tsx: while the projection video is shown the rail leaves the home page. */
 void shell_set_streaming(bool streaming);
 bool shell_streaming(void);
+/** SessionSwitchOverlay.tsx: "position/total" chip top-right for 1.5 s. */
+void shell_session_flash(int position, int total);
 /** A recolourable MUI icon image (assets/icons/<name>-<px>.png). */
 lv_obj_t *shell_icon(lv_obj_t *parent, const char *name, int px);
