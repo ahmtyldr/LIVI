@@ -267,7 +267,8 @@ export class AaSession extends EventEmitter implements IPhoneDriver {
       clusterSafeAreaBottom: cfg.clusterSafeAreaBottom,
       clusterSafeAreaLeft: cfg.clusterSafeAreaLeft,
       clusterSafeAreaRight: cfg.clusterSafeAreaRight,
-      disableAudioOutput: Boolean(cfg.disableAudioOutput)
+      disableAudioOutput: Boolean(cfg.disableAudioOutput),
+      disableCarMic: Boolean(cfg.disableCarMic)
     }
     const displayAR = cfg.projectionWidth / cfg.projectionHeight
     const tierAR = tierW / tierH
@@ -406,6 +407,12 @@ export class AaSession extends EventEmitter implements IPhoneDriver {
   // Mltiple sources (mic-start, voice-session START,
   // PTT keydown) can request capture independently.
   private _startMicCapture(reason: string): void {
+    // Phone-mic mode: no car mic advertised, so never open a local capture
+    // (which would otherwise grab the output monitor and echo the call).
+    if (this._getConfig().disableCarMic) {
+      console.log(`[AaSession] ${reason} → car mic disabled, using phone mic`)
+      return
+    }
     if (this._micActive) return
     this._micActive = true
     if (!this._mic) {

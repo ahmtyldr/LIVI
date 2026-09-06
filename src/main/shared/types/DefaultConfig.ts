@@ -44,6 +44,7 @@ export const DEFAULT_CONFIG: Config = {
   autoConn: true,
   UseBTPhone: false,
   disableAudioOutput: false,
+  disableCarMic: false,
   wifiType: '5ghz',
   wifiChannel: 36,
   wifiChannelWidth: 40,

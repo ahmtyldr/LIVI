@@ -263,14 +263,20 @@ export function buildServiceDiscoveryResponse(
     }
   })
 
-  channels.push({
-    id: CH.MIC_INPUT,
-    mediaSourceService: {
-      availableType: MEDIA_CODEC.AUDIO_PCM,
-      audioConfig: { samplingRate: 16000, numberOfBits: 16, numberOfChannels: 1 },
-      availableWhileInCall: true
-    }
-  })
+  // Only advertise a car microphone when the device actually has capture
+  // hardware. With no mic, advertising one makes the phone route call/assistant
+  // audio to an uplink that captures the output monitor — echoing the call.
+  // Omitting the source channel makes Android Auto fall back to the phone's mic.
+  if (!cfg.disableCarMic) {
+    channels.push({
+      id: CH.MIC_INPUT,
+      mediaSourceService: {
+        availableType: MEDIA_CODEC.AUDIO_PCM,
+        audioConfig: { samplingRate: 16000, numberOfBits: 16, numberOfChannels: 1 },
+        availableWhileInCall: true
+      }
+    })
+  }
 
   // ── Sensor Source (ch=1) ──
   const fuelTypes = cfg.fuelTypes && cfg.fuelTypes.length > 0 ? cfg.fuelTypes : [1]

@@ -180,6 +180,11 @@ export type Config = {
   samplingFrequency: 0 | 1
   UseBTPhone: boolean
   disableAudioOutput: boolean
+  // When true, the head unit does not advertise a microphone to the phone, so
+  // Android Auto uses the phone's own mic for calls / assistant. Correct for a
+  // device with no capture hardware (e.g. a mic-less Pi), where advertising a
+  // car mic makes the uplink capture the output monitor and echo the call.
+  disableCarMic: boolean
   huVolume: number
   huVolumeLinkSystem: boolean
   audioVolume: number

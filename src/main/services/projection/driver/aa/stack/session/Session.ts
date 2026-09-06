@@ -135,6 +135,7 @@ export interface SessionConfig {
   clusterSafeAreaLeft?: number
   clusterSafeAreaRight?: number
   disableAudioOutput?: boolean
+  disableCarMic?: boolean
 }
 
 export type VideoCodec = 'h264' | 'h265' | 'vp9' | 'av1'

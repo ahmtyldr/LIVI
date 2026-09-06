@@ -155,6 +155,15 @@ describe('buildServiceDiscoveryResponse', () => {
     expect(channelById(capture.fields!, CH.MIC_INPUT)).toBeDefined()
   })
 
+  test('omits the mic source channel when disableCarMic=true (phone-mic mode)', () => {
+    const { proto, capture } = stubProto()
+    buildServiceDiscoveryResponse(baseConfig({ disableCarMic: true }), proto)
+    expect(channelById(capture.fields!, CH.MIC_INPUT)).toBeUndefined()
+    // Audio sinks are unaffected — only the car mic is withheld.
+    expect(channelById(capture.fields!, CH.MEDIA_AUDIO)).toBeDefined()
+    expect(channelById(capture.fields!, CH.SYSTEM_AUDIO)).toBeDefined()
+  })
+
   test('always advertises bluetooth, navigation, media-info, phone-status channels', () => {
     const { proto, capture } = stubProto()
     buildServiceDiscoveryResponse(baseConfig(), proto)
