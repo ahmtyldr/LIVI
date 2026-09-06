@@ -61,6 +61,7 @@ void pages_create(lv_obj_t *parent) {
 }
 
 void pages_set_media_active(bool a) { media_set_active(a); }
+void pages_toggle_fft(void) { media_toggle_fft(); }
 
 void pages_destroy(void) {
   /* Objects are deleted with the shell root; just drop our pointers. */

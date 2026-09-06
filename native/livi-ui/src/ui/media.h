@@ -10,3 +10,5 @@ void media_destroy(void);
 void media_on_event(const char *channel, cJSON *args);
 /** Called when the Media page becomes visible/hidden (drives the clock). */
 void media_set_active(bool active);
+/** Tooling: toggle the artwork<->spectrum view (LIVI_UI_CTL "fft"). */
+void media_toggle_fft(void);

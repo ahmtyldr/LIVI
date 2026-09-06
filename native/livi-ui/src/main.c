@@ -59,6 +59,8 @@ static void ctl_read(void) {
     if (strncmp(line, "page ", 5) == 0) {
       shell_show_route(line + 5);
       LOG("ctl: page %s", line + 5);
+    } else if (strcmp(line, "fft") == 0) {
+      pages_toggle_fft();
     } else if (strcmp(line, "quit") == 0) {
       g_running = false;
     } else {

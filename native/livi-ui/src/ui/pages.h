@@ -15,5 +15,6 @@ void pages_on_event(const char *channel, cJSON *args);
 /** Video plane shown/hidden: the home placeholder gives way to it. */
 void pages_set_streaming(bool streaming);
 void pages_set_media_active(bool a);
+void pages_toggle_fft(void);
 /** Bridge connection state changed. */
 void pages_on_bridge(bool connected);

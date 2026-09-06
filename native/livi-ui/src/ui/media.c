@@ -5,6 +5,7 @@
 #include "app.h"
 #include "bridge.h"
 #include "i18n.h"
+#include "fft.h"
 #include "theme.h"
 
 /* mediaScaleOps for 1280x720: title 48, artist 24, album 20, pad 14,
@@ -30,6 +31,25 @@ static int g_playing;               /* MediaPlayStatus == 1 */
 static uint32_t g_play_base_tick;   /* local clock anchor while playing */
 static uint8_t *g_art_bytes;        /* decoded base64 (owned) */
 static lv_image_dsc_t g_art_dsc;
+
+/* ---- FFT visualiser (tap the artwork to toggle) ---- */
+#define RING_MAX (FFT_SIZE * 4)
+static bool g_fft_on;
+static fft_t *g_fft;
+static float g_ring[RING_MAX];
+static int g_ring_len;
+static int g_sample_rate = 48000;
+static float g_bars[FFT_POINTS];       /* smoothed 0..1 */
+static float g_target[FFT_POINTS];
+static lv_obj_t *g_fft_box, *g_bar_obj[FFT_POINTS];
+static lv_timer_t *g_fft_timer;
+
+static void show_artwork(void);
+static void set_visualizer(bool on) {
+  cJSON *p = cJSON_CreateArray();
+  cJSON_AddItemToArray(p, cJSON_CreateBool(on));
+  bridge_call("projection.ipc.setVisualizerEnabled", p, NULL, NULL);
+}
 
 /* ---- base64 ---- */
 static int b64val(char c) {
@@ -108,6 +128,28 @@ static void set_play_icon(void) {
   lv_image_set_src(g_play_icon, rel);
 }
 
+static void fft_apply_visibility(void) {
+  if (!g_art || !g_fft_box) return;
+  if (g_fft_on) {
+    lv_obj_add_flag(g_art, LV_OBJ_FLAG_HIDDEN);
+    if (g_art_ph) lv_obj_add_flag(g_art_ph, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_remove_flag(g_fft_box, LV_OBJ_FLAG_HIDDEN);
+  } else {
+    lv_obj_add_flag(g_fft_box, LV_OBJ_FLAG_HIDDEN);
+  }
+}
+
+static void toggle_fft(lv_event_t *e) { (void)e; media_toggle_fft(); }
+
+void media_toggle_fft(void) {
+  g_fft_on = !g_fft_on;
+  g_ring_len = 0;
+  for (int i = 0; i < FFT_POINTS; i++) g_bars[i] = g_target[i] = 0;
+  set_visualizer(g_fft_on);
+  if (!g_fft_on) show_artwork();
+  fft_apply_visibility();
+}
+
 static void show_artwork(void) {
   if (!g_art) return;
   if (g_art_bytes && g_art_dsc.data_size > 0) {
@@ -118,6 +160,7 @@ static void show_artwork(void) {
     lv_obj_add_flag(g_art, LV_OBJ_FLAG_HIDDEN);
     if (g_art_ph) lv_obj_remove_flag(g_art_ph, LV_OBJ_FLAG_HIDDEN);
   }
+  if (g_fft_on) fft_apply_visibility();
 }
 
 /* ---- controls ---- */
@@ -154,6 +197,30 @@ static lv_obj_t *ctrl_button(lv_obj_t *row, const char *icon, int px, lv_event_c
   lv_obj_center(img);
   (void)px;
   return img;
+}
+
+static void fft_render(lv_timer_t *t) {
+  (void)t;
+  if (!g_fft_on || !g_fft_box) return;
+  int step = FFT_SIZE / 4;
+  bool got = false;
+  while (g_ring_len >= FFT_SIZE) {
+    fft_forward(g_fft, g_ring);
+    fft_bins(g_fft, g_target, g_sample_rate);
+    got = true;
+    memmove(g_ring, g_ring + step, (g_ring_len - step) * sizeof(float));
+    g_ring_len -= step;
+  }
+  if (!got) { /* decay to zero when audio stops */
+    for (int i = 0; i < FFT_POINTS; i++) g_target[i] *= 0.85f;
+  }
+  int32_t h = lv_obj_get_height(g_fft_box);
+  for (int i = 0; i < FFT_POINTS; i++) {
+    float a = g_target[i];
+    g_bars[i] += (a - g_bars[i]) * (a > g_bars[i] ? 0.5f : 0.2f); /* fast attack, slow release */
+    int bh = (int)(g_bars[i] * (h - 2)) + 1;
+    if (g_bar_obj[i]) lv_obj_set_height(g_bar_obj[i], bh);
+  }
 }
 
 static void tick_cb(lv_timer_t *t) {
@@ -200,6 +267,29 @@ lv_obj_t *media_create(lv_obj_t *parent) {
   lv_obj_set_style_image_recolor(g_art_ph, theme.text2, 0);
   lv_obj_set_style_image_recolor_opa(g_art_ph, LV_OPA_50, 0);
   lv_obj_center(g_art_ph);
+
+  /* FFT spectrum overlay in the same square; 24 bars bottom-anchored */
+  g_fft_box = lv_obj_create(artwrap);
+  lv_obj_remove_style_all(g_fft_box);
+  lv_obj_set_size(g_fft_box, lv_pct(100), lv_pct(100));
+  lv_obj_set_style_pad_all(g_fft_box, theme_px(10), 0);
+  lv_obj_set_flex_flow(g_fft_box, LV_FLEX_FLOW_ROW);
+  lv_obj_set_flex_align(g_fft_box, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_END, LV_FLEX_ALIGN_END);
+  lv_obj_add_flag(g_fft_box, LV_OBJ_FLAG_HIDDEN);
+  for (int i = 0; i < FFT_POINTS; i++) {
+    lv_obj_t *b = lv_obj_create(g_fft_box);
+    lv_obj_remove_style_all(b);
+    lv_obj_set_width(b, lv_pct(100 / FFT_POINTS - 1));
+    lv_obj_set_height(b, 1);
+    lv_obj_set_style_radius(b, theme_px(2), 0);
+    lv_obj_set_style_bg_color(b, theme.highlight, 0);
+    lv_obj_set_style_bg_opa(b, LV_OPA_COVER, 0);
+    g_bar_obj[i] = b;
+  }
+  /* tap the artwork to switch artwork <-> spectrum */
+  lv_obj_add_flag(artwrap, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_add_event_cb(artwrap, toggle_fft, LV_EVENT_CLICKED, NULL);
+  if (!g_fft) g_fft = fft_create();
 
   lv_obj_t *info = lv_obj_create(top);
   lv_obj_remove_style_all(info);
@@ -278,15 +368,27 @@ lv_obj_t *media_create(lv_obj_t *parent) {
   refresh_meta();
   show_artwork();
   if (!g_tick) g_tick = lv_timer_create(tick_cb, 500, NULL);
+  if (!g_fft_timer) g_fft_timer = lv_timer_create(fft_render, 33, NULL);
   return g_page;
 }
 
 void media_destroy(void) {
+  if (g_fft_on) { set_visualizer(false); g_fft_on = false; }
   g_page = g_art = g_art_ph = g_title = g_artist = g_album = NULL;
   g_bar = g_bar_fill = g_elapsed = g_total = g_play_icon = NULL;
+  g_fft_box = NULL;
+  for (int i = 0; i < FFT_POINTS; i++) g_bar_obj[i] = NULL;
 }
 
-void media_set_active(bool active) { g_active = active; }
+void media_set_active(bool active) {
+  g_active = active;
+  if (!active && g_fft_on) {
+    g_fft_on = false;
+    set_visualizer(false);
+    show_artwork();
+    fft_apply_visibility();
+  }
+}
 
 /* ---- data ---- */
 static const char *bag_str(cJSON *media, const char *k) {
@@ -295,7 +397,32 @@ static const char *bag_str(cJSON *media, const char *k) {
 }
 static void cpy(char *dst, size_t n, const char *s) { snprintf(dst, n, "%s", s ? s : ""); }
 
+static void feed_pcm(cJSON *ev) {
+  cJSON *sr = cJSON_GetObjectItemCaseSensitive(ev, "sampleRate");
+  if (cJSON_IsNumber(sr) && sr->valuedouble > 0) g_sample_rate = (int)sr->valuedouble;
+  cJSON *chunk = cJSON_GetObjectItemCaseSensitive(ev, "chunk");
+  cJSON *b = cJSON_IsObject(chunk) ? cJSON_GetObjectItemCaseSensitive(chunk, "$bytes") : NULL;
+  if (!cJSON_IsString(b)) return;
+  size_t len = 0;
+  uint8_t *bytes = b64decode(b->valuestring, &len);
+  if (!bytes) return;
+  const int16_t *pcm = (const int16_t *)bytes;
+  size_t n = len / 2;
+  for (size_t i = 0; i < n; i++) {
+    if (g_ring_len >= RING_MAX) {
+      memmove(g_ring, g_ring + FFT_SIZE, (g_ring_len - FFT_SIZE) * sizeof(float));
+      g_ring_len -= FFT_SIZE;
+    }
+    g_ring[g_ring_len++] = pcm[i] / 32768.0f;
+  }
+  free(bytes);
+}
+
 void media_on_event(const char *channel, cJSON *args) {
+  if (strcmp(channel, "projection-audio-chunk") == 0) {
+    if (g_fft_on) feed_pcm(cJSON_GetArrayItem(args, 0));
+    return;
+  }
   if (strcmp(channel, "projection-event") != 0) return;
   cJSON *ev = cJSON_GetArrayItem(args, 0);
   cJSON *type = cJSON_IsObject(ev) ? cJSON_GetObjectItemCaseSensitive(ev, "type") : NULL;
