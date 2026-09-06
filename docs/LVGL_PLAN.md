@@ -226,7 +226,7 @@ doğrulanmış, Pi 3 düzeltmeleri kaynakta, 2,4 GHz + Bluetooth testi geçti.
 | 12–14 ❌ | Telemetry (kaldırıldı) | 21 widget, 4 dashboard; `telemetry-sim` ile beslenir. | Parite < %1, dashboard geçişleri akıcı. | Dashboard'ları karşılaştırmak |
 | 15 | Camera | `v4l2src` → compositor düzlemi, video hattının kopyası. | USB kamera görüntüsü, tam ekran ve pencere içinde. | USB kamera takmak |
 | 16 | Dash / Aux | Rol ve atama mantığı köprüde, her rol ayrı LVGL ekranı. | İkinci HDMI ekranda dashboard. | İkinci ekran (varsa) |
-| 17 | Kiosk ve paket | `livi-kiosk.service`: cage → compositor → headless main + livi-ui. Yayın: `v9.1.0`. | Pi 3'te güçten arayüze < 30 sn. | Pi'de kullanım |
+| 17 ✅ | Kiosk ve paket | `livi-kiosk.service`: cage → compositor → headless main + livi-ui. Yayın: `v9.1.0`. | Pi 3'te güçten arayüze < 30 sn. | Pi'de kullanım |
 | 18 | Zero 2 W | Aynı paketi Zero 2 W'ye kur; bellek, sıcaklık, açılış ölçümleri. | Toplam RAM < 350 MB, AA görüşme + harita testi geçer. | Zero 2 W ve micro-HDMI/OTG kabloları |
 | — | Geçiş | Electron arayüzü iki ay yedek olarak kalır, sonra kaldırılır. | Kullanıcı raporu yok, parite temiz. | Karar |
 

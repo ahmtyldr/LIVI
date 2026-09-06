@@ -59,7 +59,7 @@ Durum: 5 Eylül 2026. Pi 3 B+ üzerinde LIVI 9.0.0 nightly çalışıyor.
 - [x] Telemetry sekmesi kullanıcı isteğiyle KALDIRILDI (Oturum 12–14 iptal).
 - [ ] Oturum 15 (Camera): Pi'de kamera yok, ertelendi.
 - [ ] Oturum 16 (Dash/Aux): ikinci HDMI ekran gerekiyor.
-- [ ] Oturum 17 (KRİTİK, kalan ana iş): kiosk paketi. Şu an livi-ui bir GELİŞTİRME derlemesi (`~/livi-ui/`, elle rsync). Actions'ta AppImage'a gömülüp (build-native.mjs zaten `out/ui`→`resources/ui` paketliyor) `vX.Y.Z` sürümü olarak yayınlanmalı ki kullanıcı normal güncellemeyle kursun; headless drop-in'de `LIVI_UI_BIN` gerekmesin.
+- [x] Oturum 17: kiosk paketi. `v9.1.0` yayınlandı (AppImage'da `resources/ui/livi-ui` + font/ikon/locale/şema). Pi'de paketten kuruldu: üretim drop-in `scripts/pi3/headless-prod.conf` (dev override YOK), livi-ui `resources/ui`'den çalışıyor (RSS 13 MB), güncelleyici v9.1.0'ı görüp 'Up to date' gösteriyor.
 - [ ] Oturum 18 (Zero 2 W): hedef donanımda ölçüm. (sıra ve kabul ölçütleri `LVGL_PLAN.md` §10).
 - [ ] Oturum 17–18: kiosk paketi `v9.1.0`, Zero 2 W ölçümleri.
 

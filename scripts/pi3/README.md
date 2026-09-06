@@ -229,3 +229,20 @@ Paketli sürümde ikili `resources/ui/livi-ui` olarak gelir; drop-in'deki iki `E
 
 Ana süreç RSS'i hedefin (<100 MB) üstünde: Electron ikilisi Node olarak çalışsa da ~120 MB taban taşıyor.
 Gerçek bir Node ikilisi paketlenirse ~60 MB'a iner (TODO).
+
+## Paketli livi-ui (v9.1.0+) — üretim kurulumu
+
+livi-ui artık AppImage'a gömülü (`resources/ui/livi-ui`), dev derleme gerekmez.
+Yeni sürümü kur ve üretim drop-in'ini uygula:
+
+```bash
+# AppImage'ı release'ten Pi'ye koy (ör. ahmtyldr/LIVI v9.1.0), sonra:
+cd ~/LIVI && cp -a LIVI-9.1.0.AppImage LIVI.AppImage
+sudo cp scripts/pi3/headless-prod.conf /etc/systemd/system/livi-kiosk.service.d/headless.conf
+sudo systemctl daemon-reload && sudo reboot
+```
+
+Drop-in'de `LIVI_HEADLESS_JS`/`LIVI_UI_BIN` YOKTUR; `livi-headless.sh` paketli
+`out/main/headless.js`'i çalıştırır, `uiProcess.ts` de `resources/ui/livi-ui`'yi
+başlatır. AppImage çalışırken mount'lu olduğundan takas için önce
+`sudo systemctl stop livi-kiosk`, sonra `cp`, sonra reboot.
