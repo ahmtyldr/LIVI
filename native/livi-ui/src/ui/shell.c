@@ -26,7 +26,7 @@ static lv_obj_t *g_tabs[PAGE_COUNT];
 static page_id_t g_current = PAGE_HOME;
 static lv_timer_t *g_clock_timer;
 static bool g_streaming;
-static bool g_tab_visible[PAGE_COUNT] = {true, true, true, false, true};
+static bool g_tab_visible[PAGE_COUNT] = {true, false, true, false, true};
 static lv_obj_t *g_session;      /* SessionSwitchOverlay chip */
 static lv_timer_t *g_session_timer;
 static uint32_t g_session_t0;
@@ -66,15 +66,8 @@ static bool cfg_role_flag(const char *group, bool dflt) {
 bool shell_set_config(cJSON *config) {
   if (g_config) cJSON_Delete(g_config);
   g_config = config ? cJSON_Duplicate(config, 1) : NULL;
+  /* Telemetry tab removed at the user's request; it is never shown. */
   bool next[PAGE_COUNT] = {true, false, true, false, true};
-  cJSON *dash = g_config ? cJSON_GetObjectItemCaseSensitive(g_config, "dashboards") : NULL;
-  if (cJSON_IsObject(dash)) {
-    cJSON *slot;
-    cJSON_ArrayForEach(slot, dash) {
-      cJSON *m = cJSON_IsObject(slot) ? cJSON_GetObjectItemCaseSensitive(slot, "main") : NULL;
-      if (cJSON_IsTrue(m)) next[PAGE_TELEMETRY] = true;
-    }
-  }
   next[PAGE_MEDIA] = cfg_role_flag("media", true);
   cJSON *cam = g_config ? cJSON_GetObjectItemCaseSensitive(g_config, "cameraId") : NULL;
   next[PAGE_CAMERA] = cfg_role_flag("camera", true) && cJSON_IsString(cam) && cam->valuestring[0];
