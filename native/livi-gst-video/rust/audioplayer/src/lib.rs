@@ -55,7 +55,7 @@ fn sink_chain(cfg: &Config) -> String {
     } else if cfg.realtime {
         String::from("pulsesink sync=false")
     } else {
-        String::from("pulsesink sync=false buffer-time=300000 latency-time=30000")
+        String::from("pulsesink sync=false buffer-time=500000 latency-time=40000")
     };
     if let Some(device) = &cfg.device {
         let prop = if cfg!(target_os = "macos") { "unique-id" } else { "device" };
@@ -75,7 +75,13 @@ pub fn pipeline_desc(cfg: &Config) -> String {
         "appsrc name=src is-live=true format=time do-timestamp=true ! \
          {head}audioconvert ! clocksync sync=true ! volume name=vol ! \
          audioconvert ! audioresample ! audio/x-raw,format=S16LE,rate=48000,channels=2 ! \
-         queue ! {sink}",
+         {queue} ! {sink}",
+        queue = if cfg.realtime {
+            "queue"
+        } else {
+            // Buffered music: hold up to ~2 s so a Wi-Fi/BT coexistence stall does not underrun.
+            "queue max-size-time=2000000000 max-size-buffers=0 max-size-bytes=0"
+        },
         sink = sink_chain(cfg),
     )
 }
@@ -353,7 +359,7 @@ mod tests {
     #[cfg(not(target_os = "macos"))]
     #[test]
     fn a_music_sink_gets_the_ring_and_period_a_realtime_one_does_not() {
-        assert!(pipeline_desc(&cfg(Codec::AacLc, false)).contains("buffer-time=300000"));
+        assert!(pipeline_desc(&cfg(Codec::AacLc, false)).contains("buffer-time=500000"));
         assert!(!pipeline_desc(&cfg(Codec::AacLc, true)).contains("buffer-time"));
     }
 

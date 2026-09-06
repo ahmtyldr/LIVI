@@ -42,7 +42,7 @@ static int g_ring_len;
 static int g_sample_rate = 48000;
 
 /* ---- navigation panel (turn-by-turn from the projection 'navigation' event) ---- */
-static lv_obj_t *g_nav_box, *g_nav_icon, *g_nav_dist, *g_nav_maneuver, *g_nav_road, *g_nav_eta;
+static lv_obj_t *g_nav_card, *g_nav_box, *g_nav_idle, *g_nav_icon, *g_nav_dist, *g_nav_maneuver, *g_nav_road, *g_nav_eta;
 static bool g_nav_active;
 static float g_bars[FFT_POINTS];       /* smoothed 0..1 */
 static float g_target[FFT_POINTS];
@@ -51,6 +51,7 @@ static lv_timer_t *g_fft_timer;
 
 static void show_artwork(void);
 static void nav_request(void);
+static void nav_hide(void);
 
 /* maneuverText is localised (en/tr); match keywords, fall back to a generic arrow. */
 static const char *nav_icon_for(const char *m) {
@@ -254,26 +255,100 @@ lv_obj_t *media_create(lv_obj_t *parent) {
   g_page = lv_obj_create(parent);
   lv_obj_remove_style_all(g_page);
   lv_obj_set_size(g_page, lv_pct(100), lv_pct(100));
-  lv_obj_set_flex_flow(g_page, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_flex_flow(g_page, LV_FLEX_FLOW_ROW);
+  lv_obj_set_flex_align(g_page, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
   lv_obj_set_style_pad_all(g_page, theme_px(M_PAD), 0);
-  lv_obj_set_style_pad_row(g_page, theme_px(M_PAD), 0);
+  lv_obj_set_style_pad_column(g_page, theme_px(M_PAD), 0);
 
-  /* top: artwork + info */
-  lv_obj_t *top = lv_obj_create(g_page);
-  lv_obj_remove_style_all(top);
-  lv_obj_set_width(top, lv_pct(100));
-  lv_obj_set_flex_grow(top, 1);
-  lv_obj_set_flex_flow(top, LV_FLEX_FLOW_ROW);
-  lv_obj_set_flex_align(top, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-  lv_obj_set_style_pad_column(top, theme_px(M_COLGAP), 0);
+  /* ---------------- LEFT CARD: navigation ---------------- */
+  g_nav_card = lv_obj_create(g_page);
+  lv_obj_remove_style_all(g_nav_card);
+  lv_obj_set_flex_grow(g_nav_card, 1);
+  lv_obj_set_height(g_nav_card, lv_pct(100));
+  lv_obj_set_style_radius(g_nav_card, theme_px(12), 0);
+  lv_obj_set_style_bg_color(g_nav_card, theme.paper, 0);
+  lv_obj_set_style_bg_opa(g_nav_card, LV_OPA_COVER, 0);
+  lv_obj_set_style_pad_all(g_nav_card, theme_px(20), 0);
+  lv_obj_set_flex_flow(g_nav_card, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_flex_align(g_nav_card, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
-  int side = 380; /* square artwork within the top row on a 720-tall panel */
-  lv_obj_t *artwrap = lv_obj_create(top);
+  /* idle placeholder (no active navigation) */
+  g_nav_idle = lv_obj_create(g_nav_card);
+  lv_obj_remove_style_all(g_nav_idle);
+  lv_obj_set_size(g_nav_idle, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+  lv_obj_set_flex_flow(g_nav_idle, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_flex_align(g_nav_idle, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+  lv_obj_set_style_pad_row(g_nav_idle, theme_px(12), 0);
+  {
+    char rel[64];
+    snprintf(rel, sizeof rel, "A:%s", app_resource("icons/nav-generic-96.png"));
+    lv_obj_t *ii = lv_image_create(g_nav_idle);
+    lv_image_set_src(ii, rel);
+    lv_obj_set_style_image_recolor(ii, theme.text2, 0);
+    lv_obj_set_style_image_recolor_opa(ii, LV_OPA_50, 0);
+  }
+  lv_obj_t *il = lv_label_create(g_nav_idle);
+  lv_label_set_text(il, "No active navigation");
+  lv_obj_set_style_text_font(il, theme_font(theme_px(22)), 0);
+  lv_obj_set_style_text_color(il, theme.text2, 0);
+
+  /* active navigation content (maneuver / distance / road / eta), centred */
+  g_nav_box = lv_obj_create(g_nav_card);
+  lv_obj_remove_style_all(g_nav_box);
+  lv_obj_set_size(g_nav_box, lv_pct(100), LV_SIZE_CONTENT);
+  lv_obj_set_flex_flow(g_nav_box, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_flex_align(g_nav_box, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+  lv_obj_set_style_pad_row(g_nav_box, theme_px(12), 0);
+  lv_obj_add_flag(g_nav_box, LV_OBJ_FLAG_HIDDEN);
+  {
+    char rel[64];
+    snprintf(rel, sizeof rel, "A:%s", app_resource("icons/nav-generic-96.png"));
+    g_nav_icon = lv_image_create(g_nav_box);
+    lv_image_set_src(g_nav_icon, rel);
+    lv_obj_set_style_image_recolor(g_nav_icon, theme.primary, 0);
+    lv_obj_set_style_image_recolor_opa(g_nav_icon, LV_OPA_COVER, 0);
+  }
+  g_nav_dist = lv_label_create(g_nav_box);
+  lv_obj_set_style_text_font(g_nav_dist, theme_font_bold(theme_px(64)), 0);
+  lv_obj_set_style_text_color(g_nav_dist, theme.primary, 0);
+  g_nav_maneuver = lv_label_create(g_nav_box);
+  lv_obj_set_style_text_font(g_nav_maneuver, theme_font_medium(theme_px(30)), 0);
+  lv_obj_set_style_text_color(g_nav_maneuver, theme.text, 0);
+  lv_label_set_long_mode(g_nav_maneuver, LV_LABEL_LONG_DOT);
+  lv_obj_set_width(g_nav_maneuver, lv_pct(100));
+  lv_obj_set_style_text_align(g_nav_maneuver, LV_TEXT_ALIGN_CENTER, 0);
+  g_nav_road = lv_label_create(g_nav_box);
+  lv_obj_set_style_text_font(g_nav_road, theme_font(theme_px(22)), 0);
+  lv_obj_set_style_text_color(g_nav_road, theme.text2, 0);
+  lv_label_set_long_mode(g_nav_road, LV_LABEL_LONG_DOT);
+  lv_obj_set_width(g_nav_road, lv_pct(100));
+  lv_obj_set_style_text_align(g_nav_road, LV_TEXT_ALIGN_CENTER, 0);
+  g_nav_eta = lv_label_create(g_nav_box);
+  lv_obj_set_style_text_font(g_nav_eta, theme_font(theme_px(20)), 0);
+  lv_obj_set_style_text_color(g_nav_eta, theme.text2, 0);
+  lv_obj_set_style_text_opa(g_nav_eta, LV_OPA_70, 0);
+  lv_obj_set_style_margin_top(g_nav_eta, theme_px(4), 0);
+
+  /* ---------------- RIGHT CARD: music player ---------------- */
+  lv_obj_t *music = lv_obj_create(g_page);
+  lv_obj_remove_style_all(music);
+  lv_obj_set_flex_grow(music, 1);
+  lv_obj_set_height(music, lv_pct(100));
+  lv_obj_set_style_radius(music, theme_px(12), 0);
+  lv_obj_set_style_bg_color(music, theme.paper, 0);
+  lv_obj_set_style_bg_opa(music, LV_OPA_COVER, 0);
+  lv_obj_set_style_pad_all(music, theme_px(18), 0);
+  lv_obj_set_flex_flow(music, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_flex_align(music, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+  lv_obj_set_style_pad_row(music, theme_px(12), 0);
+
+  int side = 300; /* square artwork inside the music card */
+  lv_obj_t *artwrap = lv_obj_create(music);
   lv_obj_remove_style_all(artwrap);
   lv_obj_set_size(artwrap, theme_px(side), theme_px(side));
-  lv_obj_set_style_radius(artwrap, theme_px(12), 0);
+  lv_obj_set_style_radius(artwrap, theme_px(10), 0);
   lv_obj_set_style_clip_corner(artwrap, true, 0);
-  lv_obj_set_style_bg_color(artwrap, theme.paper, 0);
+  lv_obj_set_style_bg_color(artwrap, theme.bg, 0);
   lv_obj_set_style_bg_opa(artwrap, LV_OPA_COVER, 0);
   g_art = lv_image_create(artwrap);
   lv_image_set_inner_align(g_art, LV_IMAGE_ALIGN_CONTAIN);
@@ -289,7 +364,7 @@ lv_obj_t *media_create(lv_obj_t *parent) {
   lv_obj_set_style_image_recolor_opa(g_art_ph, LV_OPA_50, 0);
   lv_obj_center(g_art_ph);
 
-  /* FFT spectrum overlay in the same square; 24 bars bottom-anchored */
+  /* FFT spectrum overlay in the artwork square; 24 bars bottom-anchored */
   g_fft_box = lv_obj_create(artwrap);
   lv_obj_remove_style_all(g_fft_box);
   lv_obj_set_size(g_fft_box, lv_pct(100), lv_pct(100));
@@ -307,101 +382,52 @@ lv_obj_t *media_create(lv_obj_t *parent) {
     lv_obj_set_style_bg_opa(b, LV_OPA_COVER, 0);
     g_bar_obj[i] = b;
   }
-  /* tap the artwork to switch artwork <-> spectrum */
   lv_obj_add_flag(artwrap, LV_OBJ_FLAG_CLICKABLE);
   lv_obj_add_event_cb(artwrap, toggle_fft, LV_EVENT_CLICKED, NULL);
   if (!g_fft) g_fft = fft_create();
 
-  lv_obj_t *info = lv_obj_create(top);
+  /* title / artist / album (centred) */
+  lv_obj_t *info = lv_obj_create(music);
   lv_obj_remove_style_all(info);
-  lv_obj_set_flex_grow(info, 1);
-  lv_obj_set_height(info, lv_pct(100));
+  lv_obj_set_width(info, lv_pct(100));
+  lv_obj_set_height(info, LV_SIZE_CONTENT);
   lv_obj_set_flex_flow(info, LV_FLEX_FLOW_COLUMN);
-  lv_obj_set_flex_align(info, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
-  lv_obj_set_style_pad_row(info, theme_px(8), 0);
+  lv_obj_set_flex_align(info, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+  lv_obj_set_style_pad_row(info, theme_px(4), 0);
   g_title = lv_label_create(info);
   lv_obj_set_style_text_font(g_title, theme_font_bold(theme_px(M_TITLE)), 0);
   lv_obj_set_style_text_color(g_title, theme.text, 0);
   lv_label_set_long_mode(g_title, LV_LABEL_LONG_DOT);
   lv_obj_set_width(g_title, lv_pct(100));
+  lv_obj_set_style_text_align(g_title, LV_TEXT_ALIGN_CENTER, 0);
   g_artist = lv_label_create(info);
   lv_obj_set_style_text_font(g_artist, theme_font(theme_px(M_ARTIST)), 0);
   lv_obj_set_style_text_color(g_artist, theme.text2, 0);
   lv_label_set_long_mode(g_artist, LV_LABEL_LONG_DOT);
   lv_obj_set_width(g_artist, lv_pct(100));
+  lv_obj_set_style_text_align(g_artist, LV_TEXT_ALIGN_CENTER, 0);
   g_album = lv_label_create(info);
   lv_obj_set_style_text_font(g_album, theme_font(theme_px(M_ALBUM)), 0);
   lv_obj_set_style_text_color(g_album, theme.text2, 0);
   lv_obj_set_style_text_opa(g_album, LV_OPA_70, 0);
   lv_label_set_long_mode(g_album, LV_LABEL_LONG_DOT);
   lv_obj_set_width(g_album, lv_pct(100));
+  lv_obj_set_style_text_align(g_album, LV_TEXT_ALIGN_CENTER, 0);
 
-  /* navigation panel: hidden until a 'navigation' event arrives */
-  g_nav_box = lv_obj_create(info);
-  lv_obj_remove_style_all(g_nav_box);
-  lv_obj_set_width(g_nav_box, lv_pct(100));
-  lv_obj_set_height(g_nav_box, LV_SIZE_CONTENT);
-  lv_obj_set_flex_flow(g_nav_box, LV_FLEX_FLOW_ROW);
-  lv_obj_set_flex_align(g_nav_box, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-  lv_obj_set_style_pad_column(g_nav_box, theme_px(16), 0);
-  lv_obj_set_style_pad_all(g_nav_box, theme_px(14), 0);
-  lv_obj_set_style_margin_top(g_nav_box, theme_px(16), 0);
-  lv_obj_set_style_radius(g_nav_box, theme_px(12), 0);
-  lv_obj_set_style_bg_color(g_nav_box, theme.paper, 0);
-  lv_obj_set_style_bg_opa(g_nav_box, LV_OPA_COVER, 0);
-  lv_obj_add_flag(g_nav_box, LV_OBJ_FLAG_HIDDEN);
-  {
-    char rel[64];
-    snprintf(rel, sizeof rel, "A:%s", app_resource("icons/nav-generic-56.png"));
-    g_nav_icon = lv_image_create(g_nav_box);
-    lv_image_set_src(g_nav_icon, rel);
-    lv_obj_set_style_image_recolor(g_nav_icon, theme.primary, 0);
-    lv_obj_set_style_image_recolor_opa(g_nav_icon, LV_OPA_COVER, 0);
-  }
-  lv_obj_t *navtext = lv_obj_create(g_nav_box);
-  lv_obj_remove_style_all(navtext);
-  lv_obj_set_flex_grow(navtext, 1);
-  lv_obj_set_height(navtext, LV_SIZE_CONTENT);
-  lv_obj_set_flex_flow(navtext, LV_FLEX_FLOW_COLUMN);
-  lv_obj_set_style_pad_row(navtext, theme_px(2), 0);
-  g_nav_dist = lv_label_create(navtext);
-  lv_obj_set_style_text_font(g_nav_dist, theme_font_bold(theme_px(26)), 0);
-  lv_obj_set_style_text_color(g_nav_dist, theme.primary, 0);
-  g_nav_maneuver = lv_label_create(navtext);
-  lv_obj_set_style_text_font(g_nav_maneuver, theme_font(theme_px(18)), 0);
-  lv_obj_set_style_text_color(g_nav_maneuver, theme.text, 0);
-  lv_label_set_long_mode(g_nav_maneuver, LV_LABEL_LONG_DOT);
-  lv_obj_set_width(g_nav_maneuver, lv_pct(100));
-  g_nav_road = lv_label_create(navtext);
-  lv_obj_set_style_text_font(g_nav_road, theme_font(theme_px(15)), 0);
-  lv_obj_set_style_text_color(g_nav_road, theme.text2, 0);
-  lv_label_set_long_mode(g_nav_road, LV_LABEL_LONG_DOT);
-  lv_obj_set_width(g_nav_road, lv_pct(100));
-  g_nav_eta = lv_label_create(navtext);
-  lv_obj_set_style_text_font(g_nav_eta, theme_font(theme_px(14)), 0);
-  lv_obj_set_style_text_color(g_nav_eta, theme.text2, 0);
-  lv_obj_set_style_text_opa(g_nav_eta, LV_OPA_70, 0);
-
-  /* dock: controls + progress */
-  lv_obj_t *dock = lv_obj_create(g_page);
-  lv_obj_remove_style_all(dock);
-  lv_obj_set_width(dock, lv_pct(100));
-  lv_obj_set_height(dock, LV_SIZE_CONTENT);
-  lv_obj_set_flex_flow(dock, LV_FLEX_FLOW_COLUMN);
-  lv_obj_set_flex_align(dock, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-  lv_obj_set_style_pad_row(dock, theme_px(10), 0);
-
-  lv_obj_t *ctrls = lv_obj_create(dock);
+  /* controls */
+  lv_obj_t *ctrls = lv_obj_create(music);
   lv_obj_remove_style_all(ctrls);
   lv_obj_set_size(ctrls, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
   lv_obj_set_flex_flow(ctrls, LV_FLEX_FLOW_ROW);
   lv_obj_set_flex_align(ctrls, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
   lv_obj_set_style_pad_column(ctrls, theme_px(M_CTRLGAP), 0);
+  lv_obj_set_style_margin_top(ctrls, theme_px(4), 0);
   ctrl_button(ctrls, "icons/skip-prev-40.png", 40, on_prev);
   g_play_icon = ctrl_button(ctrls, "icons/play-arrow-40.png", 40, on_playpause);
   ctrl_button(ctrls, "icons/skip-next-40.png", 40, on_next);
 
-  lv_obj_t *prow = lv_obj_create(dock);
+  /* progress */
+  lv_obj_t *prow = lv_obj_create(music);
   lv_obj_remove_style_all(prow);
   lv_obj_set_width(prow, lv_pct(100));
   lv_obj_set_height(prow, LV_SIZE_CONTENT);
@@ -434,18 +460,18 @@ lv_obj_t *media_create(lv_obj_t *parent) {
   set_play_icon();
   refresh_meta();
   show_artwork();
+  nav_hide();
   if (!g_tick) g_tick = lv_timer_create(tick_cb, 500, NULL);
   if (!g_fft_timer) g_fft_timer = lv_timer_create(fft_render, 33, NULL);
   return g_page;
 }
-
 void media_destroy(void) {
   if (g_fft_on) { set_visualizer(false); g_fft_on = false; }
   g_page = g_art = g_art_ph = g_title = g_artist = g_album = NULL;
   g_bar = g_bar_fill = g_elapsed = g_total = g_play_icon = NULL;
   g_fft_box = NULL;
   for (int i = 0; i < FFT_POINTS; i++) g_bar_obj[i] = NULL;
-  g_nav_box = g_nav_icon = g_nav_dist = g_nav_maneuver = g_nav_road = g_nav_eta = NULL;
+  g_nav_card = g_nav_box = g_nav_idle = g_nav_icon = g_nav_dist = g_nav_maneuver = g_nav_road = g_nav_eta = NULL;
   g_nav_active = false;
 }
 
@@ -496,6 +522,7 @@ static const char *disp_str(cJSON *d, const char *k) {
 static void nav_hide(void) {
   g_nav_active = false;
   if (g_nav_box) lv_obj_add_flag(g_nav_box, LV_OBJ_FLAG_HIDDEN);
+  if (g_nav_idle) lv_obj_remove_flag(g_nav_idle, LV_OBJ_FLAG_HIDDEN);
 }
 
 static void got_navigation(cJSON *result, cJSON *error, void *user);
@@ -517,7 +544,7 @@ static void nav_show(cJSON *display) {
   if (!man && !dist) { nav_hide(); return; }
   g_nav_active = true;
   char rel[64];
-  snprintf(rel, sizeof rel, "A:%s", app_resource_join("icons/", nav_icon_for(man), "-56.png"));
+  snprintf(rel, sizeof rel, "A:%s", app_resource_join("icons/", nav_icon_for(man), "-96.png"));
   lv_image_set_src(g_nav_icon, rel);
   lv_label_set_text(g_nav_dist, dist ? dist : "");
   lv_label_set_text(g_nav_maneuver, man ? man : "");
@@ -531,6 +558,7 @@ static void nav_show(cJSON *display) {
     lv_obj_add_flag(g_nav_eta, LV_OBJ_FLAG_HIDDEN);
   }
   lv_obj_remove_flag(g_nav_box, LV_OBJ_FLAG_HIDDEN);
+  if (g_nav_idle) lv_obj_add_flag(g_nav_idle, LV_OBJ_FLAG_HIDDEN);
 }
 
 static void got_navigation(cJSON *result, cJSON *error, void *user) {
