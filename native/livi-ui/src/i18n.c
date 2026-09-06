@@ -1,6 +1,7 @@
 #include "i18n.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <limits.h>
 #include <string.h>
 #include "app.h"
 #include "cJSON.h"
@@ -10,7 +11,7 @@ static cJSON *g_en;
 static char g_lang[16] = "en";
 
 static cJSON *load_file(const char *lang) {
-  char rel[64];
+  char rel[PATH_MAX + 2];
   snprintf(rel, sizeof rel, "locales/%s.json", lang);
   FILE *f = fopen(app_resource(rel), "rb");
   if (!f) return NULL;

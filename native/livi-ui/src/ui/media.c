@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <limits.h>
 #include <string.h>
 #include "app.h"
 #include "bridge.h"
@@ -145,7 +146,7 @@ static void refresh_meta(void) {
 
 static void set_play_icon(void) {
   if (!g_play_icon) return;
-  char rel[64];
+  char rel[PATH_MAX + 2];
   snprintf(rel, sizeof rel, "A:%s", app_resource(g_playing ? "icons/pause-40.png" : "icons/play-arrow-40.png"));
   lv_image_set_src(g_play_icon, rel);
 }
@@ -210,7 +211,7 @@ static lv_obj_t *ctrl_button(lv_obj_t *row, const char *icon, int px, lv_event_c
   lv_obj_set_style_radius(b, LV_RADIUS_CIRCLE, 0);
   lv_obj_add_flag(b, LV_OBJ_FLAG_CLICKABLE);
   lv_obj_add_event_cb(b, cb, LV_EVENT_CLICKED, NULL);
-  char rel[64];
+  char rel[PATH_MAX + 2];
   snprintf(rel, sizeof rel, "A:%s", app_resource(icon));
   lv_obj_t *img = lv_image_create(b);
   lv_image_set_src(img, rel);
@@ -280,7 +281,7 @@ lv_obj_t *media_create(lv_obj_t *parent) {
   lv_obj_set_flex_align(g_nav_idle, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
   lv_obj_set_style_pad_row(g_nav_idle, theme_px(12), 0);
   {
-    char rel[64];
+    char rel[PATH_MAX + 2];
     snprintf(rel, sizeof rel, "A:%s", app_resource("icons/nav-generic-96.png"));
     lv_obj_t *ii = lv_image_create(g_nav_idle);
     lv_image_set_src(ii, rel);
@@ -301,7 +302,7 @@ lv_obj_t *media_create(lv_obj_t *parent) {
   lv_obj_set_style_pad_row(g_nav_box, theme_px(12), 0);
   lv_obj_add_flag(g_nav_box, LV_OBJ_FLAG_HIDDEN);
   {
-    char rel[64];
+    char rel[PATH_MAX + 2];
     snprintf(rel, sizeof rel, "A:%s", app_resource("icons/nav-generic-96.png"));
     g_nav_icon = lv_image_create(g_nav_box);
     lv_image_set_src(g_nav_icon, rel);
@@ -356,7 +357,7 @@ lv_obj_t *media_create(lv_obj_t *parent) {
   lv_obj_add_flag(g_art, LV_OBJ_FLAG_HIDDEN);
   g_art_ph = lv_image_create(artwrap);
   {
-    char rel[64];
+    char rel[PATH_MAX + 2];
     snprintf(rel, sizeof rel, "A:%s", app_resource("icons/music-note-84.png"));
     lv_image_set_src(g_art_ph, rel);
   }
@@ -543,7 +544,7 @@ static void nav_show(cJSON *display) {
   const char *tdist = disp_str(display, "distanceToDestinationText");
   if (!man && !dist) { nav_hide(); return; }
   g_nav_active = true;
-  char rel[64];
+  char rel[PATH_MAX + 2];
   snprintf(rel, sizeof rel, "A:%s", app_resource_join("icons/", nav_icon_for(man), "-96.png"));
   lv_image_set_src(g_nav_icon, rel);
   lv_label_set_text(g_nav_dist, dist ? dist : "");

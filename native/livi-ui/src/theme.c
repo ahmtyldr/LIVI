@@ -84,7 +84,7 @@ static const lv_font_t *font_get(int px, int weight) {
     }
   if (slot < 0) return theme_symbol_font(px);
   const char *w = weight >= 700 ? "700" : weight >= 500 ? "500" : "400";
-  char latin[64], ext[64];
+  char latin[96], ext[96];
   snprintf(latin, sizeof latin, "fonts/roboto-latin-%s-normal.woff", w);
   lv_font_t *f = lv_freetype_font_create(app_resource(latin), LV_FREETYPE_FONT_RENDER_MODE_BITMAP,
                                          (uint32_t)px, LV_FREETYPE_FONT_STYLE_NORMAL);

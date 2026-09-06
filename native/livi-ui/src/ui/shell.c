@@ -95,7 +95,7 @@ static void paint_tabs(void) {
 
 /** Icon image ("A:" = POSIX root) or a Montserrat symbol when the PNG is missing. */
 lv_obj_t *shell_icon(lv_obj_t *parent, const char *name, int px) {
-  char rel[64], src[PATH_MAX + 2];
+  char rel[PATH_MAX + 2], src[PATH_MAX + 2];
   snprintf(rel, sizeof rel, "icons/%s-%d.png", name, px);
   snprintf(src, sizeof src, "A:%s", app_resource(rel));
   if (access(src + 2, R_OK) == 0) {
