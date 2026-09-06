@@ -74,6 +74,10 @@ const char *app_resource(const char *rel) {
   snprintf(g_res_path, sizeof g_res_path, "%s/%s", g_res_dir, rel);
   return g_res_path;
 }
+const char *app_resource_join(const char *a, const char *b, const char *c) {
+  snprintf(g_res_path, sizeof g_res_path, "%s/%s%s%s", g_res_dir, a, b, c);
+  return g_res_path;
+}
 void app_request_exit(void) { g_running = false; }
 const char *app_main_version(void) { return g_version; }
 

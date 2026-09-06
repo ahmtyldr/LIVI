@@ -1,6 +1,7 @@
 #include "ui/media.h"
 #include <stdint.h>
 #include <stdlib.h>
+#include <ctype.h>
 #include <string.h>
 #include "app.h"
 #include "bridge.h"
@@ -39,12 +40,32 @@ static fft_t *g_fft;
 static float g_ring[RING_MAX];
 static int g_ring_len;
 static int g_sample_rate = 48000;
+
+/* ---- navigation panel (turn-by-turn from the projection 'navigation' event) ---- */
+static lv_obj_t *g_nav_box, *g_nav_icon, *g_nav_dist, *g_nav_maneuver, *g_nav_road, *g_nav_eta;
+static bool g_nav_active;
 static float g_bars[FFT_POINTS];       /* smoothed 0..1 */
 static float g_target[FFT_POINTS];
 static lv_obj_t *g_fft_box, *g_bar_obj[FFT_POINTS];
 static lv_timer_t *g_fft_timer;
 
 static void show_artwork(void);
+static void nav_request(void);
+
+/* maneuverText is localised (en/tr); match keywords, fall back to a generic arrow. */
+static const char *nav_icon_for(const char *m) {
+  if (!m || !m[0]) return "nav-generic";
+  char l[128]; size_t i = 0;
+  for (; m[i] && i < sizeof l - 1; i++) l[i] = (char)tolower((unsigned char)m[i]);
+  l[i] = 0;
+  if (strstr(l, "u-turn") || strstr(l, "u dön") || strstr(l, "geri dön")) return "nav-uturn";
+  if (strstr(l, "roundabout") || strstr(l, "kavşak") || strstr(l, "ada")) return "nav-roundabout";
+  if (strstr(l, "fork")) return strstr(l, "left") || strstr(l, "sol") ? "nav-fork-left" : "nav-fork-right";
+  if (strstr(l, "straight") || strstr(l, "düz") || strstr(l, "devam")) return "nav-straight";
+  if (strstr(l, "left") || strstr(l, "sol")) return "nav-turn-left";
+  if (strstr(l, "right") || strstr(l, "sağ")) return "nav-turn-right";
+  return "nav-generic";
+}
 static void set_visualizer(bool on) {
   cJSON *p = cJSON_CreateArray();
   cJSON_AddItemToArray(p, cJSON_CreateBool(on));
@@ -315,6 +336,52 @@ lv_obj_t *media_create(lv_obj_t *parent) {
   lv_label_set_long_mode(g_album, LV_LABEL_LONG_DOT);
   lv_obj_set_width(g_album, lv_pct(100));
 
+  /* navigation panel: hidden until a 'navigation' event arrives */
+  g_nav_box = lv_obj_create(info);
+  lv_obj_remove_style_all(g_nav_box);
+  lv_obj_set_width(g_nav_box, lv_pct(100));
+  lv_obj_set_height(g_nav_box, LV_SIZE_CONTENT);
+  lv_obj_set_flex_flow(g_nav_box, LV_FLEX_FLOW_ROW);
+  lv_obj_set_flex_align(g_nav_box, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+  lv_obj_set_style_pad_column(g_nav_box, theme_px(16), 0);
+  lv_obj_set_style_pad_all(g_nav_box, theme_px(14), 0);
+  lv_obj_set_style_margin_top(g_nav_box, theme_px(16), 0);
+  lv_obj_set_style_radius(g_nav_box, theme_px(12), 0);
+  lv_obj_set_style_bg_color(g_nav_box, theme.paper, 0);
+  lv_obj_set_style_bg_opa(g_nav_box, LV_OPA_COVER, 0);
+  lv_obj_add_flag(g_nav_box, LV_OBJ_FLAG_HIDDEN);
+  {
+    char rel[64];
+    snprintf(rel, sizeof rel, "A:%s", app_resource("icons/nav-generic-56.png"));
+    g_nav_icon = lv_image_create(g_nav_box);
+    lv_image_set_src(g_nav_icon, rel);
+    lv_obj_set_style_image_recolor(g_nav_icon, theme.primary, 0);
+    lv_obj_set_style_image_recolor_opa(g_nav_icon, LV_OPA_COVER, 0);
+  }
+  lv_obj_t *navtext = lv_obj_create(g_nav_box);
+  lv_obj_remove_style_all(navtext);
+  lv_obj_set_flex_grow(navtext, 1);
+  lv_obj_set_height(navtext, LV_SIZE_CONTENT);
+  lv_obj_set_flex_flow(navtext, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_style_pad_row(navtext, theme_px(2), 0);
+  g_nav_dist = lv_label_create(navtext);
+  lv_obj_set_style_text_font(g_nav_dist, theme_font_bold(theme_px(26)), 0);
+  lv_obj_set_style_text_color(g_nav_dist, theme.primary, 0);
+  g_nav_maneuver = lv_label_create(navtext);
+  lv_obj_set_style_text_font(g_nav_maneuver, theme_font(theme_px(18)), 0);
+  lv_obj_set_style_text_color(g_nav_maneuver, theme.text, 0);
+  lv_label_set_long_mode(g_nav_maneuver, LV_LABEL_LONG_DOT);
+  lv_obj_set_width(g_nav_maneuver, lv_pct(100));
+  g_nav_road = lv_label_create(navtext);
+  lv_obj_set_style_text_font(g_nav_road, theme_font(theme_px(15)), 0);
+  lv_obj_set_style_text_color(g_nav_road, theme.text2, 0);
+  lv_label_set_long_mode(g_nav_road, LV_LABEL_LONG_DOT);
+  lv_obj_set_width(g_nav_road, lv_pct(100));
+  g_nav_eta = lv_label_create(navtext);
+  lv_obj_set_style_text_font(g_nav_eta, theme_font(theme_px(14)), 0);
+  lv_obj_set_style_text_color(g_nav_eta, theme.text2, 0);
+  lv_obj_set_style_text_opa(g_nav_eta, LV_OPA_70, 0);
+
   /* dock: controls + progress */
   lv_obj_t *dock = lv_obj_create(g_page);
   lv_obj_remove_style_all(dock);
@@ -378,10 +445,13 @@ void media_destroy(void) {
   g_bar = g_bar_fill = g_elapsed = g_total = g_play_icon = NULL;
   g_fft_box = NULL;
   for (int i = 0; i < FFT_POINTS; i++) g_bar_obj[i] = NULL;
+  g_nav_box = g_nav_icon = g_nav_dist = g_nav_maneuver = g_nav_road = g_nav_eta = NULL;
+  g_nav_active = false;
 }
 
 void media_set_active(bool active) {
   g_active = active;
+  if (active && g_nav_box) nav_request();
   if (!active && g_fft_on) {
     g_fft_on = false;
     set_visualizer(false);
@@ -418,6 +488,60 @@ static void feed_pcm(cJSON *ev) {
   free(bytes);
 }
 
+static const char *disp_str(cJSON *d, const char *k) {
+  cJSON *v = d ? cJSON_GetObjectItemCaseSensitive(d, k) : NULL;
+  return cJSON_IsString(v) && v->valuestring[0] ? v->valuestring : NULL;
+}
+
+static void nav_hide(void) {
+  g_nav_active = false;
+  if (g_nav_box) lv_obj_add_flag(g_nav_box, LV_OBJ_FLAG_HIDDEN);
+}
+
+static void got_navigation(cJSON *result, cJSON *error, void *user);
+
+static void nav_request(void) {
+  /* the 'navigation' event only signals a change; the translated display is in
+   * the persisted snapshot (readNavigation), exactly as NavFull.tsx reads it. */
+  bridge_call("projection.ipc.readNavigation", NULL, got_navigation, NULL);
+}
+
+static void nav_show(cJSON *display) {
+  if (!g_nav_box) return;
+  const char *man = disp_str(display, "maneuverText");
+  const char *dist = disp_str(display, "remainDistanceText");
+  const char *road = disp_str(display, "afterRoadName");
+  if (!road) road = disp_str(display, "roadName");
+  const char *ttime = disp_str(display, "timeToDestinationText");
+  const char *tdist = disp_str(display, "distanceToDestinationText");
+  if (!man && !dist) { nav_hide(); return; }
+  g_nav_active = true;
+  char rel[64];
+  snprintf(rel, sizeof rel, "A:%s", app_resource_join("icons/", nav_icon_for(man), "-56.png"));
+  lv_image_set_src(g_nav_icon, rel);
+  lv_label_set_text(g_nav_dist, dist ? dist : "");
+  lv_label_set_text(g_nav_maneuver, man ? man : "");
+  lv_label_set_text(g_nav_road, road ? road : "");
+  if (ttime || tdist) {
+    char eta[128];
+    snprintf(eta, sizeof eta, "%s%s%s", ttime ? ttime : "", ttime && tdist ? "  ·  " : "", tdist ? tdist : "");
+    lv_label_set_text(g_nav_eta, eta);
+    lv_obj_remove_flag(g_nav_eta, LV_OBJ_FLAG_HIDDEN);
+  } else {
+    lv_obj_add_flag(g_nav_eta, LV_OBJ_FLAG_HIDDEN);
+  }
+  lv_obj_remove_flag(g_nav_box, LV_OBJ_FLAG_HIDDEN);
+}
+
+static void got_navigation(cJSON *result, cJSON *error, void *user) {
+  (void)error; (void)user;
+  cJSON *pl = cJSON_IsObject(result) ? cJSON_GetObjectItemCaseSensitive(result, "payload") : NULL;
+  cJSON *err = cJSON_IsObject(pl) ? cJSON_GetObjectItemCaseSensitive(pl, "error") : NULL;
+  cJSON *disp = cJSON_IsObject(pl) ? cJSON_GetObjectItemCaseSensitive(pl, "display") : NULL;
+  if (cJSON_IsTrue(err) || !cJSON_IsObject(disp)) { nav_hide(); return; }
+  nav_show(disp);
+}
+
 void media_on_event(const char *channel, cJSON *args) {
   if (strcmp(channel, "projection-audio-chunk") == 0) {
     if (g_fft_on) feed_pcm(cJSON_GetArrayItem(args, 0));
@@ -427,6 +551,11 @@ void media_on_event(const char *channel, cJSON *args) {
   cJSON *ev = cJSON_GetArrayItem(args, 0);
   cJSON *type = cJSON_IsObject(ev) ? cJSON_GetObjectItemCaseSensitive(ev, "type") : NULL;
   if (!cJSON_IsString(type)) return;
+  if (strcmp(type->valuestring, "navigation") == 0) {
+    nav_request();
+    return;
+  }
+  if (strcmp(type->valuestring, "navigation-reset") == 0) { nav_hide(); return; }
   if (strcmp(type->valuestring, "media-reset") == 0) {
     g_song[0] = g_artist_s[0] = g_album_s[0] = g_app[0] = 0;
     g_duration_ms = g_play_ms = 0;
