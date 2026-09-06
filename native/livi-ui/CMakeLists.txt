@@ -25,7 +25,8 @@ set(FETCHCONTENT_QUIET OFF)
 FetchContent_Declare(lvgl
   GIT_REPOSITORY https://github.com/lvgl/lvgl.git
   GIT_TAG v9.5.0
-  GIT_SHALLOW TRUE)
+  GIT_SHALLOW TRUE
+  PATCH_COMMAND ${CMAKE_COMMAND} -DLVGL_SRC=<SOURCE_DIR> -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/patch_lvgl.cmake)
 FetchContent_Declare(cjson
   GIT_REPOSITORY https://github.com/DaveGamble/cJSON.git
   GIT_TAG v1.7.18

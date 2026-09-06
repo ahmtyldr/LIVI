@@ -57,8 +57,13 @@ static void set_rail_hidden(bool hidden) {
   else lv_obj_remove_flag(g_rail, LV_OBJ_FLAG_HIDDEN);
 }
 
+/* Projection.tsx toggles the 'show-video' class: while the video plane is
+ * shown on the home page the window turns transparent so the plane (which
+ * the compositor keeps under the UI surface) becomes visible. */
 static void apply_rail_visibility(void) {
-  set_rail_hidden(g_streaming && g_current == PAGE_HOME);
+  bool video = g_streaming && g_current == PAGE_HOME;
+  set_rail_hidden(video);
+  lv_obj_set_style_bg_opa(lv_screen_active(), video ? LV_OPA_TRANSP : LV_OPA_COVER, 0);
 }
 
 void shell_set_streaming(bool streaming) {

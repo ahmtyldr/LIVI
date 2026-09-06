@@ -43,7 +43,7 @@ Durum: 5 Eylül 2026. Pi 3 B+ üzerinde LIVI 9.0.0 nightly çalışıyor.
 - [ ] Headless ana süreç RSS 151 MB (hedef <100): gerçek Node ikilisi paketle ya da Electron-as-Node tabanını ölç/azalt.
 - [ ] Kalan Electron-only parçalar (Electron kipinde kalır, headless'ta shim): `FirmwareUpdateService` `net.request`, `appProtocol`, `ipc/utils` `screen`, `cluster:repaint-nudge`.
 - [x] Oturum 5: `native/livi-ui` iskeleti (LVGL 9.5, Wayland/shm, FreeType Roboto, JSON-RPC istemcisi, nav rail + durum sayfası, dokunma iletimi); headless ana süreç ikiliyi `uiProcess.ts` ile başlatıyor; paket `resources/ui/`.
-- [ ] livi-ui: nav ikonları şimdilik LVGL sembolleri (MUI outlined SVG'ler oturum 7'de görsel olarak eklenecek); ARGB (saydam) yüzey ertelendi — video düzlemi arayüzün üstünde çizildiği için gerekmedi.
+- [ ] livi-ui: nav ikonları şimdilik LVGL sembolleri (MUI outlined SVG'ler oturum 7'de görsel olarak eklenecek); ARGB (saydam) yüzey yapıldı: video düzlemi arayüzün ALTINDA çizilir, `cmake/patch_lvgl.cmake` LVGL 9.5 Wayland sürücüsünü yamalar (XRGB varsayılanı + `WL_SHM_FORMAT_ARGB8888 == 0` hatası); LVGL'ye upstream düzeltme önerilebilir.
 - [ ] Compositor `main UI toplevel gone -> shutting down` kuralı: livi-ui çökünce/yeniden başlayınca compositor da kapanıyor (Electron kiosk semantiği). LVGL kipinde UI toplevel'ın gidip gelmesine tolerans ver (uiProcess yeniden başlatması işe yarasın).
 - [ ] Oturum 6: parite aracı (`grim` cage'in `wayland-0` soketinde çalışıyor; iç compositor'da wlr-screencopy yok).
 - [ ] Oturum 7–16: ekranlar (sıra ve kabul ölçütleri `LVGL_PLAN.md` §10).
