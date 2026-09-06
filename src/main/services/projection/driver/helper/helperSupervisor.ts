@@ -73,6 +73,11 @@ function resolveHelperBin(): string {
     return resBin
   }
 
+  // Last resort: a previously staged copy (what root can actually exec), then
+  // the source tree's driver dir for a dev checkout. The old __dirname path
+  // pointed inside app.asar in a package — never a real file, only log noise.
+  const staged = join(userDataDir(), 'driver', HELPER_BIN)
+  if (existsSync(staged)) return staged
   return join(__dirname, 'driver', HELPER_BIN)
 }
 function envFromConfig(cfg: Config): NodeJS.ProcessEnv {
