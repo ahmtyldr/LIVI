@@ -80,6 +80,13 @@ void pages_on_event(const char *channel, cJSON *args) {
   cJSON *type = cJSON_IsObject(ev) ? cJSON_GetObjectItemCaseSensitive(ev, "type") : NULL;
   if (!cJSON_IsString(type)) return;
   const char *t = type->valuestring;
+  /* AA "My Car" button (CommandMapping.requestHostUI=3): Projection.tsx leaves
+   * the projection surface for /media so the nav rail returns. */
+  if (strcmp(t, "command") == 0) {
+    cJSON *msg = cJSON_GetObjectItemCaseSensitive(ev, "message");
+    cJSON *val = cJSON_IsObject(msg) ? cJSON_GetObjectItemCaseSensitive(msg, "value") : NULL;
+    if (cJSON_IsNumber(val) && (int)val->valuedouble == 3) shell_show_page(PAGE_MEDIA);
+  }
   if (strcmp(t, "session") == 0) {
     cJSON *pos = cJSON_GetObjectItemCaseSensitive(ev, "position");
     cJSON *tot = cJSON_GetObjectItemCaseSensitive(ev, "total");
