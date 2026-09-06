@@ -1,5 +1,6 @@
 #include "ui/projection.h"
 #include <math.h>
+#include <stdlib.h>
 #include <string.h>
 #include "app.h"
 #include "bridge.h"
@@ -98,6 +99,9 @@ static bool norm_point(lv_point_t p, double *nx, double *ny) {
   return true;
 }
 
+/* projection.ipc.sendTouch takes TouchAction codes (Down 14, Move 15, Up 16),
+ * NOT MultiTouchAction; mapTouchAction() in AaSession silently turns anything
+ * else into a Move, so a wrong code registers no tap on the phone. */
 static void send_touch(double x, double y, int action) {
   cJSON *params = cJSON_CreateArray();
   cJSON_AddItemToArray(params, cJSON_CreateNumber(x));
@@ -106,11 +110,16 @@ static void send_touch(double x, double y, int action) {
   bridge_call("projection.ipc.sendTouch", params, NULL, NULL);
 }
 
+static bool g_debug;
+
 static void touch_cb(lv_event_t *e) {
   lv_event_code_t code = lv_event_get_code(e);
   if (code != LV_EVENT_PRESSED && code != LV_EVENT_PRESSING && code != LV_EVENT_RELEASED &&
       code != LV_EVENT_PRESS_LOST)
     return;
+  if (g_debug && code != LV_EVENT_PRESSING)
+    LOG("touch: code=%d streaming=%d stream=%dx%d user=%dx%d", code, g_streaming, g_stream_w,
+        g_stream_h, g_user_w, g_user_h);
   if (!g_streaming) return; /* Projection.tsx: pointerEvents only while streaming */
   lv_indev_t *indev = lv_event_get_indev(e);
   if (!indev) return;
@@ -118,25 +127,27 @@ static void touch_cb(lv_event_t *e) {
   lv_indev_get_point(indev, &p);
   double nx, ny;
   bool inside = norm_point(p, &nx, &ny);
+  if (g_debug && code != LV_EVENT_PRESSING)
+    LOG("touch: p=%d,%d inside=%d n=%.3f,%.3f", p.x, p.y, inside, nx, ny);
   switch (code) {
     case LV_EVENT_PRESSED:
       if (!inside) return;
       g_down = true;
       g_last_x = p.x;
       g_last_y = p.y;
-      send_touch(nx, ny, 1); /* Down */
+      send_touch(nx, ny, 14); /* TouchAction.Down */
       break;
     case LV_EVENT_PRESSING:
       if (!g_down || !inside || (p.x == g_last_x && p.y == g_last_y)) return;
       g_last_x = p.x;
       g_last_y = p.y;
-      send_touch(nx, ny, 2); /* Move */
+      send_touch(nx, ny, 15); /* TouchAction.Move */
       break;
     default:
       if (!g_down) return;
       g_down = false;
       if (!inside) { nx = 0.5; ny = 0.5; } /* lift outside: still release */
-      send_touch(nx, ny, 0); /* Up */
+      send_touch(nx, ny, 16); /* TouchAction.Up */
       break;
   }
 }
@@ -144,6 +155,7 @@ static void touch_cb(lv_event_t *e) {
 /* ---- API ---- */
 
 lv_obj_t *projection_create(lv_obj_t *parent) {
+  g_debug = getenv("LIVI_UI_DEBUG") != NULL;
   g_page = lv_obj_create(parent);
   lv_obj_remove_style_all(g_page);
   lv_obj_set_size(g_page, lv_pct(100), lv_pct(100));

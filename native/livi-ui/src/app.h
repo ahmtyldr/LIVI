@@ -1,6 +1,7 @@
 // Process-wide bits shared by the livi-ui sources.
 #pragma once
 #include <stdbool.h>
+#include <stdio.h>
 #include "lvgl.h"
 
 /** Directory holding fonts/ and locales/ (LIVI_UI_RESOURCES or the binary's dir). */
