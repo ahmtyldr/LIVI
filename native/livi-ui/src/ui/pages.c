@@ -8,7 +8,7 @@
 
 static lv_obj_t *g_pages[PAGE_COUNT];
 static lv_obj_t *g_status;       /* settings page: live status label */
-static lv_obj_t *g_projection;   /* home page: projection state label */
+static lv_obj_t *g_placeholder;  /* home page: phone outline (StatusOverlay) */
 static cJSON *g_config;          /* last settings object (owned) */
 static char g_proj_state[48] = "idle";
 static lv_timer_t *g_status_timer;
@@ -120,7 +120,6 @@ static void refresh_status(lv_timer_t *t) {
       cJSON_IsNumber(zoom) ? (int)zoom->valuedouble : 100,
       cJSON_IsNumber(wifi) ? (int)wifi->valuedouble : 0, cfg_str("startPage", "/"), g_proj_state,
       bridge_events_received(), bridge_last_event());
-  if (g_projection) lv_label_set_text_fmt(g_projection, "%s", g_proj_state);
 }
 
 /* ---- API ---- */
@@ -130,9 +129,19 @@ void pages_create(lv_obj_t *parent) {
   lv_obj_t *home = page_base(parent);
   lv_obj_add_flag(home, LV_OBJ_FLAG_CLICKABLE);
   lv_obj_add_event_cb(home, home_touch, LV_EVENT_ALL, NULL);
-  g_projection = lv_label_create(home);
-  lv_obj_set_style_text_color(g_projection, theme.text2, 0);
-  lv_obj_center(g_projection);
+  /* StatusOverlay: CropPortraitOutlined at 84 px, text.primary, 55 % opacity
+   * until a phone session is active. The 24-unit icon is a 14x20 rounded
+   * rectangle with a 2-unit stroke. */
+  int icon = theme_px(84);
+  g_placeholder = lv_obj_create(home);
+  lv_obj_remove_style_all(g_placeholder);
+  lv_obj_set_size(g_placeholder, icon * 14 / 24, icon * 20 / 24);
+  lv_obj_set_style_border_width(g_placeholder, icon * 2 / 24, 0);
+  lv_obj_set_style_border_color(g_placeholder, theme.text, 0);
+  lv_obj_set_style_border_opa(g_placeholder, LV_OPA_COVER, 0);
+  lv_obj_set_style_radius(g_placeholder, icon * 2 / 24, 0);
+  lv_obj_set_style_opa(g_placeholder, LV_OPA_50 + 13, 0); /* 0.55 */
+  lv_obj_center(g_placeholder);
   g_pages[PAGE_HOME] = home;
 
   g_pages[PAGE_TELEMETRY] = placeholder(parent, "settings.telemetry");
@@ -159,7 +168,7 @@ void pages_create(lv_obj_t *parent) {
 void pages_destroy(void) {
   /* Objects are deleted with the shell root; just drop our pointers. */
   memset(g_pages, 0, sizeof g_pages);
-  g_status = g_projection = NULL;
+  g_status = g_placeholder = NULL;
 }
 
 lv_obj_t *pages_get(page_id_t id) { return id < PAGE_COUNT ? g_pages[id] : NULL; }
@@ -170,14 +179,27 @@ void pages_on_settings(cJSON *config) {
   refresh_status(NULL);
 }
 
+void pages_set_streaming(bool streaming) {
+  if (!g_placeholder) return;
+  if (streaming) lv_obj_add_flag(g_placeholder, LV_OBJ_FLAG_HIDDEN);
+  else lv_obj_remove_flag(g_placeholder, LV_OBJ_FLAG_HIDDEN);
+}
+
 void pages_on_event(const char *channel, cJSON *args) {
-  if (strcmp(channel, "projection-event") == 0) {
-    cJSON *ev = cJSON_GetArrayItem(args, 0);
-    cJSON *type = cJSON_IsObject(ev) ? cJSON_GetObjectItemCaseSensitive(ev, "type") : NULL;
-    if (cJSON_IsString(type)) snprintf(g_proj_state, sizeof g_proj_state, "%s", type->valuestring);
-    else if (cJSON_IsString(ev)) snprintf(g_proj_state, sizeof g_proj_state, "%s", ev->valuestring);
-    refresh_status(NULL);
+  if (strcmp(channel, "projection-event") != 0) return;
+  cJSON *ev = cJSON_GetArrayItem(args, 0);
+  cJSON *type = cJSON_IsObject(ev) ? cJSON_GetObjectItemCaseSensitive(ev, "type") : NULL;
+  if (!cJSON_IsString(type)) return;
+  const char *t = type->valuestring;
+  snprintf(g_proj_state, sizeof g_proj_state, "%s", t);
+  /* Projection.tsx: 'projection' {shown} drives isStreaming, 'failure' clears it. */
+  if (strcmp(t, "projection") == 0) {
+    cJSON *shown = cJSON_GetObjectItemCaseSensitive(ev, "shown");
+    shell_set_streaming(cJSON_IsTrue(shown));
+  } else if (strcmp(t, "failure") == 0 || strcmp(t, "unplugged") == 0) {
+    shell_set_streaming(false);
   }
+  refresh_status(NULL);
 }
 
 void pages_on_bridge(bool connected) {

@@ -12,5 +12,7 @@ lv_obj_t *pages_get(page_id_t id);
 void pages_on_settings(cJSON *config);
 /** A mirrored renderer event. */
 void pages_on_event(const char *channel, cJSON *args);
+/** Video plane shown/hidden: the home placeholder gives way to it. */
+void pages_set_streaming(bool streaming);
 /** Bridge connection state changed. */
 void pages_on_bridge(bool connected);

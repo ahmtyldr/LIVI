@@ -12,12 +12,12 @@
  * UI.XS_ICON_MAX_HEIGHT), padding 10px 0 (5px), clock above the tabs. */
 #define RAIL_W 72
 #define XS_HEIGHT 480
-#define HIDE_AFTER_MS 5000
 
 static lv_obj_t *g_root, *g_rail, *g_clock, *g_content;
 static lv_obj_t *g_tabs[PAGE_COUNT];
 static page_id_t g_current = PAGE_HOME;
-static lv_timer_t *g_clock_timer, *g_hide_timer;
+static lv_timer_t *g_clock_timer;
+static bool g_streaming;
 
 static const char *const tab_symbols[PAGE_COUNT] = {
     LV_SYMBOL_HOME, LV_SYMBOL_GPS, LV_SYMBOL_PLAY, LV_SYMBOL_IMAGE, LV_SYMBOL_SETTINGS};
@@ -57,24 +57,17 @@ static void set_rail_hidden(bool hidden) {
   else lv_obj_remove_flag(g_rail, LV_OBJ_FLAG_HIDDEN);
 }
 
-static void hide_rail_cb(lv_timer_t *t) {
-  (void)t;
-  if (g_current == PAGE_HOME) set_rail_hidden(true);
+static void apply_rail_visibility(void) {
+  set_rail_hidden(g_streaming && g_current == PAGE_HOME);
 }
 
-static void arm_hide(void) {
-  if (g_hide_timer) lv_timer_delete(g_hide_timer);
-  g_hide_timer = NULL;
-  if (g_current != PAGE_HOME) return;
-  g_hide_timer = lv_timer_create(hide_rail_cb, HIDE_AFTER_MS, NULL);
-  lv_timer_set_repeat_count(g_hide_timer, 1);
+void shell_set_streaming(bool streaming) {
+  g_streaming = streaming;
+  apply_rail_visibility();
+  pages_set_streaming(streaming);
 }
 
-void shell_touch_activity(void) {
-  if (g_current != PAGE_HOME) return;
-  if (g_rail && lv_obj_has_flag(g_rail, LV_OBJ_FLAG_HIDDEN)) set_rail_hidden(false);
-  arm_hide();
-}
+bool shell_streaming(void) { return g_streaming; }
 
 static void set_visible_cb(cJSON *r, cJSON *e, void *u) { (void)r; (void)e; (void)u; }
 
@@ -89,8 +82,7 @@ void shell_show_page(page_id_t id) {
     else lv_obj_add_flag(p, LV_OBJ_FLAG_HIDDEN);
   }
   paint_tabs();
-  set_rail_hidden(false);
-  arm_hide();
+  apply_rail_visibility();
   /* Projection.tsx: tell main when the video surface is (not) on screen. */
   cJSON *params = cJSON_CreateArray();
   cJSON_AddItemToArray(params, cJSON_CreateBool(id == PAGE_HOME));
@@ -103,11 +95,6 @@ static void tab_clicked(lv_event_t *e) {
   shell_show_page(id);
 }
 
-static void screen_pressed(lv_event_t *e) {
-  (void)e;
-  shell_touch_activity();
-}
-
 static void build(void) {
   lv_obj_t *scr = lv_screen_active();
   lv_obj_set_style_bg_color(scr, theme.bg, 0);
@@ -115,7 +102,6 @@ static void build(void) {
   lv_obj_set_style_text_color(scr, theme.text, 0);
   lv_obj_set_style_text_font(scr, theme_font(theme_px(16)), 0);
   lv_obj_remove_flag(scr, LV_OBJ_FLAG_SCROLLABLE);
-  lv_obj_add_event_cb(scr, screen_pressed, LV_EVENT_PRESSED, NULL);
 
   int32_t h = lv_display_get_vertical_resolution(NULL);
   bool xs = h <= XS_HEIGHT;
@@ -172,12 +158,9 @@ static void build(void) {
 void shell_create(void) { build(); }
 
 void shell_rebuild(void) {
-  if (g_hide_timer) lv_timer_delete(g_hide_timer);
-  g_hide_timer = NULL;
   pages_destroy();
   if (g_root) lv_obj_delete(g_root);
   g_root = g_rail = g_clock = g_content = NULL;
   memset(g_tabs, 0, sizeof g_tabs);
-  lv_obj_remove_event_cb(lv_screen_active(), screen_pressed);
   build();
 }
