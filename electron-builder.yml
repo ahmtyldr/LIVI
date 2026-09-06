@@ -25,6 +25,7 @@ files:
 asarUnpack:
   - resources/**
   - out/**
+  - package.json
   - node_modules/usb/**
   - node_modules/node-gyp-build/**
   - node_modules/@node-usb/**
