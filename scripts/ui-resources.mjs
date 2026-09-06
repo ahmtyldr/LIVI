@@ -1,6 +1,7 @@
 // Assembles the runtime resources of native/livi-ui into out/ui:
 //   fonts/   Roboto (WOFF, read by FreeType) from @fontsource/roboto
 //   locales/ contracts/locales/*.json
+//   icons/   native/livi-ui/assets/icons (MUI nav icons rasterised to PNG)
 // Used by build-native.mjs and by hand for a development copy on a device.
 import { copyFileSync, mkdirSync, readdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -21,6 +22,12 @@ export function assembleUiResources(outDir = join(root, 'out', 'ui')) {
   mkdirSync(localesDst, { recursive: true })
   for (const f of readdirSync(localesSrc).filter((f) => f.endsWith('.json'))) {
     copyFileSync(join(localesSrc, f), join(localesDst, f))
+  }
+  const iconsSrc = join(root, 'native', 'livi-ui', 'assets', 'icons')
+  const iconsDst = join(outDir, 'icons')
+  mkdirSync(iconsDst, { recursive: true })
+  for (const f of readdirSync(iconsSrc).filter((f) => f.endsWith('.png'))) {
+    copyFileSync(join(iconsSrc, f), join(iconsDst, f))
   }
   return outDir
 }

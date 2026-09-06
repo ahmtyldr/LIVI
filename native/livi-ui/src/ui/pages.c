@@ -132,21 +132,22 @@ void pages_create(lv_obj_t *parent) {
   /* StatusOverlay: CropPortraitOutlined at 84 px, text.primary, 55 % opacity
    * until a phone session is active. The 24-unit icon is a 14x20 rounded
    * rectangle with a 2-unit stroke. */
-  int icon = theme_px(84);
-  g_placeholder = lv_obj_create(home);
-  lv_obj_remove_style_all(g_placeholder);
-  lv_obj_set_size(g_placeholder, icon * 14 / 24, icon * 20 / 24);
-  lv_obj_set_style_border_width(g_placeholder, icon * 2 / 24, 0);
-  lv_obj_set_style_border_color(g_placeholder, theme.text, 0);
-  lv_obj_set_style_border_opa(g_placeholder, LV_OPA_COVER, 0);
-  lv_obj_set_style_radius(g_placeholder, icon * 2 / 24, 0);
+  g_placeholder = shell_icon(home, "home", 84);
+  lv_obj_set_style_image_recolor(g_placeholder, theme.text, 0);
+  lv_obj_set_style_image_recolor_opa(g_placeholder, LV_OPA_COVER, 0);
   lv_obj_set_style_opa(g_placeholder, LV_OPA_50 + 13, 0); /* 0.55 */
   lv_obj_center(g_placeholder);
   g_pages[PAGE_HOME] = home;
 
   g_pages[PAGE_TELEMETRY] = placeholder(parent, "settings.telemetry");
   g_pages[PAGE_MEDIA] = placeholder(parent, "settings.media");
-  g_pages[PAGE_CAMERA] = placeholder(parent, "settings.camera");
+  /* Camera.tsx without a configured camera: one centred status line. */
+  lv_obj_t *cam = page_base(parent);
+  lv_obj_t *cam_msg = lv_label_create(cam);
+  lv_label_set_text(cam_msg, "No camera configured.");
+  lv_obj_set_style_text_color(cam_msg, theme.text, 0);
+  lv_obj_align(cam_msg, LV_ALIGN_TOP_MID, 0, theme_px(64));
+  g_pages[PAGE_CAMERA] = cam;
 
   /* Settings: for now the bridge status page (session 5 acceptance). */
   lv_obj_t *s = page_base(parent);

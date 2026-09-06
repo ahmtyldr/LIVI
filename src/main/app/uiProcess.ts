@@ -36,6 +36,9 @@ export function startUiProcess(): UiProcessHandle | undefined {
     return undefined
   }
   const resources = process.env.LIVI_UI_RESOURCES ?? dirname(bin)
+  const socket = uiBridgeSocketPath()
+  // tooling hook (tools/parity): "page /media" switches pages
+  const ctl = process.env.LIVI_UI_CTL ?? (socket ? join(dirname(socket), 'livi-ui.ctl') : undefined)
   let child: ChildProcess | undefined
   let stopped = false
   let backoff = 1000
@@ -48,7 +51,8 @@ export function startUiProcess(): UiProcessHandle | undefined {
       env: {
         ...process.env,
         LIVI_UI_RESOURCES: resources,
-        LIVI_UI_SOCKET: uiBridgeSocketPath()
+        ...(socket ? { LIVI_UI_SOCKET: socket } : {}),
+        ...(ctl ? { LIVI_UI_CTL: ctl } : {})
       },
       stdio: ['ignore', 'pipe', 'pipe']
     })

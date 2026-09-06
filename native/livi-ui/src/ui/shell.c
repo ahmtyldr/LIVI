@@ -2,25 +2,34 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <limits.h>
+#include <unistd.h>
 #include "app.h"
 #include "bridge.h"
 #include "i18n.h"
 #include "theme.h"
 #include "ui/pages.h"
 
-/* NavRail.tsx: MUI vertical Tabs, icon 32 px (24 when the window is under
- * UI.XS_ICON_MAX_HEIGHT), padding 10px 0 (5px), clock above the tabs. */
-#define RAIL_W 72
+/* AppLayout.tsx nav column: content 74 px + 1 px #444 right border; top block
+ * paddingTop 1rem + clock Typography 1.5rem (line-height 1.5 → 36 px);
+ * NavRail.tsx: MUI vertical Tabs, each flex 1 1 0, icon 32 px (24 under
+ * UI.XS_ICON_MAX_HEIGHT), padding 10px 0, opacity 0.7 unless selected. */
+#define RAIL_W 74
+#define RAIL_W_XS 56
 #define XS_HEIGHT 480
+#define CLOCK_PAD_TOP 16
+#define CLOCK_LINE 36
 
 static lv_obj_t *g_root, *g_rail, *g_clock, *g_content;
 static lv_obj_t *g_tabs[PAGE_COUNT];
 static page_id_t g_current = PAGE_HOME;
 static lv_timer_t *g_clock_timer;
 static bool g_streaming;
+static bool g_tab_visible[PAGE_COUNT] = {true, true, true, false, true};
+static cJSON *g_config;
 
-static const char *const tab_symbols[PAGE_COUNT] = {
-    LV_SYMBOL_HOME, LV_SYMBOL_GPS, LV_SYMBOL_PLAY, LV_SYMBOL_IMAGE, LV_SYMBOL_SETTINGS};
+/* useTabsConfig.tsx: MUI outlined icons, rasterised into assets/icons. */
+static const char *const tab_icons[PAGE_COUNT] = {"home", "telemetry", "media", "camera", "settings"};
 static const char *const routes[PAGE_COUNT] = {"/", "/telemetry", "/media", "/camera", "/settings"};
 
 page_id_t shell_page_from_route(const char *route) {
@@ -31,13 +40,71 @@ page_id_t shell_page_from_route(const char *route) {
 
 page_id_t shell_current_page(void) { return g_current; }
 
+static bool cfg_role_flag(const char *group, bool dflt) {
+  cJSON *g = g_config ? cJSON_GetObjectItemCaseSensitive(g_config, group) : NULL;
+  cJSON *v = cJSON_IsObject(g) ? cJSON_GetObjectItemCaseSensitive(g, "main") : NULL;
+  return cJSON_IsBool(v) ? cJSON_IsTrue(v) : dflt;
+}
+
+/* useTabsConfig.tsx for role 'main': Telemetry when a dashboard slot targets
+ * main, Media unless media.main is false, Camera when camera.main (default
+ * true) and a camera is configured (cameraId), Custom is out of scope. */
+bool shell_set_config(cJSON *config) {
+  if (g_config) cJSON_Delete(g_config);
+  g_config = config ? cJSON_Duplicate(config, 1) : NULL;
+  bool next[PAGE_COUNT] = {true, false, true, false, true};
+  cJSON *dash = g_config ? cJSON_GetObjectItemCaseSensitive(g_config, "dashboards") : NULL;
+  if (cJSON_IsObject(dash)) {
+    cJSON *slot;
+    cJSON_ArrayForEach(slot, dash) {
+      cJSON *m = cJSON_IsObject(slot) ? cJSON_GetObjectItemCaseSensitive(slot, "main") : NULL;
+      if (cJSON_IsTrue(m)) next[PAGE_TELEMETRY] = true;
+    }
+  }
+  next[PAGE_MEDIA] = cfg_role_flag("media", true);
+  cJSON *cam = g_config ? cJSON_GetObjectItemCaseSensitive(g_config, "cameraId") : NULL;
+  next[PAGE_CAMERA] = cfg_role_flag("camera", true) && cJSON_IsString(cam) && cam->valuestring[0];
+  bool changed = memcmp(next, g_tab_visible, sizeof next) != 0;
+  memcpy(g_tab_visible, next, sizeof next);
+  return changed;
+}
+
 static void paint_tabs(void) {
+  /* Nav.tsx activeKey: a route without a tab highlights the first tab (Home). */
+  page_id_t active = g_tab_visible[g_current] ? g_current : PAGE_HOME;
   for (int i = 0; i < PAGE_COUNT; i++) {
     if (!g_tabs[i]) continue;
-    bool sel = i == (int)g_current;
-    lv_obj_set_style_text_color(g_tabs[i], sel ? theme.primary : theme.text, 0);
-    lv_obj_set_style_opa(g_tabs[i], sel ? LV_OPA_COVER : LV_OPA_70, 0);
+    bool sel = i == (int)active;
+    lv_obj_t *icon = lv_obj_get_child(g_tabs[i], 0);
+    if (icon) {
+      lv_obj_set_style_image_recolor(icon, sel ? theme.primary : theme.text, 0);
+      lv_obj_set_style_image_recolor_opa(icon, LV_OPA_COVER, 0);
+      lv_obj_set_style_text_color(icon, sel ? theme.primary : theme.text, 0);
+    }
+    /* unselected tabs measure at 60 % of text.primary in the Electron capture */
+    lv_obj_set_style_opa(g_tabs[i], sel ? LV_OPA_COVER : LV_OPA_60, 0);
   }
+}
+
+/** Icon image ("A:" = POSIX root) or a Montserrat symbol when the PNG is missing. */
+lv_obj_t *shell_icon(lv_obj_t *parent, const char *name, int px) {
+  char rel[64], src[PATH_MAX + 2];
+  snprintf(rel, sizeof rel, "icons/%s-%d.png", name, px);
+  snprintf(src, sizeof src, "A:%s", app_resource(rel));
+  if (access(src + 2, R_OK) == 0) {
+    lv_obj_t *img = lv_image_create(parent);
+    lv_image_set_src(img, src);
+    lv_image_set_inner_align(img, LV_IMAGE_ALIGN_CENTER);
+    lv_obj_set_size(img, px, px);
+    return img;
+  }
+  static bool warned;
+  if (!warned) LOG("no icon %s, using symbols", src + 2);
+  warned = true;
+  lv_obj_t *l = lv_label_create(parent);
+  lv_label_set_text(l, LV_SYMBOL_DUMMY "?");
+  lv_obj_set_style_text_font(l, theme_symbol_font(px), 0);
+  return l;
 }
 
 static void update_clock(lv_timer_t *t) {
@@ -122,30 +189,40 @@ static void build(void) {
   /* rail */
   g_rail = lv_obj_create(g_root);
   lv_obj_remove_style_all(g_rail);
-  lv_obj_set_size(g_rail, theme_px(RAIL_W), lv_pct(100));
+  lv_obj_set_size(g_rail, theme_px(xs ? RAIL_W_XS : RAIL_W) + 1, lv_pct(100));
   lv_obj_set_flex_flow(g_rail, LV_FLEX_FLOW_COLUMN);
   lv_obj_set_flex_align(g_rail, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-  lv_obj_set_style_pad_top(g_rail, theme_px(8), 0);
   lv_obj_set_style_border_side(g_rail, LV_BORDER_SIDE_RIGHT, 0);
   lv_obj_set_style_border_width(g_rail, 1, 0);
-  lv_obj_set_style_border_color(g_rail, theme.divider, 0);
+  lv_obj_set_style_border_color(g_rail, lv_color_hex(0x444444), 0);
   lv_obj_set_style_border_opa(g_rail, LV_OPA_COVER, 0);
 
-  g_clock = lv_label_create(g_rail);
+  /* top block: 1rem padding + one 1.5rem line (line-height 1.5) */
+  lv_obj_t *top = lv_obj_create(g_rail);
+  lv_obj_remove_style_all(top);
+  lv_obj_set_size(top, lv_pct(100), theme_px(CLOCK_PAD_TOP + CLOCK_LINE));
+  g_clock = lv_label_create(top);
   lv_obj_set_style_text_font(g_clock, theme_font(theme_px(24)), 0);
-  lv_obj_set_style_pad_bottom(g_clock, theme_px(12), 0);
+  /* Chrome positions glyphs on fractional advances; FreeType rounds them
+   * down. +1 px letter spacing and -1 px y put the digits where MUI has them
+   * (measured with tools/parity). */
+  lv_obj_set_style_text_letter_space(g_clock, 1, 0);
+  lv_obj_align(g_clock, LV_ALIGN_TOP_MID, 0, theme_px(CLOCK_PAD_TOP + (CLOCK_LINE - 24) / 2) - 1);
   update_clock(NULL);
 
+  /* tabs fill the remaining height, flex 1 1 0 each */
   for (int i = 0; i < PAGE_COUNT; i++) {
+    g_tabs[i] = NULL;
+    if (!g_tab_visible[i]) continue;
     lv_obj_t *b = lv_obj_create(g_rail);
     lv_obj_remove_style_all(b);
-    lv_obj_set_size(b, lv_pct(100), icon + 2 * pad);
+    lv_obj_set_width(b, lv_pct(100));
+    lv_obj_set_flex_grow(b, 1);
+    lv_obj_set_style_min_height(b, icon + 2 * pad, 0);
     lv_obj_add_flag(b, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(b, tab_clicked, LV_EVENT_CLICKED, (void *)(uintptr_t)i);
-    lv_obj_t *l = lv_label_create(b);
-    lv_label_set_text(l, tab_symbols[i]);
-    lv_obj_set_style_text_font(l, theme_symbol_font(icon), 0);
-    lv_obj_center(l);
+    lv_obj_t *l = shell_icon(b, tab_icons[i], icon == 24 ? 24 : 32);
+    lv_obj_align(l, LV_ALIGN_CENTER, 0, 1);
     g_tabs[i] = b;
   }
 

@@ -8,8 +8,12 @@
 //   LIVI_UI_RESOURCES    fonts/ and locales/ (default: next to the binary)
 //   LIVI_UI_SIZE         WxH of the initial window (default 1280x720; fullscreen follows)
 //   LIVI_UI_TITLE        window title/app id (default dev.f-io.livi)
+//   LIVI_UI_CTL          control FIFO for tooling: "page /media\n" switches pages
 #define _GNU_SOURCE
+#include <errno.h>
+#include <fcntl.h>
 #include <libgen.h>
+#include <sys/stat.h>
 #include <limits.h>
 #include <poll.h>
 #include <stdio.h>
@@ -30,6 +34,38 @@ static char g_res_path[PATH_MAX];
 static char g_version[32] = "";
 static bool g_running = true;
 static lv_display_t *g_disp;
+static int g_ctl_fd = -1;
+
+/* Development control FIFO (tools/parity/capture.sh). Opened O_RDWR so the
+ * read end never sees EOF between writers. */
+static void ctl_open(void) {
+  const char *path = getenv("LIVI_UI_CTL");
+  if (!path || !*path) return;
+  if (mkfifo(path, 0600) != 0 && errno != EEXIST) {
+    LOG("mkfifo %s: %s", path, strerror(errno));
+    return;
+  }
+  g_ctl_fd = open(path, O_RDWR | O_NONBLOCK | O_CLOEXEC);
+  if (g_ctl_fd < 0) LOG("open %s: %s", path, strerror(errno));
+}
+
+static void ctl_read(void) {
+  char buf[256];
+  ssize_t n = read(g_ctl_fd, buf, sizeof buf - 1);
+  if (n <= 0) return;
+  buf[n] = 0;
+  char *save = NULL;
+  for (char *line = strtok_r(buf, "\n", &save); line; line = strtok_r(NULL, "\n", &save)) {
+    if (strncmp(line, "page ", 5) == 0) {
+      shell_show_page(shell_page_from_route(line + 5));
+      LOG("ctl: page %s", line + 5);
+    } else if (strcmp(line, "quit") == 0) {
+      g_running = false;
+    } else {
+      LOG("ctl: unknown command '%s'", line);
+    }
+  }
+}
 
 const char *app_resource_dir(void) { return g_res_dir; }
 const char *app_resource(const char *rel) {
@@ -84,6 +120,7 @@ static void apply_settings(cJSON *config) {
   bool dark = theme.dark;
   theme_apply(config);
   relayout = relayout || zoom != theme.zoom || dark != theme.dark;
+  relayout = shell_set_config(config) || relayout;
   if (relayout) i18n_load(want);
   pages_on_settings(config);
   if (relayout) shell_rebuild();
@@ -161,19 +198,28 @@ int main(void) {
   bridge_set_event_handler(on_event, NULL);
   bridge_set_state_handler(on_bridge_state, NULL);
   bridge_tick();
+  ctl_open();
 
   uint32_t last_tick = tick_cb();
   while (g_running && lv_wayland_window_is_open(g_disp)) {
     uint32_t wait = lv_wayland_timer_handler();
     if (wait > 100) wait = 100;
-    struct pollfd fds[2];
+    struct pollfd fds[3];
     int n = 0;
+    int bridge_idx = -1, ctl_idx = -1;
     fds[n].fd = lv_wayland_get_fd();
     fds[n].events = POLLIN;
     n++;
     int bfd = bridge_fd();
     if (bfd >= 0) {
+      bridge_idx = n;
       fds[n].fd = bfd;
+      fds[n].events = POLLIN;
+      n++;
+    }
+    if (g_ctl_fd >= 0) {
+      ctl_idx = n;
+      fds[n].fd = g_ctl_fd;
       fds[n].events = POLLIN;
       n++;
     }
@@ -182,7 +228,8 @@ int main(void) {
       LOG("wayland connection lost");
       return 1;
     }
-    if (r > 0 && n > 1 && (fds[1].revents & (POLLIN | POLLHUP | POLLERR))) bridge_read();
+    if (r > 0 && bridge_idx >= 0 && (fds[bridge_idx].revents & (POLLIN | POLLHUP | POLLERR))) bridge_read();
+    if (r > 0 && ctl_idx >= 0 && (fds[ctl_idx].revents & POLLIN)) ctl_read();
     uint32_t now = tick_cb();
     if (now - last_tick >= 1000) {
       last_tick = now;

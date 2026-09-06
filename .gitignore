@@ -83,3 +83,4 @@ Thumbs.db
 *.img.gz.sha256
 *.AppImage
 native/livi-ui/build/
+tools/parity/reference/electron-home.png
