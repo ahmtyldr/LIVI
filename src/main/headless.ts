@@ -41,12 +41,13 @@ function headlessInnerCommand(): string {
   // (__filename resolves inside app.asar.unpacked). host/paths.ts reads the
   // LIVI_* vars, so no process.resourcesPath is needed.
   if (nodeBin) {
+    // Run the bundle as a script argument (not -e) to avoid shell quoting the
+    // path; process.resourcesPath is restored from LIVI_RESOURCES at startup.
     return (
       `LIVI_UI=${process.env.LIVI_UI} LIVI_COMPOSITOR=1 LIVI_NODE_BIN='${nodeBin}' ` +
       env('LIVI_RESOURCES') + env('LIVI_APP_ROOT') + env('LIVI_PACKAGED') +
       env('GST_PLUGIN_SYSTEM_PATH') +
-      `LD_LIBRARY_PATH='${hostLd}' '${nodeBin}' -e "require(${JSON.stringify(__filename)})" ` +
-      `>> '${log}' 2>&1`
+      `LD_LIBRARY_PATH='${hostLd}' '${nodeBin}' '${__filename}' >> '${log}' 2>&1`
     )
   }
 
