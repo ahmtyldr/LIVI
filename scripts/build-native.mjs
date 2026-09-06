@@ -9,7 +9,7 @@
 // Usage: node scripts/build-native.mjs [--arch=x64|arm64] [--only=crypto]
 // Linux runners are arch-native; only macOS cross-compiles (arm64 host -> x64 app).
 import { execFileSync } from 'node:child_process'
-import { copyFileSync, mkdirSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { assembleUiResources } from './ui-resources.mjs'
@@ -74,7 +74,30 @@ if (only !== 'crypto') {
     place(join(compOut, 'livi-compositor'), join(root, 'out', 'compositor'), 'livi-compositor')
 
     if (!process.env.LIVI_SKIP_UI) buildUi()
+    if (!process.env.LIVI_SKIP_NODE) bundleNode()
   }
+}
+
+/** Standalone Node for the headless main (smaller RSS than electron-as-node).
+ *  Downloaded once per arch into out/node/node; electron-builder ships it as
+ *  resources/node. Matches Electron 44's Node major (22). */
+function bundleNode() {
+  const ver = process.env.LIVI_NODE_VERSION || 'v22.11.0'
+  const nodeArch = wantArch === 'x64' ? 'x64' : 'arm64'
+  const outDir = join(root, 'out', 'node')
+  const nodeBin = join(outDir, 'node')
+  if (existsSync(nodeBin)) return
+  const tarball = `node-${ver}-linux-${nodeArch}.tar.xz`
+  const url = `https://nodejs.org/dist/${ver}/${tarball}`
+  const tmp = join(root, 'out', tarball)
+  console.log(`[node] downloading ${url}`)
+  execFileSync('bash', ['-c', `curl -fsSL '${url}' -o '${tmp}'`], { stdio: 'inherit' })
+  mkdirSync(outDir, { recursive: true })
+  // Extract just the node binary.
+  execFileSync('bash', ['-c',
+    `tar -xJf '${tmp}' -C '${outDir}' --strip-components=2 '${`node-${ver}-linux-${nodeArch}/bin/node`}' && rm -f '${tmp}'`],
+    { stdio: 'inherit' })
+  console.log(`[node] -> ${nodeBin}`)
 }
 
 /** native/livi-ui (LVGL) — CMake; LVGL and cJSON are fetched at configure time. */

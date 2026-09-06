@@ -24,7 +24,13 @@ files:
 
 asarUnpack:
   - resources/**
+  - out/**
   - node_modules/usb/**
+  - node_modules/node-gyp-build/**
+  - node_modules/@node-usb/**
+  - node_modules/protobufjs/**
+  - node_modules/@protobufjs/**
+  - node_modules/long/**
   - node_modules/livi-gst-video/**
   - node_modules/livi-crypto/**
 
@@ -40,6 +46,8 @@ linux:
       to: compositor
     - from: out/ui
       to: ui
+    - from: out/node
+      to: node
     - from: assets/linux/dev.f-io.livi.metainfo.xml
       to: ../share/metainfo/dev.f-io.livi.metainfo.xml
     - from: assets/linux/99-LIVI.rules.template

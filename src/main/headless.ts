@@ -26,6 +26,25 @@ process.env.LIVI_UI ??= 'lvgl'
 /** The command the nested compositor runs to relaunch this entry inside it.
  *  LIVI_HEADLESS_JS points at a bundle outside the AppImage (development). */
 function headlessInnerCommand(): string {
+  const log = join(homedir(), '.config', 'LIVI', 'log', 'headless.log')
+  const hostLd = process.env.LD_LIBRARY_PATH ?? ''
+  const nodeBin = process.env.LIVI_NODE_BIN
+  const env = (k: string): string => (process.env[k] ? `${k}='${process.env[k]}' ` : '')
+
+  // Standalone Node: relaunch that node against the on-disk headless bundle
+  // (__filename resolves inside app.asar.unpacked). host/paths.ts reads the
+  // LIVI_* vars, so no process.resourcesPath is needed.
+  if (nodeBin) {
+    return (
+      `LIVI_UI=${process.env.LIVI_UI} LIVI_COMPOSITOR=1 LIVI_NODE_BIN='${nodeBin}' ` +
+      env('LIVI_RESOURCES') + env('LIVI_APP_ROOT') + env('LIVI_PACKAGED') +
+      env('GST_PLUGIN_SYSTEM_PATH') +
+      `LD_LIBRARY_PATH='${hostLd}' '${nodeBin}' -e "require(${JSON.stringify(__filename)})" ` +
+      `>> '${log}' 2>&1`
+    )
+  }
+
+  // Electron-as-Node (dev bundle, or no bundled node).
   const relaunch = process.env.APPIMAGE ?? process.execPath
   const devBundle = process.env.LIVI_HEADLESS_JS
   const script = devBundle
@@ -34,8 +53,6 @@ function headlessInnerCommand(): string {
     : process.resourcesPath
       ? `require(process.resourcesPath + '/app.asar/out/main/headless.js')`
       : `require(${JSON.stringify(__filename)})`
-  const hostLd = process.env.LD_LIBRARY_PATH ?? ''
-  const log = join(homedir(), '.config', 'LIVI', 'log', 'headless.log')
   return (
     `ELECTRON_RUN_AS_NODE=1 LIVI_UI=${process.env.LIVI_UI} LIVI_COMPOSITOR=1 ` +
     (devBundle ? `LIVI_HEADLESS_JS='${devBundle}' ` : '') +
