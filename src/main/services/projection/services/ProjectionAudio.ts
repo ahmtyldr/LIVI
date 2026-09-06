@@ -754,12 +754,9 @@ export class ProjectionAudio {
     hostFed = false,
     tag?: string
   ): HostAudioOutput {
-    // Only music takes the deep buffered path; nav/voice/call stay low-latency.
-    const realtime = this.logicalKeyForType(audioType) !== 'music'
     const player: HostAudioOutput = new HostAudioOutput({
       sampleRate,
       channels,
-      realtime,
       device: this.getConfig().audioOutputDevice || undefined,
       onOpened: (streamId) => {
         for (const cb of this.hostOutputListeners) cb(audioType, streamId, tag)

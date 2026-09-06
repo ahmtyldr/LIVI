@@ -6,8 +6,6 @@ export type HostAudioOutputOptions = {
   device?: string
   /** Voice and call streams take the short path to the sink. */
   realtime?: boolean
-  /** Media jitter-buffer depth (ms). Deep for buffered music, 0 for realtime. */
-  latencyMs?: number
   /** The host's stream id, once the stream is open. */
   onOpened?: (streamId: number) => void
 }
@@ -40,9 +38,7 @@ export class HostAudioOutput {
         payloadType: 0,
         clockRate: this.opts.sampleRate,
         channels: this.opts.channels,
-        // Music is shipped buffered by the phone, so a deep jitter buffer rides out
-        // brief Wi-Fi stalls (e.g. 2.4 GHz Wi-Fi/BT coexistence). Voice/call stay tight.
-        latencyMs: (this.opts.realtime ?? false) ? 0 : (this.opts.latencyMs ?? 400),
+        latencyMs: 0,
         realtime: this.opts.realtime ?? false,
         fed: true,
         device: this.opts.device
