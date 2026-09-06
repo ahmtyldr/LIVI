@@ -60,6 +60,7 @@ if [ -z "${LIVI_HEADLESS_JS:-}" ] && [ -x "$NODE_BIN" ] && [ -f "$UNPACKED/out/m
   export LIVI_PACKAGED=1
   [ -n "$GST_LIB" ] && export LD_LIBRARY_PATH="$GST_LIB:$LD_LIBRARY_PATH"     && export GST_PLUGIN_SYSTEM_PATH="$GST_LIB/gstreamer-1.0"
   echo "--- $(date +%T) launching via standalone node: $NODE_BIN"
+  # headless.js sets process.resourcesPath from LIVI_RESOURCES at startup.
   "$NODE_BIN" "$UNPACKED/out/main/headless.js"
   rc=$?
 else

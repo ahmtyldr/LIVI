@@ -7,6 +7,12 @@
 //   ELECTRON_RUN_AS_NODE=1 LIVI_UI=lvgl LIVI.AppImage \
 //     -e "require(process.resourcesPath + '/app.asar/out/main/headless.js')"
 import './logTimestamps'
+// Electron sets process.resourcesPath; standalone Node does not. Bridge the
+// LIVI_RESOURCES env the launcher exports into it before any service reads it
+// (GstVideo's bundled-GStreamer path, helper staging, uiProcess all use it).
+if (!process.resourcesPath && process.env.LIVI_RESOURCES) {
+  ;(process as { resourcesPath?: string }).resourcesPath = process.env.LIVI_RESOURCES
+}
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { applyConfigBehaviours, createCore, finishStart } from '@main/app/bootstrap'
