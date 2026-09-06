@@ -42,6 +42,166 @@ static const char *node_label(cJSON *n) {
 static cJSON *cfg(const char *path) {
   return g_config && path ? cJSON_GetObjectItemCaseSensitive(g_config, path) : NULL;
 }
+static const char *node_component(cJSON *n) {
+  cJSON *c = cJSON_GetObjectItemCaseSensitive(n, "component");
+  cJSON *cn = cJSON_IsObject(c) ? cJSON_GetObjectItemCaseSensitive(c, "$component") : NULL;
+  return cJSON_IsString(cn) ? cn->valuestring : "";
+}
+
+/* ---- custom components (About, SoftwareUpdate, Restart, PowerOff, …) ---- */
+static lv_obj_t *g_su_installed, *g_su_latest, *g_su_status, *g_su_button, *g_about_ver;
+static char g_latest_url[512];
+static char g_installed_ver[64];
+
+/* one info/value row: label left, value right, in a fresh card */
+static lv_obj_t *info_card(void) {
+  lv_obj_t *card = lv_obj_create(g_card);
+  lv_obj_remove_style_all(card);
+  lv_obj_set_width(card, lv_pct(100));
+  lv_obj_set_height(card, LV_SIZE_CONTENT);
+  lv_obj_set_flex_flow(card, LV_FLEX_FLOW_COLUMN);
+  return card;
+}
+static lv_obj_t *value_row(lv_obj_t *card, const char *label, const char *value, bool last) {
+  lv_obj_t *row = settings_row(card, last);
+  lv_obj_t *l = lv_label_create(row);
+  lv_label_set_text(l, label);
+  lv_obj_set_style_text_font(l, theme_font(theme_px(16)), 0);
+  lv_obj_set_style_text_color(l, theme.text2, 0);
+  lv_obj_set_style_pad_left(l, theme_px(SET_ROW_PAD), 0);
+  lv_obj_t *v = lv_label_create(row);
+  lv_label_set_text(v, value ? value : "");
+  lv_obj_set_style_text_font(v, theme_font(theme_px(16)), 0);
+  lv_obj_set_style_text_color(v, theme.text, 0);
+  lv_label_set_long_mode(v, LV_LABEL_LONG_DOT);
+  lv_obj_set_flex_grow(v, 1);
+  lv_obj_set_style_text_align(v, LV_TEXT_ALIGN_RIGHT, 0);
+  return v;
+}
+static lv_obj_t *action_button(const char *text, lv_color_t color, lv_event_cb_t cb) {
+  lv_obj_t *wrap = lv_obj_create(g_card);
+  lv_obj_remove_style_all(wrap);
+  lv_obj_set_size(wrap, lv_pct(100), LV_SIZE_CONTENT);
+  lv_obj_set_flex_flow(wrap, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_flex_align(wrap, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+  lv_obj_set_style_pad_all(wrap, theme_px(24), 0);
+  lv_obj_t *b = lv_button_create(wrap);
+  lv_obj_set_size(b, theme_px(240), theme_px(56));
+  lv_obj_set_style_radius(b, theme_px(10), 0);
+  lv_obj_set_style_bg_color(b, color, 0);
+  lv_obj_add_event_cb(b, cb, LV_EVENT_CLICKED, NULL);
+  lv_obj_t *l = lv_label_create(b);
+  lv_label_set_text(l, text);
+  lv_obj_set_style_text_font(l, theme_font_medium(theme_px(18)), 0);
+  lv_obj_set_style_text_color(l, lv_color_white(), 0);
+  lv_obj_center(l);
+  return b;
+}
+
+static void got_version(cJSON *r, cJSON *e, void *u) {
+  (void)e; (void)u;
+  if (cJSON_IsString(r) && g_about_ver) lv_label_set_text(g_about_ver, r->valuestring);
+}
+
+static void build_about(void) {
+  lv_obj_t *card = info_card();
+  value_row(card, "LIVI", "Linux In-Vehicle Infotainment", false);
+  value_row(card, i18n("settings.url"), "https://f-io.dev", false);
+  value_row(card, i18n("settings.author"), "Lasse Heitgres", false);
+  const char *car = cJSON_IsString(cfg("carName")) ? cfg("carName")->valuestring : "LIVI";
+  value_row(card, i18n("settings.carName"), car, false);
+  g_about_ver = value_row(card, i18n("settings.version"), "…", true);
+  bridge_call("app.getVersion", NULL, got_version, NULL);
+}
+
+static void do_restart(lv_event_t *e) { (void)e; bridge_call("app.restartApp", NULL, NULL, NULL); }
+static void do_poweroff(lv_event_t *e) { (void)e; bridge_call("app.quitApp", NULL, NULL, NULL); }
+
+static void su_nightly_changed(lv_event_t *e) {
+  lv_obj_t *sw = lv_event_get_target(e);
+  settings_save("updateNightly", cJSON_CreateBool(lv_obj_has_state(sw, LV_STATE_CHECKED)));
+}
+static void su_update_clicked(lv_event_t *e) {
+  lv_obj_t *b = lv_event_get_target(e);
+  if (lv_obj_has_state(b, LV_STATE_DISABLED)) return;
+  if (!g_latest_url[0]) return;
+  if (g_su_status) lv_label_set_text(g_su_status, "Starting…");
+  cJSON *p = cJSON_CreateArray();
+  cJSON_AddItemToArray(p, cJSON_CreateString(g_latest_url));
+  bridge_call("app.performUpdate", p, NULL, NULL);
+}
+static void got_latest(cJSON *r, cJSON *e, void *u) {
+  (void)e; (void)u;
+  const char *ver = cJSON_IsObject(r) && cJSON_IsString(cJSON_GetObjectItemCaseSensitive(r, "version"))
+                        ? cJSON_GetObjectItemCaseSensitive(r, "version")->valuestring : NULL;
+  cJSON *url = cJSON_IsObject(r) ? cJSON_GetObjectItemCaseSensitive(r, "url") : NULL;
+  snprintf(g_latest_url, sizeof g_latest_url, "%s", cJSON_IsString(url) ? url->valuestring : "");
+  if (g_su_latest) lv_label_set_text(g_su_latest, ver ? ver : "—");
+  bool up_to_date = ver && g_installed_ver[0] && strcmp(ver, g_installed_ver) == 0;
+  bool can_update = g_latest_url[0] && ver && !up_to_date;
+  if (g_su_button) {
+    lv_obj_t *lbl = lv_obj_get_child(g_su_button, 0);
+    if (lbl) lv_label_set_text(lbl, up_to_date ? i18n("softwareUpdate.upToDate") : i18n("softwareUpdate.update"));
+    if (can_update) lv_obj_remove_state(g_su_button, LV_STATE_DISABLED);
+    else lv_obj_add_state(g_su_button, LV_STATE_DISABLED);
+    lv_obj_set_style_bg_opa(g_su_button, can_update ? LV_OPA_COVER : LV_OPA_40, 0);
+  }
+  if (g_su_status && !g_latest_url[0]) lv_label_set_text(g_su_status, i18n("softwareUpdate.couldNotCheckLatestRelease"));
+}
+static void su_installed_cb(cJSON *r, cJSON *e, void *u) {
+  (void)e; (void)u;
+  if (!cJSON_IsString(r)) return;
+  snprintf(g_installed_ver, sizeof g_installed_ver, "%s", r->valuestring);
+  if (g_su_installed) lv_label_set_text(g_su_installed, r->valuestring);
+}
+static void build_software_update(void) {
+  g_latest_url[0] = 0;
+  lv_obj_t *card = info_card();
+  g_su_installed = value_row(card, i18n("softwareUpdate.installedVersion"), "…", false);
+  g_su_latest = value_row(card, i18n("softwareUpdate.availableVersion"), "…", false);
+  /* Nightly toggle */
+  lv_obj_t *row = settings_row(card, true);
+  lv_obj_t *l = lv_label_create(row);
+  lv_label_set_text(l, i18n("softwareUpdate.channelNightly"));
+  lv_obj_set_style_text_color(l, theme.text2, 0);
+  lv_obj_set_style_pad_left(l, theme_px(SET_ROW_PAD), 0);
+  lv_obj_set_flex_grow(l, 1);
+  lv_obj_t *sw = lv_switch_create(row);
+  lv_obj_set_size(sw, theme_px(44), theme_px(24));
+  lv_obj_set_style_bg_color(sw, theme.primary, LV_PART_INDICATOR | LV_STATE_CHECKED);
+  if (cJSON_IsTrue(cfg("updateNightly"))) lv_obj_add_state(sw, LV_STATE_CHECKED);
+  lv_obj_add_event_cb(sw, su_nightly_changed, LV_EVENT_VALUE_CHANGED, NULL);
+  g_installed_ver[0] = 0;
+  g_su_button = action_button(i18n("softwareUpdate.update"), theme.primary, su_update_clicked);
+  lv_obj_add_state(g_su_button, LV_STATE_DISABLED);
+  lv_obj_set_style_bg_opa(g_su_button, LV_OPA_40, 0);
+  lv_obj_t *sw2 = lv_obj_get_parent(g_su_button);
+  g_su_status = lv_label_create(sw2);
+  lv_obj_set_style_text_color(g_su_status, theme.text2, 0);
+  lv_label_set_text(g_su_status, "");
+  bridge_call("app.getVersion", NULL, su_installed_cb, NULL);
+  bridge_call("app.getLatestRelease", NULL, got_latest, NULL);
+}
+
+static void build_info_note(const char *text) {
+  lv_obj_t *l = lv_label_create(g_card);
+  lv_label_set_text(l, text);
+  lv_obj_set_style_text_color(l, theme.text2, 0);
+  lv_obj_set_style_text_font(l, theme_font(theme_px(16)), 0);
+  lv_obj_set_style_pad_all(l, theme_px(SET_ROW_PAD), 0);
+  lv_label_set_long_mode(l, LV_LABEL_LONG_WRAP);
+  lv_obj_set_width(l, lv_pct(100));
+}
+
+static void render_custom(cJSON *node) {
+  const char *c = node_component(node);
+  g_su_installed = g_su_latest = g_su_status = g_su_button = g_about_ver = NULL;
+  if (strcmp(c, "About") == 0) build_about();
+  else if (strcmp(c, "SoftwareUpdate") == 0) build_software_update();
+  else if (strcmp(c, "Restart") == 0) action_button(i18n("settings.restartSystem"), theme.primary, do_restart);
+  else if (strcmp(c, "PowerOff") == 0) action_button(i18n("settings.powerOff"), lv_color_hex(0xcc3333), do_poweroff);
+  else build_info_note("Not available in this interface yet."); /* calib/camera/icon/gps/dongle */
+}
 
 /* ---- rows (StackItem.tsx) ---- */
 
@@ -394,7 +554,9 @@ static void render_children(cJSON *node) {
         lv_obj_add_flag(row, LV_OBJ_FLAG_CLICKABLE);
         lv_obj_add_event_cb(row, route_clicked, LV_EVENT_CLICKED, c);
       } else {
-        row_value(row, "…"); /* custom component: session 10+ */
+        settings_row_chevron(row);
+        lv_obj_add_flag(row, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_add_event_cb(row, route_clicked, LV_EVENT_CLICKED, c);
       }
     } else if (strcmp(type, "checkbox") == 0) {
       add_checkbox(g_card, c, last);
@@ -430,15 +592,27 @@ static void render_view(void) {
   lv_obj_set_style_pad_bottom(g_card, 2, 0);
 
   const char *type = node_type(node);
+  /* A route wrapping a single custom page (System → About, Software Update,
+   * Restart, …) shows that page directly, as SettingsPage.tsx does. */
+  cJSON *only_custom = NULL;
+  if (strcmp(type, "route") == 0) {
+    cJSON *kids = cJSON_GetObjectItemCaseSensitive(node, "children");
+    if (cJSON_GetArraySize(kids) == 1) {
+      cJSON *k0 = cJSON_GetArrayItem(kids, 0);
+      if (strcmp(node_type(k0), "custom") == 0) only_custom = k0;
+    }
+  }
   const char *title = node_label(node);
   if (g_depth == 1) title = i18n("settings.settingsTitle");
   lv_label_set_text(g_title, title && *title ? title : i18n("settings.settingsTitle"));
   if (g_depth <= 1) lv_obj_add_flag(g_back, LV_OBJ_FLAG_HIDDEN);
   else lv_obj_remove_flag(g_back, LV_OBJ_FLAG_HIDDEN);
 
-  if (strcmp(type, "select") == 0) render_select_editor(node);
+  if (only_custom) render_custom(only_custom);
+  else if (strcmp(type, "select") == 0) render_select_editor(node);
   else if (strcmp(type, "slider") == 0) render_slider_editor(node);
   else if (strcmp(type, "number") == 0) render_number_editor(node);
+  else if (strcmp(type, "custom") == 0) render_custom(node);
   else render_children(node);
 }
 
@@ -545,4 +719,17 @@ void settings_on_config(cJSON *config) {
   if (g_page) render_view();
 }
 
-void settings_on_event(const char *channel, cJSON *args) { devices_on_event(channel, args); }
+void settings_on_event(const char *channel, cJSON *args) {
+  devices_on_event(channel, args);
+  if (!g_su_status) return; /* the software-update view is not shown */
+  if (strcmp(channel, "update:progress") == 0) {
+    cJSON *p = cJSON_GetArrayItem(args, 0);
+    cJSON *pct = cJSON_IsObject(p) ? cJSON_GetObjectItemCaseSensitive(p, "percent") : NULL;
+    if (cJSON_IsNumber(pct)) lv_label_set_text_fmt(g_su_status, "Downloading %d%%", (int)(pct->valuedouble * 100));
+    else lv_label_set_text(g_su_status, "Downloading…");
+  } else if (strcmp(channel, "update:event") == 0) {
+    cJSON *ev = cJSON_GetArrayItem(args, 0);
+    cJSON *ph = cJSON_IsObject(ev) ? cJSON_GetObjectItemCaseSensitive(ev, "phase") : NULL;
+    if (cJSON_IsString(ph)) lv_label_set_text(g_su_status, ph->valuestring);
+  }
+}
