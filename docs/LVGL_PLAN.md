@@ -223,7 +223,7 @@ doğrulanmış, Pi 3 düzeltmeleri kaynakta, 2,4 GHz + Bluetooth testi geçti.
 | 7 ✅ | Projection + Devices | Şeffaf projeksiyon alanı, dokunma/çoklu dokunma iletimi, oturum kaplaması, cihaz listesi. | Zero 2 W bütçesi içinde telefon uçtan uca kullanılabilir. | Telefonla kullanım testi |
 | 8–9 | Settings | Şema yorumlayıcı + 12 satır bileşeni (anahtar, sayı, seçim, kaydırıcı, renk, metin, tuş bağlama, cihaz satırı, liste…). | 5 grup, 190 alan parite < %1; ayar değişiklikleri çift yönlü. | Ayar sayfalarını gezip fark bildirmek |
 | 10–11 ✅ | Media | Metadata, kapak, kontroller, FFT görselleştirici (C'ye taşınan `fft.ts`). | Parite < %1, PCM görselleştirici 30 fps'te < %5 CPU. | Müzik çalıp bakmak |
-| 12–14 | Telemetry | 21 widget, 4 dashboard; `telemetry-sim` ile beslenir. | Parite < %1, dashboard geçişleri akıcı. | Dashboard'ları karşılaştırmak |
+| 12–14 ❌ | Telemetry (kaldırıldı) | 21 widget, 4 dashboard; `telemetry-sim` ile beslenir. | Parite < %1, dashboard geçişleri akıcı. | Dashboard'ları karşılaştırmak |
 | 15 | Camera | `v4l2src` → compositor düzlemi, video hattının kopyası. | USB kamera görüntüsü, tam ekran ve pencere içinde. | USB kamera takmak |
 | 16 | Dash / Aux | Rol ve atama mantığı köprüde, her rol ayrı LVGL ekranı. | İkinci HDMI ekranda dashboard. | İkinci ekran (varsa) |
 | 17 | Kiosk ve paket | `livi-kiosk.service`: cage → compositor → headless main + livi-ui. Yayın: `v9.1.0`. | Pi 3'te güçten arayüze < 30 sn. | Pi'de kullanım |

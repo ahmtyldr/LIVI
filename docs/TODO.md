@@ -56,7 +56,11 @@ Durum: 5 Eylül 2026. Pi 3 B+ üzerinde LIVI 9.0.0 nightly çalışıyor.
 - [x] Oturum 11: Media FFT görselleştirici — `fft.c` (radix-2, 4096, 24 çubuk, Hamming, dB -80; fft.ts portu), kapak↔spektrum geçişi (kapağa dokun / `LIVI_UI_CTL fft`), PCM halka tamponu (mono int16→float), `setVisualizerEnabled`. UI doğrulandı (geçiş + 24 çubuk, çökme yok).
 - [ ] livi-ui FFT uçtan uca doğrulanamadı: **kablosuz AA sesi gst-host'tan geçmiyor** (gst-host'ta yalnızca video feed 0x7a000001; AA sesi ProjectionAudio→sistem sink). gst-host görselleştirici tap'i (frame 15) yalnızca kendi ses akışlarını yakalar → AA'da chunk üretmiyor. CarPlay dongle / Node-beslemeli akışta çalışması beklenir. Electron'da da aynı sınırlama olabilir; kontrol edilecek.
 - [ ] Oturum 9/15 ertelendi: Camera (Pi'de kamera yok; USB kamera takılınca yap).
-- [ ] Oturum 12–14: Telemetry; Oturum 16: Dash/Aux. (sıra ve kabul ölçütleri `LVGL_PLAN.md` §10).
+- [x] Telemetry sekmesi kullanıcı isteğiyle KALDIRILDI (Oturum 12–14 iptal).
+- [ ] Oturum 15 (Camera): Pi'de kamera yok, ertelendi.
+- [ ] Oturum 16 (Dash/Aux): ikinci HDMI ekran gerekiyor.
+- [ ] Oturum 17 (KRİTİK, kalan ana iş): kiosk paketi. Şu an livi-ui bir GELİŞTİRME derlemesi (`~/livi-ui/`, elle rsync). Actions'ta AppImage'a gömülüp (build-native.mjs zaten `out/ui`→`resources/ui` paketliyor) `vX.Y.Z` sürümü olarak yayınlanmalı ki kullanıcı normal güncellemeyle kursun; headless drop-in'de `LIVI_UI_BIN` gerekmesin.
+- [ ] Oturum 18 (Zero 2 W): hedef donanımda ölçüm. (sıra ve kabul ölçütleri `LVGL_PLAN.md` §10).
 - [ ] Oturum 17–18: kiosk paketi `v9.1.0`, Zero 2 W ölçümleri.
 
 ## Yedekler
