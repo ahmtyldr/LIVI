@@ -83,11 +83,19 @@ static const lv_font_t *font_get(int px, int weight) {
       break;
     }
   if (slot < 0) return theme_symbol_font(px);
-  const char *file = weight >= 700 ? "fonts/roboto-latin-700-normal.woff"
-                     : weight >= 500 ? "fonts/roboto-latin-500-normal.woff"
-                                     : "fonts/roboto-latin-400-normal.woff";
-  lv_font_t *f = lv_freetype_font_create(app_resource(file), LV_FREETYPE_FONT_RENDER_MODE_BITMAP,
+  const char *w = weight >= 700 ? "700" : weight >= 500 ? "500" : "400";
+  char latin[64], ext[64];
+  snprintf(latin, sizeof latin, "fonts/roboto-latin-%s-normal.woff", w);
+  lv_font_t *f = lv_freetype_font_create(app_resource(latin), LV_FREETYPE_FONT_RENDER_MODE_BITMAP,
                                          (uint32_t)px, LV_FREETYPE_FONT_STYLE_NORMAL);
+  if (f) {
+    /* latin-ext covers Turkish/Ukrainian/extended-latin glyphs the base
+     * subset lacks (Ş, ğ, İ, …); chain it as the fallback for missing ones. */
+    snprintf(ext, sizeof ext, "fonts/roboto-latin-ext-%s-normal.woff", w);
+    lv_font_t *fe = lv_freetype_font_create(app_resource(ext), LV_FREETYPE_FONT_RENDER_MODE_BITMAP,
+                                            (uint32_t)px, LV_FREETYPE_FONT_STYLE_NORMAL);
+    if (fe) f->fallback = fe;
+  }
   if (!f) {
     static bool warned;
     if (!warned) LOG("Roboto not found under %s, using Montserrat", app_resource_dir());

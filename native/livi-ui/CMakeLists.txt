@@ -86,6 +86,7 @@ add_executable(livi-ui
   src/ui/projection.c
   src/ui/settings.c
   src/ui/devices.c
+  src/ui/media.c
   ${GEN_DIR}/wayland_xdg_shell.c)
 target_include_directories(livi-ui PRIVATE src ${GEN_DIR} ${cjson_SOURCE_DIR} ${WAYLAND_INCLUDE_DIRS} ${FREETYPE_INCLUDE_DIRS})
 target_compile_options(livi-ui PRIVATE -Wall -Wextra -Wno-unused-parameter ${WAYLAND_CFLAGS_OTHER})

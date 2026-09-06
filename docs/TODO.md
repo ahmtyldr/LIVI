@@ -52,7 +52,10 @@ Durum: 5 Eylül 2026. Pi 3 B+ üzerinde LIVI 9.0.0 nightly çalışıyor.
 - [x] Oturum 7: Projection (StatusOverlay nefes animasyonu, letterbox dokunma haritalama, ViewAreaMask) + Ayarlar çerçevesi (başlık/geri/kart) + Cihazlar listesi (pil, sinyal, durum, unut) + oturum değiştirme rozeti. Ayarlar kök sayfası parite: kare %1,8.
 - [x] Oturum 8: Settings şemadan üretilen gruplar (`contracts/settings-schema.json` ağacı → `out/ui/settings-schema.json`). Rota gezinme yığını, onay kutusu (switch+kaydet), seçim (alt sayfa radio), kaydırıcı (% 0-100), sayı (adımlayıcı min/max/step); renk (renk örneği, salt-okunur), metin/keybinding (salt-okunur). ~90 MUI ikonu PNG.
 - [ ] livi-ui Settings kalanı: string düzenleme (ekran klavyesi gerek), renk seçici, 35 tuş bağlama editörü, 11 custom bileşen (About, SoftwareUpdate, Restart, PowerOff, Camera kalibrasyon vb.), dinamik select seçenekleri (`loadOptions`: audio cihazları, wifi kanalı — köprüden yükle). disabled `$expr` değerlendirilmiyor.
-- [ ] Oturum 9–16: ekranlar (sıra ve kabul ölçütleri `LVGL_PLAN.md` §10).
+- [x] Oturum 10: Media (çalınıyor) — kapak (base64 JPEG/PNG, TJPGD/lodepng), başlık/sanatçı/albüm, ilerleme çubuğu (yerel saat ile ilerler), prev/play-pause/next (`sendCommand` 'prev'/'play'/'pause'/'next'). Türkçe/genişletilmiş latin için FreeType latin-ext geri-dönüşü. Canlı podcast'le doğrulandı.
+- [ ] Oturum 11: Media FFT görselleştirici (`projection-audio-chunk` PCM, `fft.ts` C'ye taşınacak, artwork↔FFT geçişi).
+- [ ] Oturum 9/15 ertelendi: Camera (Pi'de kamera yok; USB kamera takılınca yap).
+- [ ] Oturum 12–14: Telemetry; Oturum 16: Dash/Aux. (sıra ve kabul ölçütleri `LVGL_PLAN.md` §10).
 - [ ] Oturum 17–18: kiosk paketi `v9.1.0`, Zero 2 W ölçümleri.
 
 ## Yedekler

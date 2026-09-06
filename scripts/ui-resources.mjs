@@ -15,8 +15,10 @@ export function assembleUiResources(outDir = join(root, 'out', 'ui')) {
   const fontsDst = join(outDir, 'fonts')
   mkdirSync(fontsDst, { recursive: true })
   for (const weight of ['400', '500', '700']) {
-    const name = `roboto-latin-${weight}-normal.woff`
-    copyFileSync(join(fontsSrc, name), join(fontsDst, name))
+    for (const subset of ['latin', 'latin-ext']) {
+      const name = `roboto-${subset}-${weight}-normal.woff`
+      copyFileSync(join(fontsSrc, name), join(fontsDst, name))
+    }
   }
   const localesSrc = join(root, 'contracts', 'locales')
   const localesDst = join(outDir, 'locales')

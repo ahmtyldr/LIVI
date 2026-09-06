@@ -4,6 +4,7 @@
 #include "app.h"
 #include "i18n.h"
 #include "theme.h"
+#include "ui/media.h"
 #include "ui/projection.h"
 #include "ui/settings.h"
 
@@ -45,7 +46,7 @@ void pages_create(lv_obj_t *parent) {
   g_pages[PAGE_HOME] = projection_create(parent);
   lv_obj_add_flag(g_pages[PAGE_HOME], LV_OBJ_FLAG_HIDDEN);
   g_pages[PAGE_TELEMETRY] = placeholder(parent, "settings.telemetry");
-  g_pages[PAGE_MEDIA] = placeholder(parent, "settings.media");
+  g_pages[PAGE_MEDIA] = media_create(parent);
 
   /* Camera.tsx without a configured camera: one centred status line. */
   lv_obj_t *cam = page_base(parent);
@@ -59,11 +60,14 @@ void pages_create(lv_obj_t *parent) {
   lv_obj_add_flag(g_pages[PAGE_SETTINGS], LV_OBJ_FLAG_HIDDEN);
 }
 
+void pages_set_media_active(bool a) { media_set_active(a); }
+
 void pages_destroy(void) {
   /* Objects are deleted with the shell root; just drop our pointers. */
   memset(g_pages, 0, sizeof g_pages);
   projection_destroy();
   settings_destroy();
+  media_destroy();
 }
 
 lv_obj_t *pages_get(page_id_t id) { return id < PAGE_COUNT ? g_pages[id] : NULL; }
@@ -78,6 +82,7 @@ void pages_set_streaming(bool streaming) { projection_set_streaming(streaming); 
 void pages_on_event(const char *channel, cJSON *args) {
   projection_on_event(channel, args);
   settings_on_event(channel, args);
+  media_on_event(channel, args);
   if (strcmp(channel, "projection-event") != 0) return;
   cJSON *ev = cJSON_GetArrayItem(args, 0);
   cJSON *type = cJSON_IsObject(ev) ? cJSON_GetObjectItemCaseSensitive(ev, "type") : NULL;

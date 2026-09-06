@@ -169,6 +169,7 @@ void shell_show_page(page_id_t id) {
   }
   paint_tabs();
   apply_rail_visibility();
+  pages_set_media_active(id == PAGE_MEDIA);
   /* Projection.tsx: tell main when the video surface is (not) on screen. */
   cJSON *params = cJSON_CreateArray();
   cJSON_AddItemToArray(params, cJSON_CreateBool(id == PAGE_HOME));
