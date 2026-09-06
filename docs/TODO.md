@@ -50,7 +50,9 @@ Durum: 5 Eylül 2026. Pi 3 B+ üzerinde LIVI 9.0.0 nightly çalışıyor.
 - [ ] livi-ui çoklu dokunma: LVGL Wayland sürücüsü tek parmak (`lv_wl_touch.c` ilk temas); pinch/zoom için wl_touch olaylarını ayrıca dinleyip `projection.ipc.sendMultiTouch` ile ilet (dokunmatik ekranlı Zero 2 W kurulumunda gerekli).
 - [ ] Parite: Electron `startPage` yalnızca üst düzey rotaları kabul ediyor (`/settings/devices` → ana sayfa); Cihazlar sayfası referansı için Electron'da fare ile gezinip yakalamak gerekiyor (henüz yok).
 - [x] Oturum 7: Projection (StatusOverlay nefes animasyonu, letterbox dokunma haritalama, ViewAreaMask) + Ayarlar çerçevesi (başlık/geri/kart) + Cihazlar listesi (pil, sinyal, durum, unut) + oturum değiştirme rozeti. Ayarlar kök sayfası parite: kare %1,8.
-- [ ] Oturum 8–16: ekranlar (sıra ve kabul ölçütleri `LVGL_PLAN.md` §10).
+- [x] Oturum 8: Settings şemadan üretilen gruplar (`contracts/settings-schema.json` ağacı → `out/ui/settings-schema.json`). Rota gezinme yığını, onay kutusu (switch+kaydet), seçim (alt sayfa radio), kaydırıcı (% 0-100), sayı (adımlayıcı min/max/step); renk (renk örneği, salt-okunur), metin/keybinding (salt-okunur). ~90 MUI ikonu PNG.
+- [ ] livi-ui Settings kalanı: string düzenleme (ekran klavyesi gerek), renk seçici, 35 tuş bağlama editörü, 11 custom bileşen (About, SoftwareUpdate, Restart, PowerOff, Camera kalibrasyon vb.), dinamik select seçenekleri (`loadOptions`: audio cihazları, wifi kanalı — köprüden yükle). disabled `$expr` değerlendirilmiyor.
+- [ ] Oturum 9–16: ekranlar (sıra ve kabul ölçütleri `LVGL_PLAN.md` §10).
 - [ ] Oturum 17–18: kiosk paketi `v9.1.0`, Zero 2 W ölçümleri.
 
 ## Yedekler

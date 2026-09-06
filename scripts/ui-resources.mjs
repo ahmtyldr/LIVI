@@ -2,6 +2,7 @@
 //   fonts/   Roboto (WOFF, read by FreeType) from @fontsource/roboto
 //   locales/ contracts/locales/*.json
 //   icons/   native/livi-ui/assets/icons (MUI nav icons rasterised to PNG)
+//   settings-schema.json  the settings tree (schema-driven Settings pages)
 // Used by build-native.mjs and by hand for a development copy on a device.
 import { copyFileSync, mkdirSync, readdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -23,6 +24,10 @@ export function assembleUiResources(outDir = join(root, 'out', 'ui')) {
   for (const f of readdirSync(localesSrc).filter((f) => f.endsWith('.json'))) {
     copyFileSync(join(localesSrc, f), join(localesDst, f))
   }
+  copyFileSync(
+    join(root, 'contracts', 'settings-schema.json'),
+    join(outDir, 'settings-schema.json')
+  )
   const iconsSrc = join(root, 'native', 'livi-ui', 'assets', 'icons')
   const iconsDst = join(outDir, 'icons')
   mkdirSync(iconsDst, { recursive: true })

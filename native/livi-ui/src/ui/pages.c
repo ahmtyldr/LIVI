@@ -68,7 +68,10 @@ void pages_destroy(void) {
 
 lv_obj_t *pages_get(page_id_t id) { return id < PAGE_COUNT ? g_pages[id] : NULL; }
 
-void pages_on_settings(cJSON *config) { projection_on_settings(config); }
+void pages_on_settings(cJSON *config) {
+  projection_on_settings(config);
+  settings_on_config(config);
+}
 
 void pages_set_streaming(bool streaming) { projection_set_streaming(streaming); }
 

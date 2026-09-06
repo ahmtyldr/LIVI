@@ -47,7 +47,7 @@ void shell_show_route(const char *route) {
   page_id_t id = shell_page_from_route(route);
   if (id == PAGE_SETTINGS) {
     const char *tail = route && strlen(route) > 10 ? route + 10 : "";
-    settings_show_view(settings_view_from_route(tail));
+    settings_show_route(tail);
   }
   shell_show_page(id);
 }
